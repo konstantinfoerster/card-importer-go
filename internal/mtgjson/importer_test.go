@@ -218,12 +218,15 @@ func TestImportCards(t *testing.T) {
 			if len(setService.Sets) != tc.wantSets {
 				t.Fatalf("unexpected set count, got: %d, wanted %d", len(setService.Sets), tc.wantSets)
 			}
+			if len(cardService.Cards) != len(tc.want) {
+				t.Fatalf("unexpected card count, got: %d, wanted %d", len(cardService.Cards), len(tc.want))
+			}
 
 			// bring into same order
-			sort.Slice(tc.want, func(i, j int) bool {
+			sort.SliceStable(tc.want, func(i, j int) bool {
 				return tc.want[i].Name < tc.want[j].Name
 			})
-			sort.Slice(cardService.Cards, func(i, j int) bool {
+			sort.SliceStable(cardService.Cards, func(i, j int) bool {
 				return cardService.Cards[i].Name < cardService.Cards[j].Name
 			})
 			assertEquals(t, tc.want, cardService.Cards)
