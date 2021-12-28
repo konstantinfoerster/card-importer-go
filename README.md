@@ -1,3 +1,5 @@
+[![Pipeline](https://github.com/konstantinfoerster/card-importer-go/actions/workflows/pipeline.yml/badge.svg?branch=main)](https://github.com/konstantinfoerster/card-importer-go/actions/workflows/pipeline.yml)
+
 # CLI Card Importer
 Command line application that downloads the latest card data set from [mtgjson.com](https://mtgjson.com/) and imports it into a local postgres database. 
 
