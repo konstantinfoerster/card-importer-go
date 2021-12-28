@@ -8,6 +8,7 @@ import (
 	"github.com/konstantinfoerster/card-importer-go/internal/api/cardset"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/testcontainers/testcontainers-go"
@@ -381,7 +382,17 @@ func runWithDatabase(t *testing.T, runTests func()) {
 		if err != nil {
 			return err
 		}
-		defer dbConn.Close()
+		defer func(toClose *postgres.DBConnection) {
+			cErr := toClose.Close()
+			if cErr != nil {
+				// report close errors
+				if err == nil {
+					err = cErr
+				} else {
+					err = errors.Wrap(err, cErr.Error())
+				}
+			}
+		}(dbConn)
 		conn = dbConn
 
 		cleanupDB = func(t *testing.T) func() {
@@ -395,7 +406,7 @@ func runWithDatabase(t *testing.T, runTests func()) {
 
 		runTests()
 
-		return nil
+		return err
 	})
 
 	if err != nil {
@@ -442,7 +453,17 @@ func runPostgresContainer(ctx context.Context, f func(c *config.Database) error)
 	if err != nil {
 		return err
 	}
-	defer postgresC.Terminate(ctx)
+	defer func(toClose testcontainers.Container) {
+		cErr := toClose.Terminate(ctx)
+		if cErr != nil {
+			// report close errors
+			if err == nil {
+				err = cErr
+			} else {
+				err = errors.Wrap(err, cErr.Error())
+			}
+		}
+	}(postgresC)
 
 	if log.Debug().Enabled() {
 		logs, err := postgresC.Logs(ctx)
@@ -474,5 +495,6 @@ func runPostgresContainer(ctx context.Context, f func(c *config.Database) error)
 		Port:     mappedPort.Port(),
 		Database: database,
 	}
-	return f(dbConfig)
+	err = f(dbConfig)
+	return err
 }

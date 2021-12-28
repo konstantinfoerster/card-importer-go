@@ -80,6 +80,9 @@ func (d *CharacteristicDao) Find(names ...string) ([]*CharacteristicType, error)
 		}
 		result = append(result, &entry)
 	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
 	return result, nil
 }
 
@@ -108,6 +111,9 @@ func (d *CharacteristicDao) FindAssignments(cardId int64) ([]*CharacteristicType
 			return nil, err
 		}
 		result = append(result, &entry)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 	return result, nil
 }

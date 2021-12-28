@@ -124,6 +124,9 @@ func (d *PostgresCardDao) FindTranslations(cardId int64) ([]*Translation, error)
 		}
 		result = append(result, t)
 	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
 	return result, nil
 }
 
