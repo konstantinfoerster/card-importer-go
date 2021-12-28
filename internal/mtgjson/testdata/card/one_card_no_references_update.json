@@ -1,0 +1,35 @@
+{
+  "data": {
+    "2ED": {
+      "code": "2ED",
+      "type": "core",
+      "cards": [
+        {
+          "artist": "Artist Updated",
+          "borderColor": "black",
+          "colors": [
+            "B", "W"
+          ],
+          "convertedManaCost": 20,
+          "flavorText": "Flavor Text Updated",
+          "identifiers": {
+            "multiverseId": "123"
+          },
+          "layout": "flip",
+          "manaCost": "{B}{W}",
+          "name": "Benalish Hero",
+          "hand": "2",
+          "life": "2",
+          "loyalty": "X",
+          "number": "4",
+          "power": "10",
+          "rarity": "mythic",
+          "setCode": "2ED",
+          "text": "Text Updated",
+          "toughness": "10",
+          "type": "Type Updated"
+        }
+      ]
+    }
+  }
+}

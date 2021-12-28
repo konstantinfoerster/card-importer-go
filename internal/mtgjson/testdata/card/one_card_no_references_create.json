@@ -1,0 +1,35 @@
+{
+  "data": {
+    "2ED": {
+      "code": "2ED",
+      "type": "core",
+      "cards": [
+        {
+          "artist": "Douglas Shuler",
+          "borderColor": "white",
+          "colors": [
+            "W"
+          ],
+          "convertedManaCost": 1,
+          "flavorText": "Benalia has a complex caste system that changes with the...",
+          "identifiers": {
+            "multiverseId": "831"
+          },
+          "layout": "normal",
+          "manaCost": "{W}",
+          "name": "Benalish Hero",
+          "hand": "1",
+          "life": "1",
+          "loyalty": "4",
+          "number": "4",
+          "power": "1",
+          "rarity": "common",
+          "setCode": "2ED",
+          "text": "Banding (Any creatures with banding,...",
+          "toughness": "1",
+          "type": "Creature — Human Soldier"
+        }
+      ]
+    }
+  }
+}

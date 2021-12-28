@@ -1,0 +1,12 @@
+logging:
+  level: INFO
+
+mtgjson:
+  downloadURL: https://mtgjson.com/api/v5/AllPrintings.json.zip
+
+database:
+  host: 127.0.0.1
+  port: 15432
+  database: cardmanager
+  username: tester
+  password: tester

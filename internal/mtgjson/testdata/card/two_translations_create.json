@@ -1,0 +1,34 @@
+{
+  "data": {
+    "2ED": {
+      "code": "2ED",
+      "type": "core",
+      "cards": [
+        {
+          "name": "Benalish Hero",
+          "number": "4",
+          "setCode": "2ED",
+          "rarity": "common",
+          "borderColor": "white",
+          "layout": "normal",
+          "foreignData": [
+            {
+              "language": "German",
+              "multiverseId": 490006,
+              "name": "Benalische Heldin",
+              "text": "+4: Ein Spieler deiner Wahl schickt.... eine Karte aus seiner Hand ins Exil.\n−3: Schicke...",
+              "type": "Legendärer Planeswalker — Karn"
+            },
+            {
+              "language": "French",
+              "multiverseId": 490338,
+              "name": "Héroïne bénaliane",
+              "text": "+4: Le joueur ciblé exile une carte de sa main.\n...",
+              "type": "Planeswalker légendaire : Karn"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

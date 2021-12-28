@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "date": "2021-06-28",
+    "version": "5.1.0+20210628"
+  },
+  "data": {
+    "10E": {
+      "code": "10E",
+      "block": "Core Set",
+      "name": "Tenth Edition",
+      "skipThis": {
+        "skipThisSub": {
+          "skipThisSubSub": []
+        }
+      },
+      "totalSetSize": 383,
+      "releaseDate": "2007-07-13",
+      "translations": {
+        "German": "Hauptset Zehnte Edition",
+        "Ancient Greek": null,
+        "French": "10th Edition"
+      },
+      "type": "core"
+    },
+    "9ED": {
+      "code": "9ED",
+      "block": "",
+      "name": "Ninth Edition"
+    }
+  }
+}

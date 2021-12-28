@@ -1,0 +1,20 @@
+version: '3'
+services:
+  db:
+    image: postgres:14-alpine
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "postgres" ]
+      timeout: 45s
+      interval: 10s
+      retries: 10
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test
+      APP_DB_USER: tester
+      APP_DB_PASS: tester
+      APP_DB_NAME: cardmanager
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d
+    ports:
+      - "15432:5432"

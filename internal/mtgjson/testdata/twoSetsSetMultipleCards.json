@@ -1,0 +1,99 @@
+{
+  "meta": {
+    "date": "2021-06-28",
+    "version": "5.1.0+20210628"
+  },
+  "data": {
+    "2ED": {
+      "code": "2ED",
+      "type": "core",
+      "cards": [
+        {
+          "artist": "Mark Poole",
+          "borderColor": "white",
+          "colors": [
+            "W"
+          ],
+          "convertedManaCost": 2.0,
+          "foreignData": [
+            {
+              "language": "German",
+              "multiverseId": 490006,
+              "name": "Karn der Befreite",
+              "text": "+4: Ein Spieler deiner Wahl schickt.... eine Karte aus seiner Hand ins Exil.\n−3: Schicke...",
+              "type": "Legendärer Planeswalker — Karn"
+            },
+            {
+              "language": "French",
+              "multiverseId": 490338,
+              "name": "Karn libéré",
+              "text": "+4: Le joueur ciblé exile une carte de sa main.\n...",
+              "type": "Planeswalker légendaire : Karn"
+            }
+          ],
+          "identifiers": {
+            "multiverseId": "831"
+          },
+          "layout": "normal",
+          "manaCost": "{1}{W}",
+          "name": "Balance",
+          "number": "3",
+          "rarity": "rare",
+          "setCode": "2ED",
+          "supertypes": [],
+          "text": "Each player chooses a number of lands they control equal...",
+          "type": "Sorcery",
+          "types": [
+            "Sorcery"
+          ]
+        },
+        {
+          "artist": "Douglas Shuler",
+          "borderColor": "white",
+          "colors": [
+            "W"
+          ],
+          "convertedManaCost": 1,
+          "flavorText": "Benalia has a complex caste system that changes with the...",
+          "foreignData": [],
+          "identifiers": {},
+          "layout": "normal",
+          "manaCost": "{W}",
+          "name": "Benalish Hero",
+          "number": "4",
+          "power": "1",
+          "rarity": "common",
+          "setCode": "2ED",
+          "subtypes": [
+            "Human",
+            "Soldier"
+          ],
+          "supertypes": ["Test"],
+          "text": "Banding (Any creatures with banding,...",
+          "toughness": "1",
+          "type": "Creature — Human Soldier",
+          "types": [
+            "Creature"
+          ]
+        }
+      ]
+    },
+    "9ED": {
+      "code": "9ED",
+      "block": "",
+      "type": "core",
+      "name": "Ninth Edition",
+      "cards": [
+        {
+          "artist": "Test Tester",
+          "name": "Magic Tester",
+          "number": "1",
+          "rarity": "common",
+          "borderColor": "black",
+          "setCode": "9ED",
+          "layout": "normal"
+        }
+      ]
+    }
+  }
+}

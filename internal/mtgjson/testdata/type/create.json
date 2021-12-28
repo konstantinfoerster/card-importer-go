@@ -1,0 +1,33 @@
+{
+  "data": {
+    "2ED": {
+      "code": "2ED",
+      "type": "core",
+      "cards": [
+        {
+          "name": "Benalish Hero",
+          "number": "4",
+          "setCode": "2ED",
+          "rarity": "common",
+          "borderColor": "white",
+          "layout": "normal",
+          "subtypes": [
+            "SubType1",
+            "SubType2",
+            "SubType3"
+          ],
+          "types": [
+            "Type1",
+            "Type2",
+            "Type3"
+          ],
+          "supertypes": [
+            "SuperType1",
+            "SuperType2",
+            "SuperType3"
+          ]
+        }
+      ]
+    }
+  }
+}

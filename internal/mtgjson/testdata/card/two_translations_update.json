@@ -1,0 +1,34 @@
+{
+  "data": {
+    "2ED": {
+      "code": "2ED",
+      "type": "core",
+      "cards": [
+        {
+          "name": "Benalish Hero",
+          "number": "4",
+          "setCode": "2ED",
+          "rarity": "common",
+          "borderColor": "white",
+          "layout": "normal",
+          "foreignData": [
+            {
+              "language": "German",
+              "multiverseId": 123,
+              "name": "German Name Updated",
+              "text": "German Text Updated",
+              "type": null
+            },
+            {
+              "language": "French",
+              "multiverseId": 1234,
+              "name": "French Name Updated",
+              "text": "French Text Updated",
+              "type": "French Type Updated"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
