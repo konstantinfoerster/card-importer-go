@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"github.com/konstantinfoerster/card-importer-go/internal/api"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"io"
 	"net/http"
@@ -63,9 +64,20 @@ func (imp *DownloadableImport) Import(r io.Reader) (*api.Report, error) {
 		log.Error().Stack().Err(err).Msgf("failed to open file %s", fileToImport)
 		return nil, err
 	}
-	defer f.Close()
+	defer func(toClose *os.File) {
+		cErr := toClose.Close()
+		if cErr != nil {
+			// report close errors
+			if err == nil {
+				err = cErr
+			} else {
+				err = errors.Wrap(err, cErr.Error())
+			}
+		}
+	}(f)
 
-	return imp.importer.Import(f)
+	report, err := imp.importer.Import(f)
+	return report, err
 }
 
 var doOnce sync.Once
@@ -84,7 +96,17 @@ func download(url string) (*downloadedFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func(toClose io.ReadCloser) {
+		cErr := toClose.Close()
+		if cErr != nil {
+			// report close errors
+			if err == nil {
+				err = cErr
+			} else {
+				err = errors.Wrap(err, cErr.Error())
+			}
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		body, err := io.ReadAll(resp.Body)
@@ -109,9 +131,26 @@ func download(url string) (*downloadedFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer targetFile.Close()
+	defer func(toClose *os.File) {
+		cErr := toClose.Close()
+		if cErr != nil {
+			// report close errors
+			if err == nil {
+				err = cErr
+			} else {
+				err = errors.Wrap(err, cErr.Error())
+			}
+		}
+	}(targetFile)
 
 	_, err = io.Copy(targetFile, resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	err = targetFile.Sync()
+	if err != nil {
+		return nil, err
+	}
 
 	filePath, err := filepath.Abs(targetFile.Name())
 	if err != nil {
@@ -121,7 +160,7 @@ func download(url string) (*downloadedFile, error) {
 	return &downloadedFile{
 		contentType: contentType,
 		filepath:    filePath,
-	}, nil
+	}, err
 }
 
 func unzip(src string, dest string) ([]string, error) {
@@ -133,7 +172,17 @@ func unzip(src string, dest string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
+	defer func(toClose *zip.ReadCloser) {
+		cErr := toClose.Close()
+		if cErr != nil {
+			// report close errors
+			if err == nil {
+				err = cErr
+			} else {
+				err = errors.Wrap(err, cErr.Error())
+			}
+		}
+	}(r)
 
 	if err := os.MkdirAll(dest, 0755); err != nil {
 		return nil, err
@@ -155,21 +204,44 @@ func unzip(src string, dest string) ([]string, error) {
 		if err != nil {
 			return err
 		}
-		defer f.Close()
+		defer func(toClose *os.File) {
+			cErr := toClose.Close()
+			if cErr != nil {
+				// report close errors
+				if err == nil {
+					err = cErr
+				} else {
+					err = errors.Wrap(err, cErr.Error())
+				}
+			}
+		}(f)
 
 		rc, err := zippedFile.Open()
 		if err != nil {
 			return err
 		}
-		defer rc.Close()
+		defer func(toClose io.ReadCloser) {
+			cErr := toClose.Close()
+			if cErr != nil {
+				// report close errors
+				if err == nil {
+					err = cErr
+				} else {
+					err = errors.Wrap(err, cErr.Error())
+				}
+			}
+		}(rc)
 
 		if _, err = io.Copy(f, rc); err != nil {
+			return err
+		}
+		if err := f.Sync(); err != nil {
 			return err
 		}
 
 		files = append(files, destFile)
 
-		return nil
+		return err
 	}
 	for _, f := range r.File {
 		path := filepath.Join(dest, f.Name)
@@ -193,7 +265,7 @@ func unzip(src string, dest string) ([]string, error) {
 	}
 
 	log.Info().Msgf("Unzip finished with files %v", files)
-	return files, nil
+	return files, err
 }
 
 func createTmpTargetFile(fileName string) (*os.File, error) {

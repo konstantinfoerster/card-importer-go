@@ -79,7 +79,7 @@ func (s *cardService) Import(card *Card) error {
 		} else if card.ConvertedManaCost != existingCard.ConvertedManaCost {
 			log.Info().Msgf("Update card.ConvertedManaCost from '%v' to '%v'", existingCard.ConvertedManaCost, card.ConvertedManaCost)
 			changed = true
-		} else if reflect.DeepEqual(card.Colors, existingCard.Colors) == false {
+		} else if !reflect.DeepEqual(card.Colors, existingCard.Colors) {
 			if len(card.Colors) != 0 && len(existingCard.Colors) != 0 {
 				log.Info().Msgf("Update card.Colors from '%v' to '%v'", existingCard.Colors, card.Colors)
 				changed = true
@@ -182,7 +182,7 @@ func (s *cardService) mergeCardTypes(tt []string, cardId int64, isNew bool) erro
 
 func mergeTypes(dao TypeDao, tt []string, cardId int64, isNew bool) error {
 	toCreate := tt
-	if isNew == false {
+	if !isNew {
 		assignedTypes, err := dao.FindAssignments(cardId)
 		if err != nil {
 			return fmt.Errorf("failed to get assigned types %v", err)
@@ -236,10 +236,8 @@ func mergeTypes(dao TypeDao, tt []string, cardId int64, isNew bool) error {
 
 func (s *cardService) mergeTranslations(tt []Translation, cardId int64, isNew bool) error {
 	var toCreate []Translation
-	for _, t := range tt {
-		toCreate = append(toCreate, t)
-	}
-	if isNew == false {
+	toCreate = append(toCreate, tt...)
+	if !isNew {
 		existingTranslations, err := s.dao.FindTranslations(cardId)
 		if err != nil {
 			return fmt.Errorf("failed to get existing translations %v", err)
@@ -263,7 +261,7 @@ func (s *cardService) mergeTranslations(tt []Translation, cardId int64, isNew bo
 				} else if existing.FullType != newT.FullType {
 					log.Info().Msgf("Update translation.FullType from '%v' to '%v'", existing.FullType, newT.FullType)
 					changed = true
-				} else if newT.MultiverseId != newT.MultiverseId {
+				} else if existing.MultiverseId != newT.MultiverseId {
 					log.Info().Msgf("Update translation.MultiverseId from '%v' to '%v'", existing.MultiverseId, newT.MultiverseId)
 					changed = true
 				}

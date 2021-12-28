@@ -99,10 +99,8 @@ func (s *setService) Import(set *CardSet) error {
 
 func (s *setService) mergeTranslations(tt []Translation, setCode string, isNew bool) error {
 	var toCreate []Translation
-	for _, t := range tt {
-		toCreate = append(toCreate, t)
-	}
-	if isNew == false {
+	toCreate = append(toCreate, tt...)
+	if !isNew {
 		existingTranslations, err := s.dao.FindTranslations(setCode)
 		if err != nil {
 			return fmt.Errorf("failed to get existing translations %v", err)

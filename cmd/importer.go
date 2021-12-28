@@ -52,12 +52,17 @@ func init() {
 func main() {
 	defer timer.TimeTrack(time.Now(), "import")
 
-	importer, closeConn, err := buildImporter()
+	importer, closeFn, err := buildImporter()
 	if err != nil {
 		log.Error().Stack().Err(err).Msg("failed to build importer instance")
 		return
 	}
-	defer closeConn()
+	defer func(toCloseF func() error) {
+		err := toCloseF()
+		if err != nil {
+			log.Error().Msgf("Failed to close database connection %v", err)
+		}
+	}(closeFn)
 
 	r, err := importer.Import(strings.NewReader(downloadUrl))
 	if err != nil {
