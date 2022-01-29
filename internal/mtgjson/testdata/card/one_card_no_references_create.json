@@ -2,6 +2,7 @@
   "data": {
     "2ED": {
       "code": "2ED",
+      "name": "Second Edition",
       "type": "core",
       "cards": [
         {
@@ -28,6 +29,46 @@
           "text": "Banding (Any creatures with banding,...",
           "toughness": "1",
           "type": "Creature — Human Soldier"
+        },
+        {
+          "borderColor": "white",
+          "convertedManaCost": 10,
+          "layout": "split",
+          "name": "Second Edition // The Second",
+          "number": "1",
+          "faceName": "Second Edition",
+          "faceConvertedManaCost": 4,
+          "rarity": "common",
+          "setCode": "2ED"
+        },
+        {
+          "borderColor": "silver",
+          "convertedManaCost": 10,
+          "layout": "split",
+          "name": "Second Edition // The Second",
+          "number": "1",
+          "faceName": " The Second",
+          "faceConvertedManaCost": 5,
+          "rarity": "rare",
+          "setCode": "2ED"
+        },
+        {
+          "borderColor": "white",
+          "layout": "split",
+          "name": "Second Edition Deleted // The Second Deleted",
+          "number": "2",
+          "faceName": "Second Edition Deleted",
+          "rarity": "common",
+          "setCode": "2ED"
+        },
+        {
+          "borderColor": "silver",
+          "layout": "split",
+          "name": "Second Edition Deleted // The Second Deleted",
+          "number": "2",
+          "faceName": " The Second Deleted",
+          "rarity": "rare",
+          "setCode": "2ED"
         }
       ]
     }

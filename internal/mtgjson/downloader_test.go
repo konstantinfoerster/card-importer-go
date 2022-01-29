@@ -46,15 +46,15 @@ func TestDownloadableImport(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			innerImporter := &mockImporter{}
-			imp := NewDownloadableImport(innerImporter)
+			fakeImporter := &mockImporter{}
+			imp := NewDownloadableImport(fakeImporter)
 
 			_, err := imp.Import(tc.fixture)
 			if err != nil {
 				t.Fatalf("unexpected import error, got: %v, wanted no error", err)
 			}
 
-			assertEquals(t, tc.want, innerImporter.content)
+			assertEquals(t, tc.want, fakeImporter.content)
 		})
 	}
 }
@@ -87,8 +87,8 @@ func TestDownloadableImportFails(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			innerImporter := &mockImporter{}
-			imp := NewDownloadableImport(innerImporter)
+			fakeImporter := &mockImporter{}
+			imp := NewDownloadableImport(fakeImporter)
 
 			_, err := imp.Import(tc.fixture)
 			if err == nil {

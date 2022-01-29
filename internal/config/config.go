@@ -70,13 +70,13 @@ func loadConfig(path string) (*Config, error) {
 func buildConfig(path string) (*Config, error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("can't read config file: %s", err.Error())
+		return nil, fmt.Errorf("can't read config file: %w", err)
 	}
 
 	config := &Config{}
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
-		return nil, fmt.Errorf("config unmarshal failed with: %s", err.Error())
+		return nil, fmt.Errorf("config unmarshal failed with: %w", err)
 	}
 
 	return config, nil

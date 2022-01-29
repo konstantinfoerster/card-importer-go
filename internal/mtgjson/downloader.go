@@ -61,8 +61,7 @@ func (imp *DownloadableImport) Import(r io.Reader) (*api.Report, error) {
 
 	f, err := os.Open(fileToImport)
 	if err != nil {
-		log.Error().Stack().Err(err).Msgf("failed to open file %s", fileToImport)
-		return nil, err
+		return nil, fmt.Errorf("failed to open file %s %w", fileToImport, err)
 	}
 	defer func(toClose *os.File) {
 		cErr := toClose.Close()
@@ -271,13 +270,13 @@ func unzip(src string, dest string) ([]string, error) {
 func createTmpTargetFile(fileName string) (*os.File, error) {
 	tmpDir, err := os.MkdirTemp("", "downloads")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create tmp download dir %v", err)
+		return nil, fmt.Errorf("failed to create tmp download dir %w", err)
 	}
 
 	targetFile := filepath.Join(tmpDir, fileName)
 	out, err := os.Create(targetFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create tmp file %s, %v", targetFile, err)
+		return nil, fmt.Errorf("failed to create tmp file %s, %w", targetFile, err)
 	}
 	return out, nil
 }

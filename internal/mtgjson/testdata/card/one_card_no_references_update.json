@@ -2,6 +2,7 @@
   "data": {
     "2ED": {
       "code": "2ED",
+      "name": "Second Edition",
       "type": "core",
       "cards": [
         {
@@ -15,19 +16,49 @@
           "identifiers": {
             "multiverseId": "123"
           },
-          "layout": "flip",
+          "layout": "token",
           "manaCost": "{B}{W}",
           "name": "Benalish Hero",
-          "hand": "2",
-          "life": "2",
+          "hand": "+2",
+          "life": "+2",
           "loyalty": "X",
           "number": "4",
-          "power": "10",
+          "power": "11",
           "rarity": "mythic",
           "setCode": "2ED",
           "text": "Text Updated",
           "toughness": "10",
           "type": "Type Updated"
+        },
+        {
+          "borderColor": "black",
+          "convertedManaCost": 16,
+          "layout": "split",
+          "name": "Second Edition Updated // The Second Updated",
+          "number": "1",
+          "faceName": "Second Edition Updated",
+          "faceConvertedManaCost": 6,
+          "rarity": "rare",
+          "setCode": "2ED"
+        },
+        {
+          "borderColor": "black",
+          "convertedManaCost": 15,
+          "layout": "split",
+          "name": "Second Edition Updated // The Second Updated",
+          "number": "1",
+          "faceName": "The Second Updated",
+          "faceConvertedManaCost": 8,
+          "rarity": "rare",
+          "setCode": "2ED"
+        },
+        {
+          "borderColor": "white",
+          "layout": "split",
+          "name": "Second Edition Face Deleted",
+          "number": "2",
+          "rarity": "rare",
+          "setCode": "2ED"
         }
       ]
     }

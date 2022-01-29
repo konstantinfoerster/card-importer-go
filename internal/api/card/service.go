@@ -3,8 +3,8 @@ package card
 import (
 	"fmt"
 	"github.com/rs/zerolog/log"
-	"reflect"
 	"strings"
+	"time"
 )
 
 type Service interface {
@@ -31,161 +31,167 @@ func (s *cardService) Import(card *Card) error {
 		// Skip nil card
 		return nil
 	}
-	if card.Name == "" {
-		return fmt.Errorf("field 'name' must not be empty")
-	}
-	if card.CardSetCode == "" {
-		return fmt.Errorf("field 'cardSetCode' must not be empty in card %s", card.Name)
-	}
-	if card.Number == "" {
-		return fmt.Errorf("field 'number' must not be empty in card %s and set %s", card.Name, card.CardSetCode)
-	}
-	if card.Rarity == "" {
-		return fmt.Errorf("field 'rarity' must not be empty in card %s and set %s", card.Name, card.CardSetCode)
-	}
-	if card.Border == "" {
-		return fmt.Errorf("field 'border' must not be empty in card %s and set %s", card.Name, card.CardSetCode)
-	}
-	if card.Layout == "" {
-		return fmt.Errorf("field 'layout' must not be empty in card %s and set %s", card.Name, card.CardSetCode)
-	}
-	existingCard, err := s.dao.FindUniqueCard(card.Name, card.CardSetCode, card.Number)
-	if err != nil {
-		return fmt.Errorf("failed to find card with name %s, code %s and number %s. %v", card.Name, card.CardSetCode, card.Number, err)
+	if err := card.isValid(); err != nil {
+		return fmt.Errorf("card is invalid %w", err)
 	}
 
-	if existingCard == nil {
-		if err := s.dao.CreateCard(card); err != nil {
-			if err != nil && strings.Contains(err.Error(), "duplicate key") {
-				log.Warn().Msgf("Card with name %s, set code %s and number %s already exists, skipping card", card.Name, card.CardSetCode, card.Number)
-				return nil
-			}
-			log.Error().Msgf("Failed to create card %#v %v", card, err)
-			return err
-		}
-		if log.Trace().Enabled() {
-			log.Trace().Msgf("Created card %s %s", card.Name, card.CardSetCode)
-		}
-	} else {
-		card.Id = existingCard.Id
-		changed := false
-
-		if card.Artist != existingCard.Artist {
-			log.Info().Msgf("Update card.Artist from '%v' to '%v'", existingCard.Artist, card.Artist)
-			changed = true
-		} else if card.Border != existingCard.Border {
-			log.Info().Msgf("Update card.Border from '%v' to '%v'", existingCard.Border, card.Border)
-			changed = true
-		} else if card.ConvertedManaCost != existingCard.ConvertedManaCost {
-			log.Info().Msgf("Update card.ConvertedManaCost from '%v' to '%v'", existingCard.ConvertedManaCost, card.ConvertedManaCost)
-			changed = true
-		} else if !reflect.DeepEqual(card.Colors, existingCard.Colors) {
-			if len(card.Colors) != 0 && len(existingCard.Colors) != 0 {
-				log.Info().Msgf("Update card.Colors from '%v' to '%v'", existingCard.Colors, card.Colors)
-				changed = true
-			}
-		} else if card.Text != existingCard.Text {
-			log.Info().Msgf("Update card.Text from '%v' to '%v'", existingCard.Text, card.Text)
-			changed = true
-		} else if card.FlavorText != existingCard.FlavorText {
-			log.Info().Msgf("Update card.FlavorText from '%v' to '%v'", existingCard.FlavorText, card.FlavorText)
-			changed = true
-		} else if card.Layout != existingCard.Layout {
-			log.Info().Msgf("Update card.Layout from '%v' to '%v'", existingCard.Layout, card.Layout)
-			changed = true
-		} else if card.HandModifier != existingCard.HandModifier {
-			log.Info().Msgf("Update card.HandModifier from '%v' to '%v'", existingCard.HandModifier, card.HandModifier)
-			changed = true
-		} else if card.LifeModifier != existingCard.LifeModifier {
-			log.Info().Msgf("Update card.LifeModifier from '%v' to '%v'", existingCard.LifeModifier, card.LifeModifier)
-			changed = true
-		} else if card.Loyalty != existingCard.Loyalty {
-			log.Info().Msgf("Update card.Loyalty from '%v' to '%v'", existingCard.Loyalty, card.Loyalty)
-			changed = true
-		} else if card.ManaCost != existingCard.ManaCost {
-			log.Info().Msgf("Update card.ManaCost from '%v' to '%v'", existingCard.ManaCost, card.ManaCost)
-			changed = true
-		} else if card.MultiverseId != existingCard.MultiverseId {
-			log.Info().Msgf("Update card.MultiverseId from '%v' to '%v'", existingCard.MultiverseId, card.MultiverseId)
-			changed = true
-		} else if card.Power != existingCard.Power {
-			log.Info().Msgf("Update card.Power from '%v' to '%v'", existingCard.Power, card.Power)
-			changed = true
-		} else if card.Toughness != existingCard.Toughness {
-			log.Info().Msgf("Update card.Toughness from '%v' to '%v'", existingCard.Toughness, card.Toughness)
-			changed = true
-		} else if card.Rarity != existingCard.Rarity {
-			log.Info().Msgf("Update card.Rarity from '%v' to '%v'", existingCard.Rarity, card.Rarity)
-			changed = true
-		} else if card.Number != existingCard.Number {
-			log.Info().Msgf("Update card.Number from '%v' to '%v'", existingCard.Number, card.Number)
-			changed = true
-		} else if card.FullType != existingCard.FullType {
-			log.Info().Msgf("Update card.FullType from '%v' to '%v'", existingCard.FullType, card.FullType)
-			changed = true
+	var isNewCard bool
+	err := s.dao.withTransaction(func(txDao *PostgresCardDao) error {
+		existingCard, err := txDao.FindUniqueCard(card.CardSetCode, card.Number)
+		if err != nil {
+			return fmt.Errorf("failed to find card with code %s and number %s. %w", card.CardSetCode, card.Number, err)
 		}
 
-		if changed {
-			log.Info().Msgf("Update card %s %s", card.Name, card.CardSetCode)
-			if err := s.dao.UpdateCard(card); err != nil {
+		if existingCard == nil {
+			if err := txDao.CreateCard(card); err != nil {
+				log.Error().Err(err).Msgf("Failed to create card %#v", card)
 				return err
 			}
+			if log.Trace().Enabled() {
+				log.Trace().Msgf("Created card %s from set %s", card.Number, card.CardSetCode)
+			}
+			isNewCard = true
+		} else {
+			card.Id = existingCard.Id
+
+			diff := card.Diff(existingCard)
+			if diff.HasChanges() {
+				log.Info().Msgf("Found card changes %#v", diff)
+				log.Info().Msgf("Update card %s from set %s", card.Name, card.CardSetCode)
+				if err := txDao.UpdateCard(card); err != nil {
+					return err
+				}
+			}
+		}
+
+		return mergeCardFaces(txDao, card.Faces[:], card.Id.Int64, isNewCard)
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, f := range card.Faces {
+		if !f.Id.Valid {
+			return fmt.Errorf("expected face %s for card %s and set %s to be created", f.Name, card.Number, card.CardSetCode)
+		}
+
+		faceId := f.Id.Int64
+		if err := mergeSubTypes(s.dao, f.Subtypes, faceId, isNewCard); err != nil {
+			return err
+		}
+		if err := mergeSuperTypes(s.dao, f.Supertypes, faceId, isNewCard); err != nil {
+			return err
+		}
+		if err := mergeCardTypes(s.dao, f.Cardtypes, faceId, isNewCard); err != nil {
+			return err
+		}
+
+		if err := mergeFaceTranslations(s.dao, f.Translations, faceId, isNewCard); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func mergeFaceTranslations(dao *PostgresCardDao, tt []Translation, faceId int64, isNewCard bool) error {
+	return dao.withTransaction(func(txDao *PostgresCardDao) error {
+		return mergeTranslations(txDao, tt, faceId, isNewCard)
+	})
+}
+func mergeCardFaces(dao *PostgresCardDao, ff []Face, cardId int64, isNewCard bool) error {
+	if !isNewCard {
+		assignedFaces, err := dao.FindAssignedFaces(cardId)
+		if err != nil {
+			return fmt.Errorf("failed to get assigned faces %w", err)
+		}
+		for _, assigned := range assignedFaces {
+			if ok, pos := containsFace(ff, assigned); ok {
+				newFace := &ff[pos]
+				newFace.Id = assigned.Id
+				diff := newFace.Diff(assigned)
+				if diff.HasChanges() {
+					log.Info().Msgf("Found card face changes %#v", diff)
+					log.Info().Msgf("Update face %s for card %v", newFace.Name, cardId)
+					if err := dao.UpdateFace(newFace); err != nil {
+						return err
+					}
+				}
+			} else {
+				if err := dao.DeleteFace(assigned.Id.Int64); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
-	cardId := card.Id.Int64
+	for pos, toCreate := range ff {
+		if !toCreate.Id.Valid {
+			if err := dao.AddFace(cardId, &toCreate); err != nil {
+				return err
+			}
+			ff[pos].Id = toCreate.Id
+		}
+	}
 
-	err = s.mergeSubTypes(card.Subtypes, cardId, existingCard == nil)
+	fx, err := dao.FindAssignedFaces(cardId)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get assigned faces %w", err)
 	}
-	err = s.mergeSuperTypes(card.Supertypes, cardId, existingCard == nil)
-	if err != nil {
-		return err
+	if len(fx) != len(ff) {
+		return fmt.Errorf("unexpected face count assigned to card %d, expected %d but found %d", cardId, len(ff), len(fx))
 	}
-	err = s.mergeCardTypes(card.Cardtypes, cardId, existingCard == nil)
-	if err != nil {
-		return err
-	}
-	return s.mergeTranslations(card.Translations, cardId, existingCard == nil)
+	return nil
 }
 
-func (s *cardService) mergeSubTypes(tt []string, cardId int64, isNew bool) error {
-	if isNew && len(tt) == 0 {
-		// skip, nothing to create or delete
-		return nil
-	}
-	return s.dao.withTransaction(func(txDao *PostgresCardDao) error {
-		return mergeTypes(txDao.subType, tt, cardId, isNew)
+func mergeSubTypes(dao *PostgresCardDao, tt []string, faceId int64, isNewCard bool) error {
+	return withDuplicateKeyRetry(func() error {
+		return dao.withTransaction(func(txDao *PostgresCardDao) error {
+			return mergeTypes(txDao.subType, tt, faceId, isNewCard)
+		})
 	})
 }
 
-func (s *cardService) mergeSuperTypes(tt []string, cardId int64, isNew bool) error {
-	if isNew && len(tt) == 0 {
-		// skip, nothing to create or delete
-		return nil
-	}
-	return s.dao.withTransaction(func(txDao *PostgresCardDao) error {
-		return mergeTypes(txDao.superType, tt, cardId, isNew)
+func mergeSuperTypes(dao *PostgresCardDao, tt []string, faceId int64, isNewCard bool) error {
+	return withDuplicateKeyRetry(func() error {
+		return dao.withTransaction(func(txDao *PostgresCardDao) error {
+			return mergeTypes(txDao.superType, tt, faceId, isNewCard)
+		})
 	})
 }
 
-func (s *cardService) mergeCardTypes(tt []string, cardId int64, isNew bool) error {
-	if isNew && len(tt) == 0 {
-		// skip, nothing to create or delete
-		return nil
-	}
-	return s.dao.withTransaction(func(txDao *PostgresCardDao) error {
-		return mergeTypes(txDao.cardType, tt, cardId, isNew)
+func mergeCardTypes(dao *PostgresCardDao, tt []string, faceId int64, isNewCard bool) error {
+	return withDuplicateKeyRetry(func() error {
+		return dao.withTransaction(func(txDao *PostgresCardDao) error {
+			return mergeTypes(txDao.cardType, tt, faceId, isNewCard)
+		})
 	})
 }
 
-func mergeTypes(dao TypeDao, tt []string, cardId int64, isNew bool) error {
-	toCreate := tt
-	if !isNew {
-		assignedTypes, err := dao.FindAssignments(cardId)
+func withDuplicateKeyRetry(fn func() error) error {
+	err := fn()
+	if err == nil {
+		return nil
+	}
+	if strings.Contains(err.Error(), "duplicate key") {
+		log.Warn().Msgf("retry error  after short sleep %v", err)
+		time.Sleep(100 * time.Millisecond)
+		return fn()
+	}
+	return err
+}
+
+func mergeTypes(dao TypeDao, tt []string, faceId int64, isNewCard bool) error {
+	if isNewCard && len(tt) == 0 {
+		// skip, nothing to create or delete
+		return nil
+	}
+
+	var toCreate []string
+	toCreate = append(toCreate, tt...)
+	if !isNewCard {
+		assignedTypes, err := dao.FindAssignments(faceId)
 		if err != nil {
-			return fmt.Errorf("failed to get assigned types %v", err)
+			return fmt.Errorf("failed to get assigned types %w", err)
 		}
 		var toRemove []int64
 		// remove all entries that are already assigned to the card
@@ -197,8 +203,8 @@ func mergeTypes(dao TypeDao, tt []string, cardId int64, isNew bool) error {
 			}
 		}
 		if len(toRemove) > 0 {
-			if err := dao.DeleteAssignments(cardId, toRemove...); err != nil {
-				return fmt.Errorf("failed to removed assigned types %v", err)
+			if err := dao.DeleteAssignments(faceId, toRemove...); err != nil {
+				return fmt.Errorf("failed to removed assigned types %w", err)
 			}
 		}
 
@@ -209,7 +215,7 @@ func mergeTypes(dao TypeDao, tt []string, cardId int64, isNew bool) error {
 
 	types, err := dao.Find(toCreate...)
 	if err != nil {
-		return fmt.Errorf("failed to find types %v %v", toCreate, err)
+		return fmt.Errorf("failed to find types %v %w", toCreate, err)
 	}
 	for _, t := range toCreate {
 		var entry *CharacteristicType
@@ -222,57 +228,42 @@ func mergeTypes(dao TypeDao, tt []string, cardId int64, isNew bool) error {
 		if entry == nil {
 			entry, err = dao.Create(t)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to create type %s %w", t, err)
 			}
 		}
 
-		if err := dao.AssignToCard(cardId, entry.Id.Int64); err != nil {
-			return fmt.Errorf("failed to assign type %v to card %d %v", entry, cardId, err)
+		if err := dao.AssignToFace(faceId, entry.Id.Int64); err != nil {
+			return fmt.Errorf("failed to assign type %v to card %d %w", entry, faceId, err)
 		}
 	}
 
 	return nil
 }
 
-func (s *cardService) mergeTranslations(tt []Translation, cardId int64, isNew bool) error {
+func mergeTranslations(dao *PostgresCardDao, tt []Translation, faceId int64, isNewCard bool) error {
 	var toCreate []Translation
 	toCreate = append(toCreate, tt...)
-	if !isNew {
-		existingTranslations, err := s.dao.FindTranslations(cardId)
+	if !isNewCard {
+		assignedTranslations, err := dao.FindTranslations(faceId)
 		if err != nil {
-			return fmt.Errorf("failed to get existing translations %v", err)
+			return fmt.Errorf("failed to get existing translations %w", err)
 		}
 
-		for _, existing := range existingTranslations {
-			if ok, pos := containsTranslation(tt, *existing); ok {
-				toCreate = removeTranslation(toCreate, pos)
+		for _, assigned := range assignedTranslations {
+			if ok, pos := containsTranslation(tt, *assigned); ok {
+				toCreate = removeTranslation(toCreate, *assigned)
 
-				newT := tt[pos]
-				changed := false
-				if existing.Name != newT.Name {
-					log.Info().Msgf("Update translation.Name from '%v' to '%v'", existing.Name, newT.Name)
-					changed = true
-				} else if existing.Text != newT.Text {
-					log.Info().Msgf("Update translation.Text from '%v' to '%v'", existing.Text, newT.Text)
-					changed = true
-				} else if existing.FlavorText != newT.FlavorText {
-					log.Info().Msgf("Update translation.FlavorText from '%v' to '%v'", existing.FlavorText, newT.FlavorText)
-					changed = true
-				} else if existing.FullType != newT.FullType {
-					log.Info().Msgf("Update translation.FullType from '%v' to '%v'", existing.FullType, newT.FullType)
-					changed = true
-				} else if existing.MultiverseId != newT.MultiverseId {
-					log.Info().Msgf("Update translation.MultiverseId from '%v' to '%v'", existing.MultiverseId, newT.MultiverseId)
-					changed = true
-				}
-				if changed {
-					log.Info().Msgf("Update translation for card %v and language %v from %v to %v", cardId, existing.Lang, existing.Name, newT.Name)
-					if err := s.dao.UpdateTranslation(cardId, &newT); err != nil {
+				translation := &tt[pos]
+
+				diff := translation.Diff(assigned)
+				if diff.HasChanges() {
+					log.Info().Msgf("Update translation for face %v and language %v with changes %#v", faceId, assigned.Lang, diff)
+					if err := dao.UpdateTranslation(faceId, translation); err != nil {
 						return err
 					}
 				}
 			} else {
-				if err := s.dao.DeleteTranslation(cardId, existing.Lang); err != nil {
+				if err := dao.DeleteTranslation(faceId, assigned.Lang); err != nil {
 					return err
 				}
 			}
@@ -280,10 +271,9 @@ func (s *cardService) mergeTranslations(tt []Translation, cardId int64, isNew bo
 	}
 
 	for _, t := range toCreate {
-		if err := s.dao.CreateTranslation(cardId, &t); err != nil {
+		if err := dao.AddTranslation(faceId, &t); err != nil {
 			return err
 		}
-		continue
 	}
 
 	return nil
@@ -303,13 +293,25 @@ func contains(s []string, term string) (bool, int) {
 	return false, 0
 }
 
-func removeTranslation(arr []Translation, pos int) []Translation {
-	arr[pos] = arr[len(arr)-1]
-	return arr[:len(arr)-1]
+func containsFace(arr []Face, searchTerm *Face) (bool, int) {
+	for i, f := range arr {
+		if f.isSame(searchTerm) {
+			return true, i
+		}
+	}
+	return false, 0
 }
 
-func containsTranslation(tt []Translation, t Translation) (bool, int) {
-	for i, e := range tt {
+func removeTranslation(arr []Translation, toRemove Translation) []Translation {
+	if ok, pos := containsTranslation(arr, toRemove); ok {
+		arr[pos] = arr[len(arr)-1]
+		return arr[:len(arr)-1]
+	}
+	return arr
+}
+
+func containsTranslation(arr []Translation, t Translation) (bool, int) {
+	for i, e := range arr {
 		if e.Lang == t.Lang {
 			return true, i
 		}

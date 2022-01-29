@@ -5,14 +5,14 @@
       "name": "Second Edition",
       "type": "core",
       "cards": [
-        {
-          "artist": "Unknown",
-          "name": "Benalish Hero",
-          "number": "4",
+       {
           "setCode": "2ED",
-          "rarity": "common",
+          "name": "1 // 2 //",
+          "faceName" : "2",
+          "number": "5",
           "borderColor": "white",
-          "layout": "normal"
+          "layout": "normal",
+          "rarity": "rare"
         }
       ]
     }

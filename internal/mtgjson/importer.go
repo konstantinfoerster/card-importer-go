@@ -10,7 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"io"
 	"strconv"
-	"strings"
+	strings "strings"
 	"time"
 )
 
@@ -20,6 +20,8 @@ var externalLangToLang = map[string]string{
 	"German":  languages[0],
 	"English": languages[1],
 }
+
+var doubleFaceCards = map[string]*card.Card{}
 
 type Importer struct {
 	setService  cardset.Service
@@ -56,27 +58,35 @@ func (imp *Importer) Import(r io.Reader) (*api.Report, error) {
 			if err != nil {
 				return nil, err
 			}
+
+			faceCount := expectedFaceCount(v)
+			if faceCount > 1 {
+				if collectFaces(faceCount, v, entry) {
+					continue
+				}
+			}
+
 			errg.Go(func() error {
 				if err := imp.cardService.Import(entry); err != nil {
-					// retry
-					if strings.Contains(err.Error(), "duplicate key") {
-						log.Warn().Msgf("Retry card %s from set %s after short sleep. Reason: %v", entry.Name, entry.CardSetCode, err)
-						time.Sleep(200 * time.Millisecond)
-						if err := imp.cardService.Import(entry); err != nil {
-							return err
-						}
-					} else {
-						return err
-					}
+					return err
 				}
 				if log.Trace().Enabled() {
-					log.Trace().Msgf("Finished card %s", entry.Name)
+					log.Trace().Msgf("Finished card %s from set %s", entry.Number, entry.CardSetCode)
 				}
 				return nil
 			})
 		default:
 			return nil, fmt.Errorf("found unknown result type %T\n", v)
 		}
+	}
+
+	err := errg.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(doubleFaceCards) != 0 {
+		return nil, fmt.Errorf("found %d unprocessed double face cards %#v", len(doubleFaceCards), doubleFaceCards)
 	}
 
 	cardCount, err := imp.cardService.Count()
@@ -90,7 +100,36 @@ func (imp *Importer) Import(r io.Reader) (*api.Report, error) {
 	return &api.Report{
 		CardCount: cardCount,
 		SetCount:  setCount,
-	}, errg.Wait()
+	}, nil
+}
+
+func expectedFaceCount(v *mtgjsonCard) int {
+	// meld cards have two sides but the back is only the first half of a card, so it does not count as a face
+	if strings.ToUpper(v.Layout) == "MELD" {
+		return 1
+	}
+	// card name contains all face names seperated by //
+	return len(strings.Split(v.Name, "//"))
+}
+func collectFaces(faceCount int, v *mtgjsonCard, card *card.Card) bool {
+	if faceCount > 1 {
+		key := fmt.Sprintf("%s_%s", card.CardSetCode, v.Number)
+		value, ok := doubleFaceCards[key]
+		if !ok {
+			doubleFaceCards[key] = card
+			// continue collecting faces
+			return true
+		}
+
+		card.Faces = append(card.Faces, value.Faces...)
+		if faceCount != len(card.Faces) {
+			doubleFaceCards[key] = card
+			// continue collecting faces
+			return true
+		}
+		delete(doubleFaceCards, key)
+	}
+	return false
 }
 
 func mapToCardSet(s *mtgjsonCardSet) (*cardset.CardSet, error) {
@@ -127,18 +166,9 @@ func mapToCard(c *mtgjsonCard) (*card.Card, error) {
 	for _, color := range c.Colors {
 		colors = append(colors, strings.TrimSpace(color)) // TODO maybe to upper case?
 	}
-
-	hand, err := strToInt(c.Hand)
+	multiverseId, err := strToInt32(c.Identifiers.MultiverseId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert 'Hand' value %s into an int. %v", c.Hand, err)
-	}
-	life, err := strToInt(c.Life)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert 'Life' value %s into an int. %v", c.Life, err)
-	}
-	multiverseId, err := strToInt64(c.Identifiers.MultiverseId)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert 'MultiverseId' value %s into an int64. %v", c.Identifiers.MultiverseId, err)
+		return nil, fmt.Errorf("failed to convert 'MultiverseId' value %s into an int32. %w", c.Identifiers.MultiverseId, err)
 	}
 
 	var cardtypes []string
@@ -157,64 +187,65 @@ func mapToCard(c *mtgjsonCard) (*card.Card, error) {
 	var translations []card.Translation
 	for _, fd := range c.ForeignData {
 		lang := externalLangToLang[strings.TrimSpace(fd.Language)]
-		translation := card.Translation{
+		t := card.Translation{
 			Name:         strings.TrimSpace(fd.Name),
 			Text:         strings.TrimSpace(fd.Text),
 			FlavorText:   strings.TrimSpace(fd.FlavorText),
-			FullType:     strings.TrimSpace(fd.Type),
+			TypeLine:     strings.TrimSpace(fd.Type),
 			MultiverseId: fd.MultiverseId,
 			Lang:         lang,
 		}
-		if translation.Name != "" && translation.Lang != "" {
-			translations = append(translations, translation)
+		if t.Name != "" && t.Lang != "" {
+			translations = append(translations, t)
 		}
 	}
 
 	name := c.Name
 	cmc := c.ConvertedManaCost
-	// TODO Here we make one double face card into two cards. Is that really what we want
 	if c.FaceName != "" {
 		name = c.FaceName
 		cmc = c.FaceConvertedManaCost
 	}
-	return &card.Card{
-		CardSetCode:       strings.TrimSpace(c.Code),
-		Name:              strings.TrimSpace(name),
+
+	face := card.Face{
+		Name:              name,
 		Artist:            strings.TrimSpace(c.Artist),
-		Border:            strings.ToUpper(strings.TrimSpace(c.BorderColor)),
-		ConvertedManaCost: cmc, // can this be an int?
+		ConvertedManaCost: cmc,
 		Colors:            colors,
 		Text:              strings.TrimSpace(c.Text),
 		FlavorText:        strings.TrimSpace(c.FlavorText),
-		Layout:            strings.ToUpper(strings.TrimSpace(c.Layout)),
-		HandModifier:      hand,
-		LifeModifier:      life,
-		Loyalty:           c.Loyalty,
+		HandModifier:      strings.TrimSpace(c.Hand),
+		LifeModifier:      strings.TrimSpace(c.Life),
+		Loyalty:           strings.TrimSpace(c.Loyalty),
 		ManaCost:          strings.TrimSpace(c.ManaCost),
 		Power:             strings.TrimSpace(c.Power),
 		Toughness:         strings.TrimSpace(c.Toughness),
-		Rarity:            strings.ToUpper(strings.TrimSpace(c.Rarity)),
-		Number:            strings.TrimSpace(c.Number),
 		MultiverseId:      multiverseId,
-		FullType:          strings.TrimSpace(c.Type),
+		TypeLine:          strings.TrimSpace(c.Type),
 		Cardtypes:         cardtypes,
 		Supertypes:        supertypes,
 		Subtypes:          subtypes,
 		Translations:      translations,
+	}
+	return &card.Card{
+		Name:        strings.TrimSpace(c.Name),
+		CardSetCode: strings.TrimSpace(c.Code),
+		Number:      c.Number,
+		Border:      strings.ToUpper(strings.TrimSpace(c.BorderColor)),
+		Rarity:      strings.ToUpper(strings.TrimSpace(c.Rarity)),
+		Layout:      strings.ToUpper(strings.TrimSpace(c.Layout)),
+		Faces:       []card.Face{face},
 	}, nil
 }
 
-func strToInt(in string) (int, error) {
+func strToInt32(in string) (int32, error) {
 	s := strings.TrimSpace(in)
 	if len(s) == 0 {
 		return 0, nil
 	}
-	return strconv.Atoi(s)
-}
-func strToInt64(in string) (int64, error) {
-	s := strings.TrimSpace(in)
-	if len(s) == 0 {
-		return 0, nil
+	i, err := strconv.ParseInt(s, 10, 32)
+	if err != nil {
+		return 0, err
 	}
-	return strconv.ParseInt(s, 10, 64)
+	return int32(i), nil
 }

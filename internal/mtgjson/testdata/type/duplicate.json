@@ -1,0 +1,190 @@
+{
+  "data": {
+    "2ED": {
+      "code": "2ED",
+      "name": "Second Edition",
+      "type": "core",
+      "cards": [
+        {
+          "artist": "Unknown",
+          "name": "Benalish Hero",
+          "number": "4aa",
+          "setCode": "2ED",
+          "rarity": "common",
+          "borderColor": "white",
+          "layout": "normal",
+          "subtypes": [
+            "SubType1"
+          ],
+          "types": [
+            "Type1"
+          ],
+          "supertypes": [
+            "SuperType1"
+          ]
+        }, {
+          "artist": "Unknown",
+          "name": "Benalish Hero",
+          "number": "4bb",
+          "setCode": "2ED",
+          "rarity": "common",
+          "borderColor": "white",
+          "layout": "normal",
+          "subtypes": [
+            "SubType1"
+          ],
+          "types": [
+            "Type1"
+          ],
+          "supertypes": [
+            "SuperType1"
+          ]
+        },
+        {
+          "artist": "Unknown",
+          "name": "Benalish Hero",
+          "number": "4a",
+          "setCode": "2ED",
+          "rarity": "common",
+          "borderColor": "white",
+          "layout": "normal",
+          "subtypes": [
+            "SubType1",
+            "SubType2",
+            "SubType3"
+          ],
+          "types": [
+            "Type1",
+            "Type2",
+            "Type3"
+          ],
+          "supertypes": [
+            "SuperType1",
+            "SuperType2",
+            "SuperType3"
+          ]
+        },
+        {
+          "artist": "Unknown",
+          "name": "Benalish Hero",
+          "number": "4b",
+          "setCode": "2ED",
+          "rarity": "common",
+          "borderColor": "white",
+          "layout": "normal",
+          "subtypes": [
+            "SubType1",
+            "SubType2",
+            "SubType3"
+          ],
+          "types": [
+            "Type1",
+            "Type2",
+            "Type3"
+          ],
+          "supertypes": [
+            "SuperType1",
+            "SuperType2",
+            "SuperType3"
+          ]
+        },
+        {
+          "artist": "Unknown",
+          "name": "Benalish Hero",
+          "number": "4",
+          "setCode": "2ED",
+          "rarity": "common",
+          "borderColor": "white",
+          "layout": "normal",
+          "subtypes": [
+            "SubType1",
+            "SubType2",
+            "SubType3"
+          ],
+          "types": [
+            "Type1",
+            "Type2",
+            "Type3"
+          ],
+          "supertypes": [
+            "SuperType1",
+            "SuperType2",
+            "SuperType3"
+          ]
+        },
+        {
+          "artist": "Unknown",
+          "name": "Benalish Hero",
+          "number": "4c",
+          "setCode": "2ED",
+          "rarity": "common",
+          "borderColor": "white",
+          "layout": "normal",
+          "subtypes": [
+            "SubType1",
+            "SubType2",
+            "SubType3"
+          ],
+          "types": [
+            "Type1",
+            "Type2",
+            "Type3"
+          ],
+          "supertypes": [
+            "SuperType1",
+            "SuperType2",
+            "SuperType3"
+          ]
+        },
+        {
+          "artist": "Unknown",
+          "name": "Benalish Hero",
+          "number": "4d",
+          "setCode": "2ED",
+          "rarity": "common",
+          "borderColor": "white",
+          "layout": "normal",
+          "subtypes": [
+            "SubType1",
+            "SubType2",
+            "SubType3"
+          ],
+          "types": [
+            "Type1",
+            "Type2",
+            "Type3"
+          ],
+          "supertypes": [
+            "SuperType1",
+            "SuperType2",
+            "SuperType3"
+          ]
+        },
+        {
+          "artist": "Unknown",
+          "name": "Benalish Hero",
+          "number": "4e",
+          "setCode": "2ED",
+          "rarity": "common",
+          "borderColor": "white",
+          "layout": "normal",
+          "subtypes": [
+            "SubType1",
+            "SubType2",
+            "SubType3"
+          ],
+          "types": [
+            "Type1",
+            "Type2",
+            "Type3"
+          ],
+          "supertypes": [
+            "SuperType1",
+            "SuperType2",
+            "SuperType3"
+          ]
+        }
+      ]
+    }
+  }
+}
