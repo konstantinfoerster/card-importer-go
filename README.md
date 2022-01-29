@@ -30,6 +30,7 @@ Build with `go build cmd/importer.go`
 ## Dependencies
 
 Update all dependencies with `go get -u ./...`. Run `go mod tidy` afterwards to update and cleanup the `go.mod` file.
+For mor information check: https://github.com/golang/go/wiki/Modules#how-to-upgrade-and-downgrade-dependencies
 
 ## Misc
 
