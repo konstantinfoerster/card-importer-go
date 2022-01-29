@@ -1,5 +1,5 @@
 logging:
-  level: INFO
+  level: DEBUG
 
 mtgjson:
   downloadURL: https://mtgjson.com/api/v5/AllPrintings.json.zip

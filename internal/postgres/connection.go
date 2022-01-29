@@ -65,17 +65,9 @@ func (d *DBConnection) Close() error {
 }
 
 func (d *DBConnection) WithTransaction(f func(conn *DBConnection) error) error {
-	switch v := d.Conn.(type) {
+	switch d.Conn.(type) {
 	case pgx.Tx:
-		// start transaction inside transaction
-		return v.BeginFunc(d.Ctx, func(t pgx.Tx) error {
-			dbCon := &DBConnection{
-				Ctx:    d.Ctx,
-				Conn:   t,
-				pgxCon: d.pgxCon,
-			}
-			return f(dbCon)
-		})
+		return fmt.Errorf("already inside a transaction")
 	default:
 		opts := pgx.TxOptions{AccessMode: pgx.ReadWrite, IsoLevel: pgx.ReadCommitted}
 		return d.pgxCon.BeginTxFunc(d.Ctx, opts, func(t pgx.Tx) error {
@@ -97,10 +89,11 @@ func (d *DBConnection) Cleanup() error {
 		"card_set_translation",
 		"card_set",
 
-		"card_super_type",
-		"card_sub_type",
-		"card_card_type",
+		"face_super_type",
+		"face_sub_type",
+		"face_card_type",
 
+		"card_face",
 		"card_translation",
 		"card",
 

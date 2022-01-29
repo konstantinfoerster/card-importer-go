@@ -1,63 +1,13 @@
+-- generated always as identity -> prevents manual inserts of ids
 CREATE TABLE public.lang
 (
-    lang CHAR(3) PRIMARY KEY NOT NULL
+    lang CHAR(3) PRIMARY KEY NOT NULL CHECK (lang = lower(lang) AND lang <> '') -- <> == not equal
 );
 
 INSERT INTO public.lang
 VALUES ('deu');
 INSERT INTO public.lang
 VALUES ('eng');
-
--- Sub Type --
-CREATE TABLE public.sub_type
-(
-    id   SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    UNIQUE (name)
-);
-
-CREATE TABLE public.sub_type_translation
-(
-    id          SERIAL PRIMARY KEY,
-    name        VARCHAR(255) NOT NULL,
-    lang_lang   CHAR(3) REFERENCES public.lang (lang),
-    sub_type_id INTEGER REFERENCES public.sub_type (id) ON DELETE CASCADE,
-    UNIQUE (lang_lang, sub_type_id)
-);
-
--- Super Type --
-CREATE TABLE public.super_type
-(
-    id   SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    UNIQUE (name)
-);
-
-CREATE TABLE public.super_type_translation
-(
-    id            SERIAL PRIMARY KEY,
-    name          VARCHAR(255) NOT NULL,
-    lang_lang     CHAR(3) REFERENCES public.lang (lang),
-    super_type_id INTEGER REFERENCES public.super_type (id) ON DELETE CASCADE,
-    UNIQUE (lang_lang, super_type_id)
-);
-
--- Card Type --
-CREATE TABLE public.card_type
-(
-    id   SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    UNIQUE (name)
-);
-
-CREATE TABLE public.card_type_translation
-(
-    id           SERIAL PRIMARY KEY,
-    name         VARCHAR(255) NOT NULL,
-    lang_lang    CHAR(3) REFERENCES public.lang (lang),
-    card_type_id INTEGER REFERENCES public.card_type (id) ON DELETE CASCADE,
-    UNIQUE (lang_lang, card_type_id)
-);
 
 -- Border --
 CREATE TYPE public.border AS ENUM (
@@ -95,7 +45,6 @@ CREATE TYPE public.layout AS ENUM (
     'NORMAL',
     'SPLIT',
     'FLIP',
-    'DOUBLE_FACED',
     'TOKEN',
     'PLANE',
     'SCHEMA',
@@ -127,18 +76,68 @@ CREATE TYPE public.rarity AS ENUM (
     'BONUS'
     );
 
+-- Sub Type --
+CREATE TABLE public.sub_type
+(
+    id   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(100) NOT NULL CHECK ( name <> '' ),
+    UNIQUE (name)
+);
+
+CREATE TABLE public.sub_type_translation
+(
+    id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL CHECK ( name <> '' ),
+    lang_lang   CHAR(3) REFERENCES public.lang (lang),
+    sub_type_id INTEGER REFERENCES public.sub_type (id) ON DELETE CASCADE,
+    UNIQUE (lang_lang, sub_type_id)
+);
+
+-- Super Type --
+CREATE TABLE public.super_type
+(
+    id   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(100) NOT NULL CHECK ( name <> '' ),
+    UNIQUE (name)
+);
+
+CREATE TABLE public.super_type_translation
+(
+    id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name          VARCHAR(100) NOT NULL CHECK ( name <> '' ),
+    lang_lang     CHAR(3) REFERENCES public.lang (lang),
+    super_type_id INTEGER REFERENCES public.super_type (id) ON DELETE CASCADE,
+    UNIQUE (lang_lang, super_type_id)
+);
+
+-- Card Type --
+CREATE TABLE public.card_type
+(
+    id   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR(100) NOT NULL CHECK ( name <> '' ),
+    UNIQUE (name)
+);
+
+CREATE TABLE public.card_type_translation
+(
+    id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name         VARCHAR(100) NOT NULL CHECK ( name <> '' ),
+    lang_lang    CHAR(3) REFERENCES public.lang (lang),
+    card_type_id INTEGER REFERENCES public.card_type (id) ON DELETE CASCADE,
+    UNIQUE (lang_lang, card_type_id)
+);
 
 -- Card Block --
 CREATE TABLE public.card_block
 (
-    id    SERIAL PRIMARY KEY,
-    block VARCHAR(255) NOT NULL UNIQUE
+    id    INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    block VARCHAR(255) NOT NULL UNIQUE CHECK ( block <> '' )
 );
 
 CREATE TABLE public.card_block_translation
 (
-    id            SERIAL PRIMARY KEY,
-    block         VARCHAR(255) NOT NULL,
+    id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    block         VARCHAR(255) NOT NULL CHECK ( block <> '' ),
     lang_lang     CHAR(3) REFERENCES public.lang (lang),
     card_block_id INTEGER REFERENCES public.card_block (id) ON DELETE CASCADE,
     UNIQUE (lang_lang, card_block_id)
@@ -147,104 +146,88 @@ CREATE TABLE public.card_block_translation
 -- Card Set --
 CREATE TABLE public.card_set
 (
-    code          VARCHAR(255) PRIMARY KEY NOT NULL,
-    name          VARCHAR(255)             NOT NULL,
-    type          card_set_type            NOT NULL, -- Enum
+    code          VARCHAR(10) PRIMARY KEY NOT NULL CHECK ( code <> '' AND code = upper(code)),
+    name          VARCHAR(255)            NOT NULL CHECK ( name <> '' ),
+    type          card_set_type           NOT NULL, -- Enum
     released      DATE,
-    total_count   INTEGER                  NOT NULL,
+    total_count   INTEGER                 NOT NULL CHECK ( total_count >= 0 ),
     card_block_id INTEGER REFERENCES public.card_block (id),
     UNIQUE (code, card_block_id)
 );
 
 CREATE TABLE public.card_set_translation
 (
-    id            SERIAL PRIMARY KEY,
-    name          VARCHAR(255) NOT NULL,
+    id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name          VARCHAR(255) NOT NULL CHECK ( name <> '' ),
     lang_lang     CHAR(3) REFERENCES public.lang (lang),
-    card_set_code VARCHAR(255) REFERENCES public.card_set (code) ON DELETE CASCADE,
+    card_set_code VARCHAR(10) REFERENCES public.card_set (code) ON DELETE CASCADE,
     UNIQUE (lang_lang, card_set_code)
 );
-
---cardmanager=# \d+ card_set
---                                            Table "public.card_set"
---   Column    |          Type          | Collation | Nullable | Default | Storage  | Stats target | Description
----------------+------------------------+-----------+----------+---------+----------+--------------+-------------
--- code        | character varying(255) |           | not null |         | extended |              |
--- name        | character varying(255) |           |          |         | extended |              |
--- released    | date                   |           |          |         | plain    |              |
--- total_count | integer                |           |          |         | plain    |              |
--- type        | character varying(255) |           |          |         | extended |              |
--- block_id    | bigint                 |           | not null |         | plain    |              |
---Indexes:
---    "card_set_pkey" PRIMARY KEY, btree (code)
---Foreign-key constraints:
---    "fkpdnrmfr1eaxra2iaifksrdxr2" FOREIGN KEY (block_id) REFERENCES card_block(id)
-
-
---- First iteration until here ---
 
 -- Card --
 CREATE TABLE public.card
 (
-    id                  SERIAL PRIMARY KEY,
-    artist              VARCHAR(255)   NOT NULL,
-    border              border         NOT NULL, -- Enum
-    converted_mana_cost NUMERIC(10, 2) NOT NULL,
-    colors              VARCHAR(255),            -- List of Strings with ',' as separator
-    name                VARCHAR(255)   NOT NULL,
+    id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name          VARCHAR(255) NOT NULL CHECK ( name <> '' ),
+    number        VARCHAR(255) NOT NULL CHECK ( number <> '' ),
+    rarity        rarity       NOT NULL, -- Enum
+    border        border       NOT NULL, -- Enum
+    layout        layout       NOT NULL, -- Enum
+    card_set_code VARCHAR(10)  NOT NULL CHECK ( card_set_code <> '' AND card_set_code = upper(card_set_code) ),
+    unique (card_set_code, number)
+);
+
+
+CREATE TABLE public.card_face
+(
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name                VARCHAR(255)   NOT NULL CHECK ( name <> '' ),
     text                VARCHAR(800),
     flavor_text         VARCHAR(500),
-    layout              layout         NOT NULL, -- Enum
-    hand_modifier       INTEGER        NOT NULL, -- only Vanguard cards
-    life_modifier       INTEGER        NOT NULL, -- only Vanguard cards
-    loyalty             VARCHAR(10),             -- only planeswalker
+    type_line           VARCHAR(255),
+    converted_mana_cost NUMERIC(10, 2) NOT NULL CHECK ( converted_mana_cost >= 0 ),
+    colors              VARCHAR(100),                                                -- List of Strings with ',' as separator
+    artist              VARCHAR(100),
+    hand_modifier       VARCHAR(10),                                                 -- only Vanguard cards
+    life_modifier       VARCHAR(10),                                                 -- only Vanguard cards
+    loyalty             VARCHAR(10),                                                 -- only planeswalker
     mana_cost           VARCHAR(255),
-    multiverse_id       BIGINT,                  -- id from gatherer.wizards.com, id per lang
+    multiverse_id       INTEGER CHECK (multiverse_id >= 0 OR multiverse_id IS NULL), -- id from gatherer.wizards.com, id per lang
     power               VARCHAR(255),
     toughness           VARCHAR(255),
-    rarity              rarity         NOT NULL, -- Enum
-    number              VARCHAR(255)   NOT NULL,
-    full_type           VARCHAR(255),
-    --   related_card_ids VARCHAR(255), -- List of Strings. Where do we get the value from ??
-    card_set_code       VARCHAR(255)   NOT NULL,
-    unique (name, card_set_code, number)
+    card_id             INTEGER REFERENCES public.card (id) ON DELETE CASCADE
 );
 
 CREATE TABLE public.card_translation
 (
-    id            SERIAL PRIMARY KEY,
-    name          VARCHAR(255) NOT NULL,
-    multiverse_id BIGINT,
+    id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name          VARCHAR(255) NOT NULL CHECK ( name <> '' ),
+    multiverse_id INTEGER CHECK (multiverse_id >= 0 OR multiverse_id IS NULL),
     text          VARCHAR(800),
     flavor_text   VARCHAR(500),
-    full_type     VARCHAR(255),
+    type_line     VARCHAR(255),
     lang_lang     CHAR(3) REFERENCES public.lang (lang),
-    card_id       INTEGER REFERENCES public.card (id) ON DELETE CASCADE,
-    UNIQUE (lang_lang, card_id)
+    face_id       INTEGER REFERENCES public.card_face (id) ON DELETE CASCADE,
+    UNIQUE (lang_lang, face_id)
 );
 
-CREATE TABLE public.card_super_type
+CREATE TABLE public.face_super_type
 (
-    card_id INTEGER REFERENCES public.card (id),
+    face_id INTEGER REFERENCES public.card_face (id),
     type_id INTEGER REFERENCES public.super_type (id),
-    UNIQUE (card_id, type_id)
+    UNIQUE (face_id, type_id)
 );
 
-CREATE TABLE public.card_sub_type
+CREATE TABLE public.face_sub_type
 (
-    card_id INTEGER REFERENCES public.card (id),
+    face_id INTEGER REFERENCES public.card_face (id),
     type_id INTEGER REFERENCES public.sub_type (id),
-    UNIQUE (card_id, type_id)
+    UNIQUE (face_id, type_id)
 );
 
-CREATE TABLE public.card_card_type
+CREATE TABLE public.face_card_type
 (
-    card_id INTEGER REFERENCES public.card (id),
+    face_id INTEGER REFERENCES public.card_face (id),
     type_id INTEGER REFERENCES public.card_type (id),
-    UNIQUE (card_id, type_id)
+    UNIQUE (face_id, type_id)
 );
--- CREATE TABLE public.external_lang (
---     id SERIAL PRIMARY KEY,
---     external_lang VARCHAR(255) NOT NULL,
---     lang_lang CHAR(3) REFERENCES public.lang(lang)
--- )

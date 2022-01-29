@@ -8,7 +8,6 @@ import (
 	"io"
 	"sort"
 	"testing"
-	"time"
 )
 
 type MockSetService struct {
@@ -48,12 +47,26 @@ func (s *MockCardService) Count() (int, error) {
 	return len(s.Cards), nil
 }
 
+func (s *MockCardService) CardsOrdered() []card.Card {
+	// bring cards into same order
+	sort.SliceStable(s.Cards, func(i, j int) bool {
+		return s.Cards[i].Number < s.Cards[j].Number
+	})
+	// bring card faces into same order
+	for _, c := range s.Cards {
+		sort.SliceStable(c.Faces, func(i, j int) bool {
+			return c.Faces[i].Name < c.Faces[j].Name
+		})
+	}
+	return s.Cards
+}
+
 func TestImportCardsWithImportError(t *testing.T) {
 	setService := MockSetService{}
 	cardService := MockCardService{
 		FakeImport: func(count int, c *card.Card) error {
 			if count > 0 {
-				return fmt.Errorf("card import failed [%s]", c.Name)
+				return fmt.Errorf("card import failed [%s]", c.Number)
 			}
 			return nil
 		},
@@ -91,50 +104,6 @@ func TestImportSetsWithImportError(t *testing.T) {
 	}
 }
 
-func TestImportSets(t *testing.T) {
-	cases := []struct {
-		name    string
-		fixture io.Reader
-		want    []cardset.CardSet
-	}{
-		{
-			name:    "ImportMultipleSets",
-			fixture: fromFile(t, "testdata/twoSetsNoCards.json"),
-			want: []cardset.CardSet{
-				{
-					Code:       "10E",
-					Name:       "Tenth Edition",
-					TotalCount: 383,
-					Released:   time.Date(2007, time.Month(7), 13, 0, 0, 0, 0, time.UTC),
-					Block:      cardset.CardBlock{Block: "Core Set"},
-					Type:       "CORE",
-					Translations: []cardset.Translation{
-						{Name: "Hauptset Zehnte Edition", Lang: "deu"},
-					},
-				},
-				{
-					Code: "9ED",
-					Name: "Ninth Edition",
-				},
-			},
-		},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			setService := MockSetService{}
-			cardService := MockCardService{}
-			importer := NewImporter(&setService, &cardService)
-
-			_, err := importer.Import(tc.fixture)
-			if err != nil {
-				t.Fatalf("unexpected import error, got: %v, wanted no error", err)
-			}
-			assertEquals(t, tc.want, setService.Sets)
-		})
-	}
-}
-
 func TestImportCards(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -148,58 +117,73 @@ func TestImportCards(t *testing.T) {
 			wantSets: 2,
 			want: []card.Card{
 				{
-					Name:              "Balance",
-					Artist:            "Mark Poole",
-					Border:            "WHITE",
-					ConvertedManaCost: 2.0,
-					Colors:            []string{"W"},
-					Text:              "Each player chooses a number of lands they control equal...",
-					Layout:            "NORMAL",
-					ManaCost:          "{1}{W}",
-					Rarity:            "RARE",
-					Number:            "3",
-					FullType:          "Sorcery",
-					Cardtypes:         []string{"Sorcery"},
-					CardSetCode:       "2ED",
-					MultiverseId:      831,
-					Translations: []card.Translation{
+					CardSetCode: "9ED",
+					Number:      "1",
+					Name:        "Magic Tester",
+					Rarity:      "COMMON",
+					Layout:      "NORMAL",
+					Border:      "BLACK",
+					Faces: []card.Face{
 						{
-							Name:         "Karn der Befreite",
-							Text:         "+4: Ein Spieler deiner Wahl schickt.... eine Karte aus seiner Hand ins Exil.\n−3: Schicke...",
-							FullType:     "Legendärer Planeswalker — Karn",
-							MultiverseId: 490006,
-							Lang:         "deu",
+							Name:   "Magic Tester",
+							Artist: "Test Tester",
 						},
 					},
 				},
 				{
-					Name:              "Benalish Hero",
-					Artist:            "Douglas Shuler",
-					Border:            "WHITE",
-					ConvertedManaCost: 1.0,
-					Colors:            []string{"W"},
-					Text:              "Banding (Any creatures with banding,...",
-					FlavorText:        "Benalia has a complex caste system that changes with the...",
-					Layout:            "NORMAL",
-					ManaCost:          "{W}",
-					Number:            "4",
-					Power:             "1",
-					Toughness:         "1",
-					Rarity:            "COMMON",
-					Subtypes:          []string{"Human", "Soldier"},
-					Supertypes:        []string{"Test"},
-					Cardtypes:         []string{"Creature"},
-					FullType:          "Creature — Human Soldier",
-					CardSetCode:       "2ED",
+					CardSetCode: "2ED",
+					Number:      "3",
+					Name:        "Balance",
+					Rarity:      "RARE",
+					Layout:      "NORMAL",
+					Border:      "WHITE",
+					Faces: []card.Face{
+						{
+							Name:              "Balance",
+							Artist:            "Mark Poole",
+							ConvertedManaCost: 2.0,
+							Colors:            []string{"W"},
+							Text:              "Each player chooses a number of lands they control equal...",
+							ManaCost:          "{1}{W}",
+							TypeLine:          "Sorcery",
+							Cardtypes:         []string{"Sorcery"},
+							MultiverseId:      831,
+							Translations: []card.Translation{
+								{
+									Name:         "Karn der Befreite",
+									Text:         "+4: Ein Spieler deiner Wahl schickt.... eine Karte aus seiner Hand ins Exil.\n−3: Schicke...",
+									TypeLine:     "Legendärer Planeswalker — Karn",
+									MultiverseId: 490006,
+									Lang:         "deu",
+								},
+							},
+						},
+					},
 				},
 				{
-					Name:        "Magic Tester",
-					Artist:      "Test Tester",
-					CardSetCode: "9ED",
-					Border:      "BLACK",
-					Layout:      "NORMAL",
-					Number:      "1",
+					CardSetCode: "2ED",
+					Number:      "4",
 					Rarity:      "COMMON",
+					Name:        "Benalish Hero",
+					Layout:      "NORMAL",
+					Border:      "WHITE",
+					Faces: []card.Face{
+						{
+							Name:              "Benalish Hero",
+							Artist:            "Douglas Shuler",
+							ConvertedManaCost: 1.0,
+							Colors:            []string{"W"},
+							Text:              "Banding (Any creatures with banding,...",
+							FlavorText:        "Benalia has a complex caste system that changes with the...",
+							ManaCost:          "{W}",
+							Power:             "1",
+							Toughness:         "1",
+							Subtypes:          []string{"Human", "Soldier"},
+							Supertypes:        []string{"Test"},
+							TypeLine:          "Creature — Human Soldier",
+							Cardtypes:         []string{"Creature"},
+						},
+					},
 				},
 			},
 		},
@@ -222,14 +206,130 @@ func TestImportCards(t *testing.T) {
 				t.Fatalf("unexpected card count, got: %d, wanted %d", len(cardService.Cards), len(tc.want))
 			}
 
-			// bring into same order
-			sort.SliceStable(tc.want, func(i, j int) bool {
-				return tc.want[i].Name < tc.want[j].Name
-			})
-			sort.SliceStable(cardService.Cards, func(i, j int) bool {
-				return cardService.Cards[i].Name < cardService.Cards[j].Name
-			})
-			assertEquals(t, tc.want, cardService.Cards)
+			assertEquals(t, tc.want, cardService.CardsOrdered())
+		})
+	}
+}
+
+func TestImportCardWithMultipleFaces(t *testing.T) {
+	cases := []struct {
+		name    string
+		fixture io.Reader
+		want    []card.Card
+	}{
+		{
+			name:    "ImportMultipleCardsWithMultipleFaces",
+			fixture: fromFile(t, "testdata/card/multiple_cards_multiple_faces.json"),
+			want: []card.Card{
+				{
+					CardSetCode: "2ED",
+					Number:      "3",
+					Name:        "One // Two // Three // Four // Five // Six // Sven",
+					Rarity:      "RARE",
+					Layout:      "NORMAL",
+					Border:      "WHITE",
+					Faces: []card.Face{
+						{
+							Name:              "Five",
+							ConvertedManaCost: 5.0,
+						}, {
+							Name:              "Four",
+							ConvertedManaCost: 4.0,
+						},
+						{
+							Name:              "One",
+							ConvertedManaCost: 1.0,
+						}, {
+							Name:              "Seven",
+							ConvertedManaCost: 7.0,
+						}, {
+							Name:              "Six",
+							ConvertedManaCost: 6.0,
+						}, {
+							Name:              "Three",
+							ConvertedManaCost: 3.0,
+						}, {
+							Name:              "Two",
+							ConvertedManaCost: 2.0,
+						},
+					},
+				},
+				{
+					CardSetCode: "2ED",
+					Number:      "4",
+					Rarity:      "RARE",
+					Name:        "1 / 2",
+					Layout:      "NORMAL",
+					Border:      "WHITE",
+					Faces: []card.Face{
+						{
+							Name: "1 / 2",
+						},
+					},
+				},
+				{
+					CardSetCode: "2ED",
+					Number:      "5",
+					Rarity:      "RARE",
+					Name:        "First // Second",
+					Layout:      "MELD",
+					Border:      "WHITE",
+					Faces: []card.Face{
+						{
+							Name: "First",
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			setService := MockSetService{}
+			cardService := MockCardService{}
+			importer := NewImporter(&setService, &cardService)
+
+			_, err := importer.Import(tc.fixture)
+			if err != nil {
+				t.Fatalf("unexpected import error, got: %v, wanted no error", err)
+			}
+			if len(cardService.Cards) != len(tc.want) {
+				t.Fatalf("unexpected card count, got: %d, wanted %d", len(cardService.Cards), len(tc.want))
+			}
+
+			assertEquals(t, tc.want, cardService.CardsOrdered())
+		})
+	}
+}
+
+func TestImportCardWithInvalidFaces(t *testing.T) {
+	cases := []struct {
+		name        string
+		fixture     io.Reader
+		wantContain string
+	}{
+		{
+			name:        "ImportCardsWithInvalidFaces",
+			fixture:     fromFile(t, "testdata/card/cards_invalid_faces.json"),
+			wantContain: "unprocessed double face cards",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			setService := MockSetService{}
+			cardService := MockCardService{}
+			importer := NewImporter(&setService, &cardService)
+
+			_, err := importer.Import(tc.fixture)
+			if err == nil {
+				t.Fatalf("expected import error to contain %v, got no error", tc.wantContain)
+			}
+			if len(cardService.Cards) != 0 {
+				t.Fatalf("unexpected card count, got: %d, wanted 0", len(cardService.Cards))
+			}
+
+			assert.Contains(t, err.Error(), tc.wantContain)
 		})
 	}
 }

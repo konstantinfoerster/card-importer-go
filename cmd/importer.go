@@ -17,13 +17,16 @@ import (
 	"time"
 )
 
+var file string
 var downloadUrl string
 
 func init() {
 	logger.SetupConsoleLogger()
 
 	var configPath string
+
 	flag.StringVar(&configPath, "config", "./configs/application.yaml", "path to the config file")
+	flag.StringVar(&file, "file", "", "json file to import, has precedence over the url or config")
 	flag.StringVar(&downloadUrl, "url", "", "download url of the json or zip file")
 
 	flag.Parse()
@@ -34,39 +37,37 @@ func init() {
 	}
 	cfg := config.Get()
 
-	if downloadUrl == "" {
-		downloadUrl = config.Get().Mtgjson.DownloadURL
-	}
-
 	err = logger.SetLogLevel(cfg.Logging.LevelOrDefault())
 	if err != nil {
 		panic(err)
 	}
 
+	if downloadUrl == "" {
+		downloadUrl = cfg.Mtgjson.DownloadURL
+	}
+
 	log.Info().Msgf("OS\t\t %s", runtime.GOOS)
 	log.Info().Msgf("ARCH\t\t %s", runtime.GOARCH)
 	log.Info().Msgf("CPUs\t\t %d", runtime.NumCPU())
-	log.Info().Msgf("Starting with url %s", downloadUrl)
+	if file == "" {
+		log.Info().Msgf("Starting with url %s", downloadUrl)
+	} else {
+		log.Info().Msgf("Starting with file %s", file)
+	}
 }
 
 func main() {
 	defer timer.TimeTrack(time.Now(), "import")
 
-	importer, closeFn, err := buildImporter()
+	start, err := buildImporter()
 	if err != nil {
-		log.Error().Stack().Err(err).Msg("failed to build importer instance")
+		log.Error().Err(err).Msg("failed to build importer instance")
 		return
 	}
-	defer func(toCloseF func() error) {
-		err := toCloseF()
-		if err != nil {
-			log.Error().Msgf("Failed to close database connection %v", err)
-		}
-	}(closeFn)
 
-	r, err := importer.Import(strings.NewReader(downloadUrl))
+	r, err := start()
 	if err != nil {
-		log.Error().Stack().Err(err).Msg("import failed")
+		log.Error().Err(err).Msg("import failed")
 		return
 	}
 
@@ -74,20 +75,34 @@ func main() {
 	logMemUsage()
 }
 
-func buildImporter() (api.Importer, func() error, error) {
+func buildImporter() (func() (*api.Report, error), error) {
 	conn, err := postgres.Connect(context.Background(), &config.Get().Database)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	csDao := cardset.NewDao(conn)
-	cDao := card.NewDao(conn)
-	csService := cardset.NewService(csDao)
-	cService := card.NewService(cDao)
+	csService := cardset.NewService(cardset.NewDao(conn))
+	cService := card.NewService(card.NewDao(conn))
 
 	imp := mtgjson.NewImporter(csService, cService)
 
-	return mtgjson.NewDownloadableImport(imp), conn.Close, nil
+	connClose := func(toCloseFn func() error) {
+		cErr := toCloseFn()
+		if cErr != nil {
+			log.Error().Err(cErr).Msgf("Failed to close database connection")
+		}
+	}
+	if file != "" {
+		return func() (*api.Report, error) {
+			defer connClose(conn.Close)
+			return mtgjson.NewFileImport(imp).Import(strings.NewReader(file))
+		}, nil
+	}
+
+	return func() (*api.Report, error) {
+		defer connClose(conn.Close)
+		return mtgjson.NewDownloadableImport(imp).Import(strings.NewReader(downloadUrl))
+	}, nil
 }
 
 // printMemUsage outputs the current, total and OS memory being used. As well as the number

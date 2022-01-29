@@ -2,9 +2,11 @@
   "data": {
     "2ED": {
       "code": "2ED",
+      "name": "Second Edition",
       "type": "core",
       "cards": [
         {
+          "artist": "Unknown",
           "name": "Benalish Hero",
           "number": "4",
           "setCode": "2ED",
@@ -13,9 +15,7 @@
           "layout": "normal",
           "subtypes": [
             "SubType1",
-            "SubType2",
             "SubType3",
-            "SubType4",
             "SubType5"
           ],
           "types": [

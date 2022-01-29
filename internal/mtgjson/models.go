@@ -20,11 +20,11 @@ type mtgjsonCard struct {
 	Code                  string        `json:"setCode"`
 	Artist                string        `json:"artist"`
 	Side                  string        `json:"side"`
-	ConvertedManaCost     float64       `json:"convertedManaCost"`
-	FaceConvertedManaCost float64       `json:"faceConvertedManaCost"`
+	ConvertedManaCost     float64       `json:"convertedManaCost"`     // deprecated use manaValue instead
+	FaceConvertedManaCost float64       `json:"faceConvertedManaCost"` // deprecated use faceManaValue instead
+	FaceName              string        `json:"faceName"`
 	FlavorText            string        `json:"flavorText"`
 	Text                  string        `json:"text"`
-	FaceName              string        `json:"faceName"`
 	Hand                  string        `json:"hand"`
 	Life                  string        `json:"life"`
 	Loyalty               string        `json:"loyalty"`
@@ -41,6 +41,8 @@ type mtgjsonCard struct {
 	Cardtypes             []string      `json:"types"`
 	Subtypes              []string      `json:"subtypes"`
 	Supertypes            []string      `json:"supertypes"`
+	CardParts             []string      `json:"cardParts"`
+	Finishes              []string      `json:"finishes"`
 	BorderColor           string        `json:"borderColor"`
 	Alternative           bool          `json:"isAlternative"`
 }
@@ -49,7 +51,7 @@ type foreignData struct {
 	Name         string `json:"name"`
 	Type         string `json:"type"`
 	Language     string `json:"language"`
-	MultiverseId int64  `json:"multiverseId"`
+	MultiverseId int32  `json:"multiverseId"`
 	Text         string `json:"text"`
 	FlavorText   string `json:"flavorText"`
 }

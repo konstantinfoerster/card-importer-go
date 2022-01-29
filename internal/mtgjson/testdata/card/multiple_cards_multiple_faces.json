@@ -1,0 +1,104 @@
+{
+  "data": {
+    "2ED": {
+      "code": "2ED",
+      "name": "Second Edition",
+      "type": "core",
+      "cards": [
+        {
+          "setCode": "2ED",
+          "name": "One // Two // Three // Four // Five // Six // Sven",
+          "faceName": "One",
+          "convertedManaCost": 0,
+          "faceConvertedManaCost": 1,
+          "number": "3",
+          "borderColor": "white",
+          "layout": "normal",
+          "rarity": "rare"
+        },
+        {
+          "setCode": "2ED",
+          "name": "One // Two // Three // Four // Five // Six // Sven",
+          "faceName": "Two",
+          "convertedManaCost": 0,
+          "faceConvertedManaCost": 2,
+          "number": "3",
+          "borderColor": "white",
+          "layout": "normal",
+          "rarity": "rare"
+        },
+        {
+          "setCode": "2ED",
+          "name": "One // Two // Three // Four // Five // Six // Sven",
+          "faceName": "Four",
+          "convertedManaCost": 0,
+          "faceConvertedManaCost": 4,
+          "number": "3",
+          "borderColor": "white",
+          "layout": "normal",
+          "rarity": "rare"
+        },
+        {
+          "setCode": "2ED",
+          "name": "One // Two // Three // Four // Five // Six // Sven",
+          "faceName": "Three",
+          "convertedManaCost": 0,
+          "faceConvertedManaCost": 3,
+          "number": "3",
+          "borderColor": "white",
+          "layout": "normal",
+          "rarity": "rare"
+        },
+        {
+          "setCode": "2ED",
+          "name": "One // Two // Three // Four // Five // Six // Sven",
+          "faceName": "Five",
+          "convertedManaCost": 0,
+          "faceConvertedManaCost": 5,
+          "number": "3",
+          "borderColor": "white",
+          "layout": "normal",
+          "rarity": "rare"
+        },
+        {
+          "setCode": "2ED",
+          "name": "One // Two // Three // Four // Five // Six // Sven",
+          "faceName": "Six",
+          "convertedManaCost": 0,
+          "faceConvertedManaCost": 6,
+          "number": "3",
+          "borderColor": "white",
+          "layout": "normal",
+          "rarity": "rare"
+        },
+        {
+          "setCode": "2ED",
+          "name": "One // Two // Three // Four // Five // Six // Sven",
+          "faceName": "Seven",
+          "convertedManaCost": 0,
+          "faceConvertedManaCost": 7,
+          "number": "3",
+          "borderColor": "white",
+          "layout": "normal",
+          "rarity": "rare"
+        },
+        {
+          "setCode": "2ED",
+          "name": "1 / 2",
+          "number": "4",
+          "borderColor": "white",
+          "layout": "normal",
+          "rarity": "rare"
+        }, {
+          "setCode": "2ED",
+          "name": "First // Second",
+          "faceName": "First",
+          "number": "5",
+          "borderColor": "white",
+          "layout": "meld",
+          "rarity": "rare"
+        }
+      ]
+    }
+  }
+}

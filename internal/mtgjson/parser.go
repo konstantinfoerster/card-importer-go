@@ -214,7 +214,7 @@ func (et *errToken) next(dec *json.Decoder) json.Token {
 func expectNext(expected json.Delim, dec *json.Decoder) error {
 	t, err := dec.Token()
 	if err != nil {
-		return fmt.Errorf("failed to get next token %v", err)
+		return fmt.Errorf("failed to get next token %w", err)
 	}
 
 	if t != expected {
