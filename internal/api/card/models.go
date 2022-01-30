@@ -17,7 +17,7 @@ type Card struct {
 	Border      string
 	Rarity      string
 	Layout      string
-	Faces       []Face
+	Faces       []*Face
 }
 
 func (c *Card) isValid() error {
@@ -117,7 +117,7 @@ type Face struct {
 
 // card 'Stitch in Time' has the same name on both faces but a different flavor text
 func (f Face) isSame(other *Face) bool {
-	return f.Name == other.Name && f.FlavorText == other.FlavorText
+	return f.Name == other.Name && f.Text == other.Text && f.FlavorText == other.FlavorText
 }
 
 func (f Face) Diff(other *Face) *api.Changeset {

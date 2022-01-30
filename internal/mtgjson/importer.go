@@ -207,8 +207,8 @@ func mapToCard(c *mtgjsonCard) (*card.Card, error) {
 		cmc = c.FaceConvertedManaCost
 	}
 
-	face := card.Face{
-		Name:              name,
+	face := &card.Face{
+		Name:              strings.TrimSpace(name),
 		Artist:            strings.TrimSpace(c.Artist),
 		ConvertedManaCost: cmc,
 		Colors:            colors,
@@ -234,7 +234,7 @@ func mapToCard(c *mtgjsonCard) (*card.Card, error) {
 		Border:      strings.ToUpper(strings.TrimSpace(c.BorderColor)),
 		Rarity:      strings.ToUpper(strings.TrimSpace(c.Rarity)),
 		Layout:      strings.ToUpper(strings.TrimSpace(c.Layout)),
-		Faces:       []card.Face{face},
+		Faces:       []*card.Face{face},
 	}, nil
 }
 

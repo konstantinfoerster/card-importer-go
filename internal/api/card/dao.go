@@ -265,6 +265,19 @@ func (d *PostgresCardDao) UpdateTranslation(faceId int64, t *Translation) error 
 	return nil
 }
 
+func (d *PostgresCardDao) DeleteAllTranslation(faceId int64) error {
+	query := `
+		DELETE FROM
+			card_translation
+		WHERE
+			face_id = $1`
+	_, err := d.db.Conn.Exec(d.db.Ctx, query, faceId)
+	if err != nil {
+		return fmt.Errorf("failed to execute face translation delete %w", err)
+	}
+	return nil
+}
+
 func (d *PostgresCardDao) DeleteTranslation(faceId int64, lang string) error {
 	query := `
 		DELETE FROM
