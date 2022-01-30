@@ -149,7 +149,7 @@ func cardCreateUpdate(t *testing.T) {
 			Rarity:      "MYTHIC",
 			Layout:      "TOKEN",
 			Border:      "BLACK",
-			Faces: []card.Face{
+			Faces: []*card.Face{
 				{
 					Artist:            "Artist Updated",
 					Colors:            []string{"B", "W"},
@@ -175,7 +175,7 @@ func cardCreateUpdate(t *testing.T) {
 			Rarity:      "RARE",
 			Layout:      "SPLIT",
 			Border:      "BLACK",
-			Faces: []card.Face{
+			Faces: []*card.Face{
 				{
 					ConvertedManaCost: 6,
 					Name:              "Second Edition Updated",
@@ -193,9 +193,27 @@ func cardCreateUpdate(t *testing.T) {
 			Rarity:      "RARE",
 			Layout:      "SPLIT",
 			Border:      "WHITE",
-			Faces: []card.Face{
+			Faces: []*card.Face{
 				{
 					Name: "Second Edition Face Deleted",
+				},
+			},
+		},
+		{
+			CardSetCode: "2ED",
+			Number:      "3",
+			Name:        "Same Face Name // Same Face Name",
+			Rarity:      "RARE",
+			Layout:      "REVERSIBLE_CARD",
+			Border:      "BLACK",
+			Faces: []*card.Face{
+				{
+					Name: "Same Face Name",
+					Text: "Here is a text",
+				},
+				{
+					Name: "Same Face Name",
+					Text: "Here is a text",
 				},
 			},
 		},
@@ -215,7 +233,7 @@ func cardCreateUpdate(t *testing.T) {
 	}
 
 	cardCount, _ := cDao.Count()
-	assert.Equal(t, 3, cardCount, "Unexpected card count.")
+	assert.Equal(t, 4, cardCount, "Unexpected card count.")
 
 	for _, w := range want {
 		gotCard := findUniqueCardWithReferences(t, cDao, w.CardSetCode, w.Number)
@@ -238,7 +256,7 @@ func cardTranslations(t *testing.T) {
 				Rarity:      "COMMON",
 				Layout:      "NORMAL",
 				Border:      "WHITE",
-				Faces: []card.Face{
+				Faces: []*card.Face{
 					{
 						Artist: "Unknown",
 						Name:   "Benalish Hero",
@@ -265,7 +283,7 @@ func cardTranslations(t *testing.T) {
 				Rarity:      "COMMON",
 				Layout:      "NORMAL",
 				Border:      "WHITE",
-				Faces: []card.Face{
+				Faces: []*card.Face{
 					{
 						Artist: "Unknown",
 						Name:   "Benalish Hero",
@@ -292,7 +310,7 @@ func cardTranslations(t *testing.T) {
 				Rarity:      "COMMON",
 				Layout:      "NORMAL",
 				Border:      "WHITE",
-				Faces: []card.Face{
+				Faces: []*card.Face{
 					{
 						Artist: "Unknown",
 						Name:   "Benalish Hero",
@@ -340,7 +358,7 @@ func cardTypes(t *testing.T) {
 				Rarity:      "COMMON",
 				Layout:      "NORMAL",
 				Border:      "WHITE",
-				Faces: []card.Face{
+				Faces: []*card.Face{
 					{
 						Artist:     "Unknown",
 						Name:       "Benalish Hero",
@@ -361,7 +379,7 @@ func cardTypes(t *testing.T) {
 				Rarity:      "COMMON",
 				Layout:      "NORMAL",
 				Border:      "WHITE",
-				Faces: []card.Face{
+				Faces: []*card.Face{
 					{
 						Artist:     "Unknown",
 						Name:       "Benalish Hero",
@@ -382,7 +400,7 @@ func cardTypes(t *testing.T) {
 				Rarity:      "COMMON",
 				Layout:      "NORMAL",
 				Border:      "WHITE",
-				Faces: []card.Face{
+				Faces: []*card.Face{
 					{
 						Artist: "Unknown",
 						Name:   "Benalish Hero",
@@ -470,7 +488,7 @@ func findUniqueCardWithReferences(t *testing.T, cDao *card.PostgresCardDao, setC
 		face.Cardtypes = cardTypes
 
 		face.Id = sql.NullInt64{}
-		c.Faces = append(c.Faces, *face)
+		c.Faces = append(c.Faces, face)
 	}
 
 	c.Id = sql.NullInt64{}

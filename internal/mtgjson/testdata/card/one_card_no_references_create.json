@@ -69,6 +69,25 @@
           "faceName": " The Second Deleted",
           "rarity": "rare",
           "setCode": "2ED"
+        },
+        {
+          "borderColor": "black",
+          "layout": "reversible_card",
+          "name": "Same Face Name // Same Face Name",
+          "number": "3",
+          "faceName": "Same Face Name",
+          "text": "Here is a text",
+          "rarity": "rare",
+          "setCode": "2ED"
+        },{
+          "borderColor": "black",
+          "layout": "reversible_card",
+          "name": "Same Face Name // Same Face Name",
+          "number": "3",
+          "faceName": "Same Face Name",
+          "text": "Here is a text",
+          "rarity": "rare",
+          "setCode": "2ED"
         }
       ]
     }

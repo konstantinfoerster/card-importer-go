@@ -123,7 +123,7 @@ func TestImportCards(t *testing.T) {
 					Rarity:      "COMMON",
 					Layout:      "NORMAL",
 					Border:      "BLACK",
-					Faces: []card.Face{
+					Faces: []*card.Face{
 						{
 							Name:   "Magic Tester",
 							Artist: "Test Tester",
@@ -137,7 +137,7 @@ func TestImportCards(t *testing.T) {
 					Rarity:      "RARE",
 					Layout:      "NORMAL",
 					Border:      "WHITE",
-					Faces: []card.Face{
+					Faces: []*card.Face{
 						{
 							Name:              "Balance",
 							Artist:            "Mark Poole",
@@ -167,7 +167,7 @@ func TestImportCards(t *testing.T) {
 					Name:        "Benalish Hero",
 					Layout:      "NORMAL",
 					Border:      "WHITE",
-					Faces: []card.Face{
+					Faces: []*card.Face{
 						{
 							Name:              "Benalish Hero",
 							Artist:            "Douglas Shuler",
@@ -228,7 +228,7 @@ func TestImportCardWithMultipleFaces(t *testing.T) {
 					Rarity:      "RARE",
 					Layout:      "NORMAL",
 					Border:      "WHITE",
-					Faces: []card.Face{
+					Faces: []*card.Face{
 						{
 							Name:              "Five",
 							ConvertedManaCost: 5.0,
@@ -261,7 +261,7 @@ func TestImportCardWithMultipleFaces(t *testing.T) {
 					Name:        "1 / 2",
 					Layout:      "NORMAL",
 					Border:      "WHITE",
-					Faces: []card.Face{
+					Faces: []*card.Face{
 						{
 							Name: "1 / 2",
 						},
@@ -274,7 +274,7 @@ func TestImportCardWithMultipleFaces(t *testing.T) {
 					Name:        "First // Second",
 					Layout:      "MELD",
 					Border:      "WHITE",
-					Faces: []card.Face{
+					Faces: []*card.Face{
 						{
 							Name: "First",
 						},

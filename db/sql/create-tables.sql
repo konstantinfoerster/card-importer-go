@@ -37,7 +37,9 @@ CREATE TYPE public.card_set_type AS ENUM (
     'MASTERPIECE',
     'TOKEN',
     'TREASURE_CHEST',
-    'SPELLBOOK'
+    'SPELLBOOK',
+    'ARSENAL',
+    'ALCHEMY'
     );
 
 -- Layout --
