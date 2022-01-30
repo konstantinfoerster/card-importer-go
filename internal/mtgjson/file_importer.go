@@ -9,26 +9,28 @@ import (
 )
 
 type FileImport struct {
-	importer api.Importer
+	importer  api.Importer
+	readLimit int64
 }
 
 func NewFileImport(importer api.Importer) *FileImport {
 	return &FileImport{
-		importer: importer,
+		importer:  importer,
+		readLimit: 255,
 	}
 }
 
 func (imp *FileImport) Import(r io.Reader) (*api.Report, error) {
 	rLimit := &io.LimitedReader{
 		R: r,
-		N: 255 + 1, // only 255 bytes allowed + 1 to check if we read more bytes than expected
+		N: imp.readLimit + 1, // + 1 to check if we read more bytes than expected
 	}
 	filePath, err := io.ReadAll(rLimit)
 	if err != nil {
 		return nil, err
 	}
 	if rLimit.N == 0 {
-		return nil, fmt.Errorf("file path must be <= 255 characters")
+		return nil, fmt.Errorf("file path must be <= %d characters", imp.readLimit)
 	}
 
 	f, err := os.Open(string(filePath))

@@ -16,12 +16,14 @@ import (
 )
 
 type DownloadableImport struct {
-	importer api.Importer
+	importer  api.Importer
+	readLimit int64
 }
 
 func NewDownloadableImport(importer api.Importer) *DownloadableImport {
 	return &DownloadableImport{
-		importer: importer,
+		importer:  importer,
+		readLimit: 100,
 	}
 }
 
@@ -35,10 +37,18 @@ func (f *downloadedFile) isZip() bool {
 }
 
 func (imp *DownloadableImport) Import(r io.Reader) (*api.Report, error) {
-	url, err := io.ReadAll(io.LimitReader(r, 100)) // only 100 bytes allowed
+	rLimit := &io.LimitedReader{
+		R: r,
+		N: imp.readLimit + 1, // + 1 to check if we read more bytes than expected
+	}
+	url, err := io.ReadAll(rLimit)
 	if err != nil {
 		return nil, err
 	}
+	if rLimit.N == 0 {
+		return nil, fmt.Errorf("url must be <= %d characters", imp.readLimit)
+	}
+
 	dFile, err := download(string(url))
 	if err != nil {
 		return nil, err

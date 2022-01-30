@@ -177,7 +177,7 @@ func withDuplicateKeyRetry(fn func() error) error {
 	}
 	if strings.Contains(err.Error(), "duplicate key") {
 		log.Warn().Msgf("retry error  after short sleep %v", err)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(200 * time.Millisecond)
 		return fn()
 	}
 	return err
