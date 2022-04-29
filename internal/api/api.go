@@ -20,6 +20,10 @@ type ImageReport struct {
 	MissingMetadata  int
 }
 
+type PageConfig struct {
+	Page int
+	Size int
+}
 type Images interface {
-	Import() (*ImageReport, error)
+	Import(PageConfig) (*ImageReport, error)
 }

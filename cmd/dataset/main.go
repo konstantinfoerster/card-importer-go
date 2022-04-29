@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"github.com/konstantinfoerster/card-importer-go/internal/api"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/cardset"
@@ -18,6 +19,12 @@ import (
 	"time"
 )
 
+const usage = `Usage: card-dataset-cli [options...]
+  -c, --config path to the config file (default: ./configs/application.yaml)
+  -u, --url dataset download url as json or zip file"
+  -f, --file dataset as json file, has precedence over the url flag or config
+`
+
 var file string
 var downloadUrl string
 
@@ -26,10 +33,13 @@ func init() {
 
 	var configPath string
 
+	flag.StringVar(&configPath, "c", "./configs/application.yaml", "path to the config file")
 	flag.StringVar(&configPath, "config", "./configs/application.yaml", "path to the config file")
-	flag.StringVar(&file, "file", "", "json file to import, has precedence over the url flag or config")
-	flag.StringVar(&downloadUrl, "url", "", "download url of the json or zip file")
-
+	flag.StringVar(&file, "f", "", "dataset as json file, has precedence over the url flag or config")
+	flag.StringVar(&file, "file", "", "dataset as json file, has precedence over the url flag or config")
+	flag.StringVar(&downloadUrl, "u", "", "dataset download url as json or zip file")
+	flag.StringVar(&downloadUrl, "url", "", "dataset download url as json or zip file")
+	flag.Usage = func() { fmt.Print(usage) }
 	flag.Parse()
 
 	err := config.Load(configPath)

@@ -12,12 +12,26 @@ First start a local postgres database e.g. via `docker-compose up -d`. This will
 Use `docker-compose pull` to update the image version. 
 
 ### Import Dataset
-Run `go run cmd/dataset/main.go` to start the application.
+Run `go run cmd/dataset/main.go` to start the tool with the default configuration file (configs/application.yaml).
 
-## Configuration
+Optional parameter:
 
-A configuration file can be provided via the `-c` flag. If no flag is provided the default configuration will be used.
-It can be found at **configs/application.yaml**.
+| Flag            | Usage                              | Default Value            | Description                                                      |
+|-----------------|------------------------------------|--------------------------|------------------------------------------------------------------|
+| `-c`,`--config` | `-c configs/application-prod.yaml` | configs/application.yaml | path to the config file                                          |
+| `-u`,`--url`    | `-u https://localhost/dataset.zip` | not set                  | dataset download url as json or zip file                         |
+| `-f`,`--file`   | `-f ./dataset.json`                | not set                  | dataset as json file, has precedence over the url flag or config |
+
+### Import Images
+Run `go run cmd/images/main.go` to start the tool with the default configuration file (configs/application.yaml).
+
+Optional parameter:
+
+| Flag            | Usage                              | Default Value            | Description                |
+|-----------------|------------------------------------|--------------------------|----------------------------|
+| `-c`,`--config` | `-c configs/applicationLocal.yaml` | configs/application.yaml | path to the config file    | 
+| `-p`,`--page`   | `-p 21`                            | 1                        | start page number          |
+| `-s`,`--size`   | `-s 100`                           | 20                       | amount of entries per page |
 
 ## Test
 
@@ -29,7 +43,7 @@ It can be found at **configs/application.yaml**.
 
 ## Build
 
-Build with `go build -o card-importer-cli cmd/dataset/main.go` or `go build -o images-importer-cli cmd/images/main.go`
+Build with `go build -o card-dataset-cli cmd/dataset/main.go` or `go build -o card-images-cli cmd/images/main.go`
 
 ## Dependencies
 
