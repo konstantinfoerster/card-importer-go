@@ -7,7 +7,7 @@ COPY . /src
 WORKDIR /src
 
 ## Task: fetch project deps
-RUN go mod download && go mod tidy
+RUN go mod download
 
 ## Task: build project
 ENV GOOS="linux"

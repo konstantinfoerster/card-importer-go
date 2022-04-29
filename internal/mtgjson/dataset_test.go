@@ -10,6 +10,8 @@ import (
 	"testing"
 )
 
+// TODO Revisit this tests
+
 type MockSetService struct {
 	Sets       []cardset.CardSet
 	FakeImport func(count int, set *cardset.CardSet) error
@@ -142,7 +144,7 @@ func TestImportCards(t *testing.T) {
 							Name:              "Balance",
 							Artist:            "Mark Poole",
 							ConvertedManaCost: 2.0,
-							Colors:            []string{"W"},
+							Colors:            card.NewColors([]string{"W"}),
 							Text:              "Each player chooses a number of lands they control equal...",
 							ManaCost:          "{1}{W}",
 							TypeLine:          "Sorcery",
@@ -172,7 +174,7 @@ func TestImportCards(t *testing.T) {
 							Name:              "Benalish Hero",
 							Artist:            "Douglas Shuler",
 							ConvertedManaCost: 1.0,
-							Colors:            []string{"W"},
+							Colors:            card.NewColors([]string{"W"}),
 							Text:              "Banding (Any creatures with banding,...",
 							FlavorText:        "Benalia has a complex caste system that changes with the...",
 							ManaCost:          "{W}",

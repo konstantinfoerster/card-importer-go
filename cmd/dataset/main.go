@@ -10,6 +10,7 @@ import (
 	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
 	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
+	"github.com/konstantinfoerster/card-importer-go/internal/stats"
 	"github.com/konstantinfoerster/card-importer-go/internal/timer"
 	"github.com/rs/zerolog/log"
 	"runtime"
@@ -26,7 +27,7 @@ func init() {
 	var configPath string
 
 	flag.StringVar(&configPath, "config", "./configs/application.yaml", "path to the config file")
-	flag.StringVar(&file, "file", "", "json file to import, has precedence over the url or config")
+	flag.StringVar(&file, "file", "", "json file to import, has precedence over the url flag or config")
 	flag.StringVar(&downloadUrl, "url", "", "download url of the json or zip file")
 
 	flag.Parse()
@@ -59,63 +60,34 @@ func init() {
 func main() {
 	defer timer.TimeTrack(time.Now(), "import")
 
-	start, err := buildImporter()
+	conn, err := postgres.Connect(context.Background(), config.Get().Database)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to build importer instance")
+		log.Error().Err(err).Msg("failed to connect to the database")
 		return
 	}
-
-	r, err := start()
-	if err != nil {
-		log.Error().Err(err).Msg("import failed")
-		return
-	}
-
-	log.Info().Msgf("Report %#v", r)
-	logMemUsage()
-}
-
-func buildImporter() (func() (*api.Report, error), error) {
-	conn, err := postgres.Connect(context.Background(), &config.Get().Database)
-	if err != nil {
-		return nil, err
-	}
+	defer func(toCloseFn func() error) {
+		cErr := toCloseFn()
+		if cErr != nil {
+			log.Error().Err(cErr).Msgf("Failed to close database connection")
+		}
+	}(conn.Close)
 
 	csService := cardset.NewService(cardset.NewDao(conn))
 	cService := card.NewService(card.NewDao(conn))
 
 	imp := mtgjson.NewImporter(csService, cService)
 
-	connClose := func(toCloseFn func() error) {
-		cErr := toCloseFn()
-		if cErr != nil {
-			log.Error().Err(cErr).Msgf("Failed to close database connection")
-		}
-	}
+	var report *api.DatasetReport
 	if file != "" {
-		return func() (*api.Report, error) {
-			defer connClose(conn.Close)
-			return mtgjson.NewFileImport(imp).Import(strings.NewReader(file))
-		}, nil
+		report, err = mtgjson.NewFileDataset(imp).Import(strings.NewReader(file))
+	} else {
+		report, err = mtgjson.NewDownloadableDataset(imp).Import(strings.NewReader(downloadUrl))
 	}
-
-	return func() (*api.Report, error) {
-		defer connClose(conn.Close)
-		return mtgjson.NewDownloadableImport(imp).Import(strings.NewReader(downloadUrl))
-	}, nil
-}
-
-// printMemUsage outputs the current, total and OS memory being used. As well as the number
-// of garage collection cycles completed.
-func logMemUsage() uint64 {
-	bToMB := func(b uint64) uint64 {
-		return b / 1024 / 1024
+	if err != nil {
+		log.Error().Err(err).Msg("dataset import failed")
+		return
 	}
+	log.Info().Msgf("Report %#v", report)
 
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	// For info on each, see: https://golang.org/pkg/runtime/#MemStats
-	log.Info().Msgf("Alloc = %v MiB\tHeapAlloc  = %v MiB\tTotalAlloc = %v MiB\tSys = %v MiB\tNumGC = %v", bToMB(m.Alloc), bToMB(m.HeapAlloc), bToMB(m.TotalAlloc), bToMB(m.Sys), m.NumGC)
-
-	return m.Alloc
+	stats.LogMemUsage()
 }

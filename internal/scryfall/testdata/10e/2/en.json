@@ -1,0 +1,10 @@
+{
+  "card_faces": [
+    {
+      "name": "Second",
+      "image_uris": {
+        "normal": "http://localhost/images/cardImage.jpg"
+      }
+    }
+  ]
+}

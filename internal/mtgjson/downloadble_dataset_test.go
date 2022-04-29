@@ -14,13 +14,13 @@ type mockImporter struct {
 	content string
 }
 
-func (imp *mockImporter) Import(r io.Reader) (*api.Report, error) {
+func (imp *mockImporter) Import(r io.Reader) (*api.DatasetReport, error) {
 	c, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
 	imp.content = string(c)
-	return &api.Report{}, nil
+	return &api.DatasetReport{}, nil
 }
 
 func TestDownloadableImport(t *testing.T) {
@@ -47,7 +47,7 @@ func TestDownloadableImport(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeImporter := &mockImporter{}
-			imp := NewDownloadableImport(fakeImporter)
+			imp := NewDownloadableDataset(fakeImporter)
 
 			_, err := imp.Import(tc.fixture)
 			if err != nil {
@@ -88,7 +88,7 @@ func TestDownloadableImportFails(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeImporter := &mockImporter{}
-			imp := NewDownloadableImport(fakeImporter)
+			imp := NewDownloadableDataset(fakeImporter)
 
 			_, err := imp.Import(tc.fixture)
 			if err == nil {
