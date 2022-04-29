@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"github.com/konstantinfoerster/card-importer-go/internal/api"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
@@ -18,16 +19,26 @@ import (
 	"time"
 )
 
+const usage = `Usage: card-images-cli [options...]
+  -c, --config path to the config file (default: ./configs/application.yaml)
+  -p, --page start page number (default: 1)
+  -s, --size amount of entries per page (default: 20)
+  -h, --help prints help information
+`
+
+var configPath string
 var pageConfig api.PageConfig
 
 func init() {
 	logger.SetupConsoleLogger()
 
-	var configPath string
-
+	flag.StringVar(&configPath, "c", "./configs/application.yaml", "path to the config file")
 	flag.StringVar(&configPath, "config", "./configs/application.yaml", "path to the config file")
-	flag.IntVar(&pageConfig.Page, "page", 1, "Start page number")
-	flag.IntVar(&pageConfig.Size, "size", 20, "Amount of cards per page")
+	flag.IntVar(&pageConfig.Page, "p", 1, "start page number")
+	flag.IntVar(&pageConfig.Page, "page", 1, "start page number")
+	flag.IntVar(&pageConfig.Size, "s", 20, "amount of entries per page")
+	flag.IntVar(&pageConfig.Size, "size", 20, "amount of entries per page")
+	flag.Usage = func() { fmt.Print(usage) }
 	flag.Parse()
 
 	err := config.Load(configPath)
