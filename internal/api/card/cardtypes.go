@@ -1,7 +1,6 @@
 package card
 
 import (
-	"database/sql"
 	"fmt"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 	"strings"
@@ -32,7 +31,7 @@ type CharacteristicDao struct {
 	joinTable string
 }
 
-func newEntity(id sql.NullInt64, name string) *CharacteristicType {
+func newEntity(id PrimaryId, name string) *CharacteristicType {
 	return &CharacteristicType{Id: id, Name: name}
 }
 
@@ -49,7 +48,7 @@ func (d *CharacteristicDao) Create(name string) (*CharacteristicType, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newEntity(sql.NullInt64{Int64: id, Valid: true}, name), nil
+	return newEntity(NewPrimaryId(id), name), nil
 }
 
 func (d *CharacteristicDao) Find(names ...string) ([]*CharacteristicType, error) {

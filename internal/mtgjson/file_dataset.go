@@ -8,19 +8,19 @@ import (
 	"os"
 )
 
-type FileImport struct {
-	importer  api.Importer
+type fileDataset struct {
+	dataset   api.Dataset
 	readLimit int64
 }
 
-func NewFileImport(importer api.Importer) *FileImport {
-	return &FileImport{
-		importer:  importer,
+func NewFileDataset(dataset api.Dataset) api.Dataset {
+	return &fileDataset{
+		dataset:   dataset,
 		readLimit: 255,
 	}
 }
 
-func (imp *FileImport) Import(r io.Reader) (*api.Report, error) {
+func (imp *fileDataset) Import(r io.Reader) (*api.DatasetReport, error) {
 	rLimit := &io.LimitedReader{
 		R: r,
 		N: imp.readLimit + 1, // + 1 to check if we read more bytes than expected
@@ -49,6 +49,6 @@ func (imp *FileImport) Import(r io.Reader) (*api.Report, error) {
 		}
 	}(f)
 
-	report, err := imp.importer.Import(f)
+	report, err := imp.dataset.Import(f)
 	return report, err
 }

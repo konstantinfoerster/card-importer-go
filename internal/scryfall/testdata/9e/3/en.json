@@ -1,0 +1,6 @@
+{
+  "name": "Third",
+  "image_uris": {
+    "normal": "http://localhost/images/cardImage.jpg"
+  }
+}

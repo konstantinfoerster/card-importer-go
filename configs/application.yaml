@@ -1,8 +1,5 @@
 logging:
-  level: DEBUG
-
-mtgjson:
-  downloadURL: https://mtgjson.com/api/v5/AllPrintings.json.zip
+  level: INFO
 
 database:
   host: 127.0.0.1
@@ -10,3 +7,13 @@ database:
   database: cardmanager
   username: tester
   password: tester
+
+mtgjson:
+  downloadURL: https://mtgjson.com/api/v5/AllPrintings.json.zip
+
+scryfall:
+  downloadURL: https://api.scryfall.com/cards/{code}/{number}/{lang}?format={format}&version=normal
+
+storage:
+  location: /tmp/images
+  mode: REPLACE

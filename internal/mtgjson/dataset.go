@@ -10,32 +10,30 @@ import (
 	"golang.org/x/sync/errgroup"
 	"io"
 	"strconv"
-	strings "strings"
+	"strings"
 	"time"
 )
 
-var languages = [2]string{"deu", "eng"}
-
 var externalLangToLang = map[string]string{
-	"German":  languages[0],
-	"English": languages[1],
+	"German":  api.SupportedLanguages[0],
+	"English": api.SupportedLanguages[1],
 }
 
 var doubleFaceCards = map[string]*card.Card{}
 
-type Importer struct {
+type dataset struct {
 	setService  cardset.Service
 	cardService card.Service
 }
 
-func NewImporter(setService cardset.Service, cardService card.Service) api.Importer {
-	return &Importer{
+func NewImporter(setService cardset.Service, cardService card.Service) api.Dataset {
+	return &dataset{
 		setService:  setService,
 		cardService: cardService,
 	}
 }
 
-func (imp *Importer) Import(r io.Reader) (*api.Report, error) {
+func (imp *dataset) Import(r io.Reader) (*api.DatasetReport, error) {
 	errg, ctx := errgroup.WithContext(context.Background())
 
 	for r := range parse(ctx, r) {
@@ -97,7 +95,7 @@ func (imp *Importer) Import(r io.Reader) (*api.Report, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &api.Report{
+	return &api.DatasetReport{
 		CardCount: cardCount,
 		SetCount:  setCount,
 	}, nil
@@ -111,6 +109,7 @@ func expectedFaceCount(v *mtgjsonCard) int {
 	// card name contains all face names seperated by //
 	return len(strings.Split(v.Name, "//"))
 }
+
 func collectFaces(faceCount int, v *mtgjsonCard, card *card.Card) bool {
 	if faceCount > 1 {
 		key := fmt.Sprintf("%s_%s", card.CardSetCode, v.Number)
@@ -162,10 +161,6 @@ func mapToCardSet(s *mtgjsonCardSet) (*cardset.CardSet, error) {
 }
 
 func mapToCard(c *mtgjsonCard) (*card.Card, error) {
-	var colors []string
-	for _, color := range c.Colors {
-		colors = append(colors, strings.TrimSpace(color)) // TODO maybe to upper case?
-	}
 	multiverseId, err := strToInt32(c.Identifiers.MultiverseId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert 'MultiverseId' value %s into an int32. %w", c.Identifiers.MultiverseId, err)
@@ -211,7 +206,7 @@ func mapToCard(c *mtgjsonCard) (*card.Card, error) {
 		Name:              strings.TrimSpace(name),
 		Artist:            strings.TrimSpace(c.Artist),
 		ConvertedManaCost: cmc,
-		Colors:            colors,
+		Colors:            card.NewColors(c.Colors),
 		Text:              strings.TrimSpace(c.Text),
 		FlavorText:        strings.TrimSpace(c.FlavorText),
 		HandModifier:      strings.TrimSpace(c.Hand),
@@ -227,6 +222,7 @@ func mapToCard(c *mtgjsonCard) (*card.Card, error) {
 		Subtypes:          subtypes,
 		Translations:      translations,
 	}
+
 	return &card.Card{
 		Name:        strings.TrimSpace(c.Name),
 		CardSetCode: strings.TrimSpace(c.Code),

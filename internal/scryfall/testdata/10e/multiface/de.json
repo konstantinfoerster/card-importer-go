@@ -1,0 +1,17 @@
+{
+  "name": "FirstFace // SecondFace",
+  "card_faces": [
+    {
+      "name": "FirstFace",
+      "image_uris": {
+        "normal": "http://localhost/images/cardImage.jpg"
+      }
+    },
+    {
+      "name": "SecondFace",
+      "image_uris": {
+        "normal": "http://localhost/images/cardImage.jpg"
+      }
+    }
+  ]
+}

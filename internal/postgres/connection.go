@@ -22,7 +22,7 @@ type DBConnection struct {
 	pgxCon *pgxpool.Pool
 }
 
-func Connect(ctx context.Context, config *config.Database) (*DBConnection, error) {
+func Connect(ctx context.Context, config config.Database) (*DBConnection, error) {
 	var err error
 
 	once.Do(func() {
@@ -103,6 +103,8 @@ func (d *DBConnection) Cleanup() error {
 		"super_type",
 		"sub_type",
 		"sub_type_translation",
+
+		"card_image",
 	}
 	_, err := d.Conn.Exec(d.Ctx, fmt.Sprintf("TRUNCATE %s RESTART IDENTITY", strings.Join(tables, ",")))
 	return err

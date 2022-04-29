@@ -3,7 +3,7 @@ package cardset
 import (
 	"database/sql"
 	"fmt"
-	"github.com/konstantinfoerster/card-importer-go/internal/api"
+	"github.com/konstantinfoerster/card-importer-go/internal/api/diff"
 	"time"
 )
 
@@ -27,35 +27,35 @@ func (s *CardSet) isValid() error {
 	return nil
 }
 
-func (s CardSet) Diff(other *CardSet) *api.Changeset {
-	changes := api.NewChangeset()
+func (s CardSet) Diff(other *CardSet) *diff.Changeset {
+	changes := diff.NewChangeset()
 
 	if other.Block.Id.Valid && other.Block.notEquals(s.Block) {
-		changes.Add("Block", api.Changes{
+		changes.Add("Block", diff.Changes{
 			From: s.Block,
 			To:   other.Block,
 		})
 	}
 	if s.Name != other.Name {
-		changes.Add("Name", api.Changes{
+		changes.Add("Name", diff.Changes{
 			From: s.Name,
 			To:   other.Name,
 		})
 	}
 	if s.Type != other.Type {
-		changes.Add("Type", api.Changes{
+		changes.Add("Type", diff.Changes{
 			From: s.Type,
 			To:   other.Type,
 		})
 	}
 	if !s.Released.Equal(other.Released) {
-		changes.Add("Released", api.Changes{
+		changes.Add("Released", diff.Changes{
 			From: s.Released,
 			To:   other.Released,
 		})
 	}
 	if s.TotalCount != other.TotalCount {
-		changes.Add("TotalCount", api.Changes{
+		changes.Add("TotalCount", diff.Changes{
 			From: s.TotalCount,
 			To:   other.TotalCount,
 		})

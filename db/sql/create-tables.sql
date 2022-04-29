@@ -233,3 +233,16 @@ CREATE TABLE public.face_card_type
     type_id INTEGER REFERENCES public.card_type (id),
     UNIQUE (face_id, type_id)
 );
+
+
+CREATE TABLE public.card_image
+(
+    id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    image_path VARCHAR(255) NOT NULL CHECK ( image_path <> '' ),
+    lang_lang  CHAR(3) REFERENCES public.lang (lang),
+    card_id    INTEGER,
+    face_id    INTEGER,
+--     UNIQUE (lang_lang, card_id),
+    UNIQUE (lang_lang, face_id),
+    UNIQUE (image_path)
+);

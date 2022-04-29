@@ -1,36 +1,25 @@
 package mtgjson
 
 import (
-	"context"
 	"database/sql"
-	"fmt"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/cardset"
-	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
-	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
 	"io"
-	"io/ioutil"
-	"path/filepath"
-	"runtime"
 	"sort"
 	"testing"
 	"time"
 )
 
-var conn *postgres.DBConnection
-var cleanupDB func(t *testing.T) func()
+var runner *postgres.DatabaseRunner
 
 func TestImportIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration tests")
 	}
-
-	runWithDatabase(t, func() {
+	runner = postgres.NewRunner()
+	runner.Run(t, func() {
 		t.Run("CardSet: create and update", cardSetCreateAndUpdate)
 		t.Run("CardSet Block: create and update", blockCreateAndUpdate)
 		t.Run("CardSet Translations: create, update and remove", cardSetTranslations)
@@ -42,10 +31,10 @@ func TestImportIntegration(t *testing.T) {
 }
 
 func cardSetCreateAndUpdate(t *testing.T) {
-	t.Cleanup(cleanupDB(t))
+	t.Cleanup(runner.Cleanup(t))
 
-	csDao := cardset.NewDao(conn)
-	importer := NewImporter(cardset.NewService(csDao), card.NewService(card.NewDao(conn)))
+	csDao := cardset.NewDao(runner.Connection())
+	importer := NewImporter(cardset.NewService(csDao), card.NewService(card.NewDao(runner.Connection())))
 	want := &cardset.CardSet{
 		Code:       "10E",
 		Block:      cardset.CardBlock{Block: "Updated Block"},
@@ -72,10 +61,10 @@ func cardSetCreateAndUpdate(t *testing.T) {
 }
 
 func blockCreateAndUpdate(t *testing.T) {
-	t.Cleanup(cleanupDB(t))
+	t.Cleanup(runner.Cleanup(t))
 
-	csDao := cardset.NewDao(conn)
-	importer := NewImporter(cardset.NewService(csDao), card.NewService(card.NewDao(conn)))
+	csDao := cardset.NewDao(runner.Connection())
+	importer := NewImporter(cardset.NewService(csDao), card.NewService(card.NewDao(runner.Connection())))
 
 	_, err := importer.Import(fromFile(t, "testdata/set/set_no_cards_create.json"))
 	if err != nil {
@@ -121,9 +110,9 @@ func cardSetTranslations(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Cleanup(cleanupDB(t))
-			csDao := cardset.NewDao(conn)
-			importer := NewImporter(cardset.NewService(csDao), card.NewService(card.NewDao(conn)))
+			t.Cleanup(runner.Cleanup(t))
+			csDao := cardset.NewDao(runner.Connection())
+			importer := NewImporter(cardset.NewService(csDao), card.NewService(card.NewDao(runner.Connection())))
 
 			_, err := importer.Import(fromFile(t, "testdata/set/translations_create.json"))
 			if err != nil {
@@ -152,7 +141,7 @@ func cardCreateUpdate(t *testing.T) {
 			Faces: []*card.Face{
 				{
 					Artist:            "Artist Updated",
-					Colors:            []string{"B", "W"},
+					Colors:            card.NewColors([]string{"B", "W"}),
 					ConvertedManaCost: 20,
 					FlavorText:        "Flavor Text Updated",
 					MultiverseId:      123,
@@ -219,9 +208,9 @@ func cardCreateUpdate(t *testing.T) {
 		},
 	}
 
-	t.Cleanup(cleanupDB(t))
-	cDao := card.NewDao(conn)
-	imp := NewImporter(cardset.NewService(cardset.NewDao(conn)), card.NewService(cDao))
+	t.Cleanup(runner.Cleanup(t))
+	cDao := card.NewDao(runner.Connection())
+	imp := NewImporter(cardset.NewService(cardset.NewDao(runner.Connection())), card.NewService(cDao))
 
 	_, err := imp.Import(fromFile(t, "testdata/card/one_card_no_references_create.json"))
 	if err != nil {
@@ -321,10 +310,10 @@ func cardTranslations(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Cleanup(cleanupDB(t))
+			t.Cleanup(runner.Cleanup(t))
 
-			cDao := card.NewDao(conn)
-			imp := NewImporter(cardset.NewService(cardset.NewDao(conn)), card.NewService(cDao))
+			cDao := card.NewDao(runner.Connection())
+			imp := NewImporter(cardset.NewService(cardset.NewDao(runner.Connection())), card.NewService(cDao))
 
 			_, err := imp.Import(fromFile(t, "testdata/card/two_translations_create.json"))
 			if err != nil {
@@ -411,10 +400,10 @@ func cardTypes(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Cleanup(cleanupDB(t))
+			t.Cleanup(runner.Cleanup(t))
 
-			cDao := card.NewDao(conn)
-			importer := NewImporter(cardset.NewService(cardset.NewDao(conn)), card.NewService(cDao))
+			cDao := card.NewDao(runner.Connection())
+			importer := NewImporter(cardset.NewService(cardset.NewDao(runner.Connection())), card.NewService(cDao))
 
 			_, err := importer.Import(fromFile(t, "testdata/type/create.json"))
 			if err != nil {
@@ -435,10 +424,10 @@ func cardTypes(t *testing.T) {
 }
 
 func duplicatedCardTypes(t *testing.T) {
-	t.Cleanup(cleanupDB(t))
+	t.Cleanup(runner.Cleanup(t))
 
-	cDao := card.NewDao(conn)
-	importer := NewImporter(cardset.NewService(cardset.NewDao(conn)), card.NewService(cDao))
+	cDao := card.NewDao(runner.Connection())
+	importer := NewImporter(cardset.NewService(cardset.NewDao(runner.Connection())), card.NewService(cDao))
 
 	_, err := importer.Import(fromFile(t, "testdata/type/duplicate.json"))
 	if err != nil {
@@ -487,134 +476,10 @@ func findUniqueCardWithReferences(t *testing.T, cDao *card.PostgresCardDao, setC
 		sort.Strings(cardTypes)
 		face.Cardtypes = cardTypes
 
-		face.Id = sql.NullInt64{}
+		face.Id = card.PrimaryId{}
 		c.Faces = append(c.Faces, face)
 	}
 
-	c.Id = sql.NullInt64{}
+	c.Id = card.PrimaryId{}
 	return c
-}
-
-func runWithDatabase(t *testing.T, runTests func()) {
-	ctx := context.Background()
-	err := runPostgresContainer(ctx, func(cfg *config.Database) error {
-		dbConn, err := postgres.Connect(ctx, cfg)
-		if err != nil {
-			return err
-		}
-		defer func(toClose *postgres.DBConnection) {
-			cErr := toClose.Close()
-			if cErr != nil {
-				// report close errors
-				if err == nil {
-					err = cErr
-				} else {
-					err = errors.Wrap(err, cErr.Error())
-				}
-			}
-		}(dbConn)
-		conn = dbConn
-
-		cleanupDB = func(t *testing.T) func() {
-			return func() {
-				cErr := conn.Cleanup()
-				if cErr != nil {
-					t.Fatalf("failed to cleanup database %v", cErr)
-				}
-			}
-		}
-
-		runTests()
-
-		return err
-	})
-
-	if err != nil {
-		t.Fatalf("failed to start container %v", err)
-	}
-}
-
-func runPostgresContainer(ctx context.Context, f func(c *config.Database) error) error {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return fmt.Errorf("failed to get caller")
-	}
-	dbDirLink := filepath.Join(filepath.Dir(file), "testdata", "db")
-
-	dbDir, err := filepath.EvalSymlinks(dbDirLink)
-	if err != nil {
-		return err
-	}
-	username := "tester"
-	password := "tester"
-	database := "cardmanager"
-
-	// TODO read env variables from config
-	req := testcontainers.ContainerRequest{
-		Image:        "postgres:14-alpine",
-		ExposedPorts: []string{"5432/tcp"},
-		BindMounts: map[string]string{
-			"/docker-entrypoint-initdb.d": dbDir,
-		},
-		Env: map[string]string{
-			"POSTGRES_DB":       "postgres",
-			"POSTGRES_PASSWORD": "test",
-			"APP_DB_USER":       username,
-			"APP_DB_PASS":       password,
-			"APP_DB_NAME":       database,
-		},
-		WaitingFor: wait.ForLog("[1] LOG:  database system is ready to accept connections"),
-	}
-
-	postgresC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
-	})
-	if err != nil {
-		return err
-	}
-	defer func(toClose testcontainers.Container) {
-		cErr := toClose.Terminate(ctx)
-		if cErr != nil {
-			// report close errors
-			if err == nil {
-				err = cErr
-			} else {
-				err = errors.Wrap(err, cErr.Error())
-			}
-		}
-	}(postgresC)
-
-	if log.Debug().Enabled() {
-		logs, err := postgresC.Logs(ctx)
-		if err != nil {
-			return err
-		}
-		defer logs.Close()
-		b, err := ioutil.ReadAll(logs)
-		if err != nil {
-			return err
-		}
-		log.Debug().Msg(string(b))
-	}
-
-	ip, err := postgresC.Host(ctx)
-	if err != nil {
-		return err
-	}
-
-	mappedPort, err := postgresC.MappedPort(ctx, "5432")
-	if err != nil {
-		return err
-	}
-
-	dbConfig := &config.Database{
-		Username: username,
-		Password: password,
-		Host:     ip,
-		Port:     mappedPort.Port(),
-		Database: database,
-	}
-	err = f(dbConfig)
-	return err
 }

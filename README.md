@@ -7,8 +7,12 @@ into a local postgres database.
 
 ## Run locally
 
-First start a local postgres database e.g. via `docker-compose up`. This will start the database on port **15432**.
-Run `go run cmd/importer.go` to start the application.
+### Database
+First start a local postgres database e.g. via `docker-compose up -d`. This will start the database on port **15432**.
+Use `docker-compose pull` to update the image version. 
+
+### Import Dataset
+Run `go run cmd/dataset/main.go` to start the application.
 
 ## Configuration
 
@@ -25,7 +29,7 @@ It can be found at **configs/application.yaml**.
 
 ## Build
 
-Build with `go build cmd/importer.go`
+Build with `go build -o card-importer-cli cmd/dataset/main.go` or `go build -o images-importer-cli cmd/images/main.go`
 
 ## Dependencies
 
@@ -45,20 +49,20 @@ Just run `docker run --rm -i hadolint/hadolint < Dockerfile` to check your Docke
 The lint aggregator [golangci-lint](https://golangci-lint.run/) can be used to apply best practice and find errors in
 your golang code.
 
-Just run `docker run --rm -v $(pwd):/app -w /app golangci/golangci-lint:v1.43.0 golangci-lint run -v` inside the root
+Just run `docker run --rm -v $(pwd):/app -w /app golangci/golangci-lint:v1.45.2 golangci-lint run -v` inside the root
 dir of the project to start the linting process.
 
 ## TODOS
 
-* Maybe drop the internal package?
 * Provide a make file
     * https://earthly.dev/blog/golang-makefile/
 * Persist NULL instead of empty string if column is nullable
+* Reuse Fetcher and Storage in downloadble_dataset.go
 
-## For later usage
-
-Select card with all faces into as json:
-
-```
-SELECT to_jsonb(r) FROM ( SELECT c.id, c.card_set_code, c.number, c.border, c.rarity,  COALESCE(json_agg(t), '[]') as faces FROM  card AS c LEFT JOIN card_translation AS t ON c.id = t.card_id  GROUP BY c.id) r
-```
+First idea how to serve the images:
+1. Download all images via this tool
+2. Compress everything into one zip file
+3. Upload to a server to host the files
+4. Build container that is able to server the images from file system
+   1. Startup process of the container downloads the hosted compressed file
+   2. Extract all images into served dir

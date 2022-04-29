@@ -12,9 +12,9 @@ FROM scratch
 ARG RELEASE
 ENV IMG_VERSION="${RELEASE}"
 
-COPY --from=copy-src /usr/local/bin/card-importer-cli /
+COPY --from=copy-src /usr/local/bin/card-dataset-cli /
 
-ENTRYPOINT ["/card-importer-cli"]
+ENTRYPOINT ["/card-dataset-cli"]
 CMD ["--config", "/config/application.yaml"]
 
 LABEL org.opencontainers.image.title="Card Importer CLI" \

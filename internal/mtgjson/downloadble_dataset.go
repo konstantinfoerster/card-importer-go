@@ -15,15 +15,15 @@ import (
 	"time"
 )
 
-type DownloadableImport struct {
-	importer  api.Importer
+type downloadableDataset struct {
+	dataset   api.Dataset
 	readLimit int64
 }
 
-func NewDownloadableImport(importer api.Importer) *DownloadableImport {
-	return &DownloadableImport{
-		importer:  importer,
-		readLimit: 100,
+func NewDownloadableDataset(dataset api.Dataset) api.Dataset {
+	return &downloadableDataset{
+		dataset:   dataset,
+		readLimit: 100, // max length of the url
 	}
 }
 
@@ -36,7 +36,7 @@ func (f *downloadedFile) isZip() bool {
 	return f.contentType == "application/zip"
 }
 
-func (imp *DownloadableImport) Import(r io.Reader) (*api.Report, error) {
+func (imp *downloadableDataset) Import(r io.Reader) (*api.DatasetReport, error) {
 	rLimit := &io.LimitedReader{
 		R: r,
 		N: imp.readLimit + 1, // + 1 to check if we read more bytes than expected
@@ -85,7 +85,7 @@ func (imp *DownloadableImport) Import(r io.Reader) (*api.Report, error) {
 		}
 	}(f)
 
-	report, err := imp.importer.Import(f)
+	report, err := imp.dataset.Import(f)
 	return report, err
 }
 
@@ -96,7 +96,6 @@ func download(url string) (*downloadedFile, error) {
 	log.Info().Msgf("Downloading %s", url)
 	doOnce.Do(func() {
 		client = &http.Client{
-			// is that enough
 			Timeout: time.Second * 100,
 		}
 	})

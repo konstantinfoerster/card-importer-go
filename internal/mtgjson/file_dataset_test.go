@@ -27,7 +27,7 @@ func TestFileImport(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeImporter := &mockImporter{}
-			imp := NewFileImport(fakeImporter)
+			imp := NewFileDataset(fakeImporter)
 
 			_, err := imp.Import(tc.fixture)
 			if err != nil {
@@ -60,7 +60,7 @@ func TestFileImportFails(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeImporter := &mockImporter{}
-			imp := NewFileImport(fakeImporter)
+			imp := NewFileDataset(fakeImporter)
 
 			_, err := imp.Import(tc.fixture)
 			if err == nil {
