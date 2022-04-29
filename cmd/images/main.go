@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"github.com/konstantinfoerster/card-importer-go/internal/api"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
@@ -17,13 +18,16 @@ import (
 	"time"
 )
 
+var pageConfig api.PageConfig
+
 func init() {
 	logger.SetupConsoleLogger()
 
 	var configPath string
 
 	flag.StringVar(&configPath, "config", "./configs/application.yaml", "path to the config file")
-
+	flag.IntVar(&pageConfig.Page, "page", 1, "Start page number")
+	flag.IntVar(&pageConfig.Size, "size", 20, "Amount of cards per page")
 	flag.Parse()
 
 	err := config.Load(configPath)
@@ -68,7 +72,7 @@ func main() {
 
 	cardDao := card.NewDao(conn)
 
-	report, err := scryfall.NewImporter(cfg.Scryfall, fetcher, store, cardDao).Import()
+	report, err := scryfall.NewImporter(cfg.Scryfall, fetcher, store, cardDao).Import(pageConfig)
 	if err != nil {
 		log.Error().Err(err).Msg("image import failed")
 		return

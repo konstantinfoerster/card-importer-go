@@ -2,6 +2,7 @@ package scryfall
 
 import (
 	"fmt"
+	"github.com/konstantinfoerster/card-importer-go/internal/api"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
@@ -44,6 +45,8 @@ var runner *postgres.DatabaseRunner
 var fetcher fetch.Fetcher
 var cfg config.Scryfall
 var cardDao *card.PostgresCardDao
+
+var firstPage20Entries = api.PageConfig{Page: 1, Size: 20}
 
 func TestImageIntegration(t *testing.T) {
 	if testing.Short() {
@@ -123,7 +126,7 @@ func importDifferentSets(t *testing.T) {
 	})
 
 	importer := NewImporter(cfg, fetcher, localStorage, cardDao)
-	report, err := importer.Import()
+	report, err := importer.Import(firstPage20Entries)
 	if err != nil {
 		t.Fatalf("import failed %v", err)
 	}
@@ -159,7 +162,7 @@ func ignoresCardNamesCases(t *testing.T) {
 	})
 
 	importer := NewImporter(cfg, fetcher, localStorage, cardDao)
-	report, err := importer.Import()
+	report, err := importer.Import(firstPage20Entries)
 	if err != nil {
 		t.Fatalf("import failed %v", err)
 	}
@@ -221,7 +224,7 @@ func importNextLanguageOnMissingCard(t *testing.T) {
 			createCard(t, &tc.fixture)
 
 			importer := NewImporter(cfg, fetcher, localStorage, cardDao)
-			report, err := importer.Import()
+			report, err := importer.Import(firstPage20Entries)
 			if err != nil {
 				t.Fatalf("import failed %v", err)
 			}
@@ -307,7 +310,7 @@ func importMultiFaces(t *testing.T) {
 			createCard(t, &tc.fixture)
 
 			importer := NewImporter(cfg, fetcher, localStorage, cardDao)
-			report, err := importer.Import()
+			report, err := importer.Import(firstPage20Entries)
 			if err != nil {
 				t.Fatalf("import failed %v", err)
 			}
@@ -343,11 +346,11 @@ func importSameImageMultipleTimes(t *testing.T) {
 	})
 	importer := NewImporter(cfg, fetcher, localStorage, cardDao)
 
-	_, err = importer.Import()
+	_, err = importer.Import(firstPage20Entries)
 	if err != nil {
 		t.Fatalf("import failed %v", err)
 	}
-	report, err := importer.Import()
+	report, err := importer.Import(firstPage20Entries)
 	if err != nil {
 		t.Fatalf("import failed %v", err)
 	}
@@ -434,7 +437,7 @@ func testErrorCases(t *testing.T) {
 
 			importer := NewImporter(cfg, fetcher, localStorage, cardDao)
 
-			report, err := importer.Import()
+			report, err := importer.Import(firstPage20Entries)
 			if err != nil {
 				t.Fatalf("import failed %v", err)
 			}

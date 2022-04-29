@@ -29,7 +29,14 @@ func NewImporter(config config.Scryfall, fetcher fetch.Fetcher, storage storage.
 	}
 }
 
-func (img *images) Import() (*api.ImageReport, error) {
+func (img *images) Import(pageConfig api.PageConfig) (*api.ImageReport, error) {
+	if pageConfig.Page <= 0 {
+		pageConfig.Page = 1
+	}
+	if pageConfig.Size < 0 {
+		pageConfig.Size = 0
+	}
+
 	img.imgReport = &api.ImageReport{}
 
 	cardCount, err := img.cardDao.Count()
@@ -37,9 +44,9 @@ func (img *images) Import() (*api.ImageReport, error) {
 		return nil, fmt.Errorf("failed to get card count %w", err)
 	}
 
-	cardsPerPage := 20
+	cardsPerPage := pageConfig.Size
 	maxPages := cardCount / cardsPerPage
-	page := 0
+	page := pageConfig.Page - 1
 	for {
 		page = page + 1
 		cards, err := img.cardDao.Paged(page, cardsPerPage)
