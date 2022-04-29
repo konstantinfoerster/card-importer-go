@@ -23,6 +23,7 @@ func TestFindMatchingCard(t *testing.T) {
 	want := []*MatchedPart{
 		{
 			Url:         "http://localhost/first",
+			CardId:      1,
 			MatchedType: "CARD",
 			MatchedId:   1,
 		},
@@ -54,6 +55,7 @@ func TestFindMatchingFace(t *testing.T) {
 			want: []*MatchedPart{
 				{
 					Url:         "http://localhost/first",
+					CardId:      1,
 					MatchedType: "FACE",
 					MatchedId:   2,
 				},
@@ -78,11 +80,13 @@ func TestFindMatchingFace(t *testing.T) {
 			want: []*MatchedPart{
 				{
 					Url:         "http://localhost/first",
+					CardId:      1,
 					MatchedType: "FACE",
 					MatchedId:   2,
 				},
 				{
 					Url:         "http://localhost/second",
+					CardId:      1,
 					MatchedType: "FACE",
 					MatchedId:   3,
 				},
