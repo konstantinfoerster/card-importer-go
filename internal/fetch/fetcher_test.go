@@ -81,43 +81,6 @@ func TestFetchFails(t *testing.T) {
 	}
 }
 
-func TestBuildFilename(t *testing.T) {
-	r := Response{ContentType: "application/json"}
-	want := "test.json"
-
-	got, err := r.BuildFilename("test")
-
-	if err != nil {
-		t.Fatalf("expected no error for known content type %v", err)
-	}
-
-	assert.Equal(t, want, got)
-}
-
-func TestBuildFilenameFailsIfPrefixIsMissing(t *testing.T) {
-	r := Response{ContentType: "application/json"}
-
-	_, err := r.BuildFilename("")
-
-	if err == nil {
-		t.Fatal("got no error, expected an error if prefix is missing")
-	}
-
-	assert.Contains(t, err.Error(), "required")
-}
-
-func TestBuildFilenameFailsOnUnknownContentType(t *testing.T) {
-	r := Response{ContentType: "unknown"}
-
-	_, err := r.BuildFilename("test")
-
-	if err == nil {
-		t.Fatal("got no error, expected an error if content type is unknown")
-	}
-
-	assert.Contains(t, err.Error(), "unsupported content type")
-}
-
 func assertSameFile(t *testing.T, expected string, f *Response) {
 	defer f.Body.Close()
 

@@ -2,8 +2,8 @@ package scryfall
 
 import (
 	"fmt"
-	"github.com/konstantinfoerster/card-importer-go/internal/api"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
+	"github.com/konstantinfoerster/card-importer-go/internal/api/images"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	"github.com/konstantinfoerster/card-importer-go/internal/scryfall/client"
@@ -12,91 +12,32 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type images struct {
-	config    config.Scryfall
-	client    *client.Client
-	storage   storage.Storage
-	cardDao   *card.PostgresCardDao
-	imgReport *api.ImageReport
+type processor struct {
+	config  config.Scryfall
+	client  *client.Client
+	storage storage.Storage
 }
 
-func NewImporter(config config.Scryfall, fetcher fetch.Fetcher, storage storage.Storage, cardDao *card.PostgresCardDao) api.Images {
-	return &images{
-		config:  config,
-		client:  client.New(fetcher, config),
-		storage: storage,
-		cardDao: cardDao,
+func NewProcessor(config config.Scryfall, fetcher fetch.Fetcher) images.CardProcessor {
+	return &processor{
+		config: config,
+		client: client.New(fetcher, config),
 	}
 }
 
-func (img *images) Import(pageConfig api.PageConfig) (*api.ImageReport, error) {
-	if pageConfig.Page <= 0 {
-		pageConfig.Page = 1
-	}
-	if pageConfig.Size < 0 {
-		pageConfig.Size = 0
-	}
-
-	img.imgReport = &api.ImageReport{}
-
-	cardCount, err := img.cardDao.Count()
+func (p *processor) Process(c *card.Card, lang string) (*images.Result, error) {
+	externalCard, err := p.client.GetByCardAndLang(c, lang)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get card count %w", err)
+		if errors.Is(err, fetch.NotFoundError) {
+			log.Warn().Msgf("no scryfall card found with set %s, name %s, number %s and language %s", c.CardSetCode, c.Name, c.Number, lang)
+			return &images.Result{}, nil
+		}
+		return nil, fmt.Errorf("failed to download scryfall card with set %s, name %s, number %s and language %s, reason: %w", c.CardSetCode, c.Name, c.Number, lang, err)
 	}
 
-	cardsPerPage := pageConfig.Size
-	maxPages := cardCount / cardsPerPage
-	page := pageConfig.Page - 1
-	for {
-		page = page + 1
-		cards, err := img.cardDao.Paged(page, cardsPerPage)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get card list for page %d and size %d", page, cardsPerPage)
-		}
-		if len(cards) == 0 {
-			break
-		}
+	matches := externalCard.FindMatchingCardParts(c)
 
-		log.Info().Msgf("Processing page %d/%d with %d cards", page, maxPages, len(cards))
-		for _, c := range cards {
-			if err = img.importCardPerLanguage(c, api.SupportedLanguages); err != nil {
-				return nil, err
-			}
-		}
-	}
-
-	return img.imgReport, nil
-}
-
-func (img *images) importCardPerLanguage(c *card.Card, langs []string) error {
-	for _, lang := range langs {
-		imgExists, err := img.cardDao.IsImagePresent(c.Id.Get(), lang)
-		if err != nil {
-			return fmt.Errorf("failed to check if card image already exists for card wtih set %s, "+
-				"name %s, number %s and language %s %w", c.CardSetCode, c.Name, c.Number, lang, err)
-		}
-		if imgExists {
-			img.imgReport.ImagesSkipped += 1
-			continue
-		}
-
-		externalCard, err := img.client.GetByCardAndLang(c, lang)
-		if err != nil {
-			if errors.Is(err, fetch.NotFoundError) {
-				img.imgReport.MissingMetadata += 1
-				log.Warn().Msgf("no scryfall card found with set %s, name %s, number %s and language %s", c.CardSetCode, c.Name, c.Number, lang)
-				continue
-			}
-			return fmt.Errorf("failed to download scryfall card with set %s, name %s, number %s and language %s, reason: %w", c.CardSetCode, c.Name, c.Number, lang, err)
-		}
-
-		matches := externalCard.FindMatchingCardParts(c)
-
-		if err = img.downloadImage(matches, c, lang); err != nil {
-			return err
-		}
-	}
-	return nil
+	return p.downloadImage(matches, lang)
 }
 
 func matchToCardImage(m *client.MatchedPart, lang string) *card.CardImage {
@@ -113,39 +54,28 @@ func matchToCardImage(m *client.MatchedPart, lang string) *card.CardImage {
 	}
 }
 
-func (img *images) downloadImage(matches []*client.MatchedPart, c *card.Card, lang string) error {
+func (p *processor) downloadImage(matches []*client.MatchedPart, lang string) (*images.Result, error) {
+	var result []func() (*card.CardImage, error)
+
 	for _, m := range matches {
 		cardImage := matchToCardImage(m, lang)
 
-		var storedFile *storage.StoredFile
-		storeFn := func(result *fetch.Response) error {
-			fileName, err := result.BuildFilename(cardImage.GetFilePrefix())
+		fn := func() (*card.CardImage, error) {
+			img, err := p.client.GetImage(m.Url)
 			if err != nil {
-				return fmt.Errorf("failed to build filename %w", err)
+				if errors.Is(err, fetch.NotFoundError) {
+					log.Warn().Interface("url", m.Url).Msg("card image not found")
+					return nil, nil
+				}
+				return nil, fmt.Errorf("failed to download image from %s %w", m.Url, err)
 			}
-			storedFile, err = img.storage.Store(result.Body, lang, c.CardSetCode, fileName)
-			if err != nil {
-				return fmt.Errorf("failed to store card with number %s and set %s %w", c.Number, c.CardSetCode, err)
-			}
-			return nil
-		}
-		err := img.client.GetImage(m.Url, storeFn)
-		if err != nil {
-			if errors.Is(err, fetch.NotFoundError) {
-				log.Warn().Interface("url", m.Url).Msg("card image not found")
-				img.imgReport.ImagesMissing += 1
-				continue
-			}
-			return fmt.Errorf("failed to download image for card name %s, number %s and set %s %w", c.Name, c.Number, c.CardSetCode, err)
-		}
-		cardImage.ImagePath = storedFile.Path
-		if err = img.cardDao.AddImage(cardImage); err != nil {
-			return fmt.Errorf("failed to add image entry for card name %s, number %s and set %s %w", c.Name, c.Number, c.CardSetCode, err)
+			cardImage.MimeType = img.ContentType
+			cardImage.File = img.Body
+			return cardImage, nil
 		}
 
-		log.Debug().Msgf("stored card image %s for lang %s at %s", c.Name, lang, storedFile.Path)
-		img.imgReport.ImagesDownloaded += 1
+		result = append(result, fn)
 	}
 
-	return nil
+	return &images.Result{DownloadCard: result}, nil
 }

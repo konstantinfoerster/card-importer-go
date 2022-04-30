@@ -131,25 +131,13 @@ func (f *Client) GetByCardAndLang(c *card.Card, lang string) (*ScryfallCard, err
 	return &sc, err
 }
 
-func (f *Client) GetImage(url string, afterDownload func(result *fetch.Response) error) error {
+func (f *Client) GetImage(url string) (*fetch.Response, error) {
 	image, err := f.fetchDelayed(url)
 	if err != nil {
-		return fmt.Errorf("failed to download card image from %s %w", url, err)
+		return nil, fmt.Errorf("failed to download card image from %s %w", url, err)
 	}
-	defer func(toClose io.ReadCloser) {
-		cErr := toClose.Close()
-		if cErr != nil {
-			// report close errors
-			if err == nil {
-				err = cErr
-			} else {
-				err = errors.Wrap(err, cErr.Error())
-			}
-		}
-	}(image.Body)
+	return image, err
 
-	err = afterDownload(image)
-	return err
 }
 
 func (f *Client) fetchDelayed(url string) (*fetch.Response, error) {

@@ -1,6 +1,8 @@
 package api
 
-import "io"
+import (
+	"io"
+)
 
 var SupportedLanguages = []string{"deu", "eng"}
 
@@ -11,19 +13,4 @@ type DatasetReport struct {
 
 type Dataset interface {
 	Import(r io.Reader) (*DatasetReport, error)
-}
-
-type ImageReport struct {
-	ImagesDownloaded int
-	ImagesMissing    int
-	ImagesSkipped    int
-	MissingMetadata  int
-}
-
-type PageConfig struct {
-	Page int
-	Size int
-}
-type Images interface {
-	Import(PageConfig) (*ImageReport, error)
 }

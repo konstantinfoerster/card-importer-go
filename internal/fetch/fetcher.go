@@ -19,25 +19,6 @@ type Response struct {
 	Body        io.ReadCloser
 }
 
-func (f *Response) BuildFilename(prefix string) (string, error) {
-	if prefix == "" {
-		return "", fmt.Errorf("prefix is required to build a filenname")
-	}
-	contentType := strings.Split(f.ContentType, ";")[0]
-	switch contentType {
-	case "application/json":
-		return prefix + ".json", nil
-	case "application/zip":
-		return prefix + ".zip", nil
-	case "image/jpeg":
-		return prefix + ".jpg", nil
-	case "image/png":
-		return prefix + ".png", nil
-	default:
-		return "", fmt.Errorf("unsupported content type %s", contentType)
-	}
-}
-
 var doOnce sync.Once
 var client *http.Client
 
