@@ -398,15 +398,15 @@ func (d *PostgresCardDao) AddImage(img *CardImage) error {
 	query := `
 		INSERT INTO
 			card_image (
-				image_path, lang_lang, card_id, face_id
+				image_path, lang_lang, card_id, face_id, mime_type
 			) 
 		VALUES (
-			$1, $2, $3, $4
+			$1, $2, $3, $4, $5
 		)
 		RETURNING
 			id`
 	var id int64
-	err := d.db.Conn.QueryRow(d.db.Ctx, query, img.ImagePath, img.Lang, img.CardId, img.FaceId).Scan(&id)
+	err := d.db.Conn.QueryRow(d.db.Ctx, query, img.ImagePath, img.Lang, img.CardId, img.FaceId, img.MimeType).Scan(&id)
 	if err != nil {
 		return fmt.Errorf("failed to execute card insert %w", err)
 	}

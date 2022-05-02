@@ -1,6 +1,7 @@
 package fetch
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/pkg/errors"
 	"io"
@@ -10,53 +11,33 @@ import (
 	"time"
 )
 
+type Response struct {
+	ContentType string
+	Body        io.Reader
+}
+
 type Fetcher interface {
 	Fetch(url string) (*Response, error)
 }
 
-type Response struct {
-	ContentType string
-	Body        io.ReadCloser
-}
-
-func (f *Response) BuildFilename(prefix string) (string, error) {
-	if prefix == "" {
-		return "", fmt.Errorf("prefix is required to build a filenname")
-	}
-	contentType := strings.Split(f.ContentType, ";")[0]
-	switch contentType {
-	case "application/json":
-		return prefix + ".json", nil
-	case "application/zip":
-		return prefix + ".zip", nil
-	case "image/jpeg":
-		return prefix + ".jpg", nil
-	case "image/png":
-		return prefix + ".png", nil
-	default:
-		return "", fmt.Errorf("unsupported content type %s", contentType)
-	}
-}
-
 var doOnce sync.Once
 var client *http.Client
+var DefaultBodyLimit int64 = 2 * 1024 // in kb
+var DefaultAllowedTypes = []string{"application/json", "image/jpeg", "image/png"}
 
 // TODO Maybe use an interface to do the validation e.g. apply(resp *Response) bool
-func NewFetcher(allowedTypes []string) Fetcher {
+func NewFetcher(allowedTypes []string, bodyLimit int64) Fetcher {
 	return &fetcher{
 		allowedTypes: allowedTypes,
 		timeout:      time.Second * 30,
+		bodyLimit:    bodyLimit,
 	}
-}
-
-func NewDefaultFetcher() Fetcher {
-	allowedTypes := []string{"application/json", "image/jpeg", "image/png"}
-	return NewFetcher(allowedTypes)
 }
 
 type fetcher struct {
 	allowedTypes []string
 	timeout      time.Duration
+	bodyLimit    int64 // in kb
 }
 
 func (f *fetcher) getClient() *http.Client {
@@ -73,20 +54,20 @@ func (f *fetcher) Fetch(url string) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func(toClose io.ReadCloser) {
+		cErr := toClose.Close()
+		if cErr != nil {
+			// report close errors
+			if err == nil {
+				err = cErr
+			} else {
+				err = errors.Wrap(err, cErr.Error())
+			}
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		defer func(toClose io.ReadCloser) {
-			cErr := toClose.Close()
-			if cErr != nil {
-				// report close errors
-				if err == nil {
-					err = cErr
-				} else {
-					err = errors.Wrap(err, cErr.Error())
-				}
-			}
-		}(resp.Body)
-		body, err := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		body, err := io.ReadAll(io.LimitReader(resp.Body, 2048)) // limited size for the error message
 		if err != nil {
 			return nil, err
 		}
@@ -98,9 +79,13 @@ func (f *fetcher) Fetch(url string) (*Response, error) {
 		return nil, fmt.Errorf("unsupported content-type %s", contentType)
 	}
 
+	content, err := f.copyWithLimit(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 	return &Response{
 		ContentType: contentType,
-		Body:        resp.Body,
+		Body:        bytes.NewBuffer(content),
 	}, nil
 }
 
@@ -112,6 +97,22 @@ func (f *fetcher) isAllowedContentType(ct string) bool {
 		}
 	}
 	return false
+}
+
+func (f *fetcher) copyWithLimit(r io.Reader) ([]byte, error) {
+	rLimit := &io.LimitedReader{
+		R: r,
+		N: (f.bodyLimit * 1024) + 1, // + 1 to check if we read more bytes than expected
+	}
+	content, err := io.ReadAll(rLimit)
+	if err != nil {
+		return nil, err
+	}
+	if rLimit.N == 0 {
+		return nil, fmt.Errorf("body must be <= %d kilobytes", f.bodyLimit)
+	}
+
+	return content, nil
 }
 
 type ExternalApiError struct {

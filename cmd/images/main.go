@@ -4,8 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/konstantinfoerster/card-importer-go/internal/api"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
+	"github.com/konstantinfoerster/card-importer-go/internal/api/images"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
@@ -27,7 +27,7 @@ const usage = `Usage: card-images-cli [options...]
 `
 
 var configPath string
-var pageConfig api.PageConfig
+var pageConfig images.PageConfig
 
 func init() {
 	logger.SetupConsoleLogger()
@@ -67,7 +67,7 @@ func main() {
 		log.Error().Err(err).Msg("failed to create local storage")
 		return
 	}
-	fetcher := fetch.NewDefaultFetcher()
+	fetcher := fetch.NewFetcher(fetch.DefaultAllowedTypes, cfg.Scryfall.MaxDownloadSize)
 
 	conn, err := postgres.Connect(context.Background(), cfg.Database)
 	if err != nil {
@@ -83,7 +83,7 @@ func main() {
 
 	cardDao := card.NewDao(conn)
 
-	report, err := scryfall.NewImporter(cfg.Scryfall, fetcher, store, cardDao).Import(pageConfig)
+	report, err := images.NewImporter(cardDao, store, scryfall.NewDownloader(cfg.Scryfall, fetcher)).Import(pageConfig)
 	if err != nil {
 		log.Error().Err(err).Msg("image import failed")
 		return

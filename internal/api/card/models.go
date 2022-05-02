@@ -350,15 +350,39 @@ func (v *Colors) UnmarshalJSON(data []byte) error {
 
 type CardImage struct {
 	Id        PrimaryId
-	ImagePath string
 	Lang      string
 	CardId    PrimaryId
 	FaceId    PrimaryId
+	ImagePath string
+	MimeType  string
 }
 
-func (img *CardImage) GetFilePrefix() string {
-	if img.CardId.Valid {
-		return fmt.Sprintf("card-%d", img.CardId.Get())
+func (img *CardImage) getFilePrefix() (string, error) {
+	// check face id first since card id is always set
+	if img.FaceId.Valid {
+		return fmt.Sprintf("face-%d", img.FaceId.Get()), nil
 	}
-	return fmt.Sprintf("face-%d", img.FaceId.Get())
+	if img.CardId.Valid {
+		return fmt.Sprintf("card-%d", img.CardId.Get()), nil
+	}
+	return "", fmt.Errorf("failed to build file prefix, no valid id provided")
+}
+
+func (img *CardImage) BuildFilename() (string, error) {
+	prefix, err := img.getFilePrefix()
+	if err != nil {
+		return "", fmt.Errorf("can't build file name reason: %w", err)
+	}
+	switch img.MimeType {
+	case "application/json":
+		return prefix + ".json", nil
+	case "application/zip":
+		return prefix + ".zip", nil
+	case "image/jpeg":
+		return prefix + ".jpg", nil
+	case "image/png":
+		return prefix + ".png", nil
+	default:
+		return "", fmt.Errorf("unsupported content type %s", img.MimeType)
+	}
 }

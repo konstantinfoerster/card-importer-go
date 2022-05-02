@@ -43,7 +43,13 @@ Optional parameter:
 
 ## Build
 
-Build with `go build -o card-dataset-cli cmd/dataset/main.go` or `go build -o card-images-cli cmd/images/main.go`
+### Import Dataset
+
+Build it with `go build -o card-dataset-cli cmd/dataset/main.go`
+
+### Import Images
+
+Build it with `go build -o card-images-cli cmd/images/main.go`
 
 ## Dependencies
 

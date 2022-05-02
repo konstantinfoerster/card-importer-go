@@ -239,10 +239,19 @@ CREATE TABLE public.card_image
 (
     id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     image_path VARCHAR(255) NOT NULL CHECK ( image_path <> '' ),
-    lang_lang  CHAR(3) REFERENCES public.lang (lang),
-    card_id    INTEGER,
+    card_id    INTEGER NOT NULL CHECK (card_id >= 0),
     face_id    INTEGER,
---     UNIQUE (lang_lang, card_id),
-    UNIQUE (lang_lang, face_id),
+    mime_type  VARCHAR(100) NOT NULL CHECK ( mime_type <> '' ),
+    lang_lang  CHAR(3) REFERENCES public.lang (lang),
     UNIQUE (image_path)
 );
+
+
+--- Updates
+-- ALTER TABLE public.card_image ADD mime_type VARCHAR(100);
+-- UPDATE public.card_image SET mime_type = 'image/jpeg';
+-- ALTER TABLE public.card_image ALTER COLUMN mime_type SET NOT NULL;
+-- ALTER TABLE public.card_image ADD CHECK ( mime_type <> '' );
+--
+-- ALTER TABLE public.card_image ALTER COLUMN card_id SET NOT NULL;
+-- ALTER TABLE public.card_image ADD CHECK (card_id >= 0);
