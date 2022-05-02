@@ -3,20 +3,18 @@ package client
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/konstantinfoerster/card-importer-go/internal/api"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
+	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"io"
 	"strings"
 	"time"
 )
 
 var languages = map[string]string{
-	api.SupportedLanguages[0]: "de",
-	api.SupportedLanguages[1]: "en",
+	dataset.SupportedLanguages[0]: "de",
+	dataset.SupportedLanguages[1]: "en",
 }
 
 type ScryfallCard struct {
@@ -31,7 +29,6 @@ type ScyfallImgUris struct {
 
 type MatchedPart struct {
 	Url         string
-	CardId      int64
 	MatchedType string
 	MatchedId   int64
 }
@@ -47,7 +44,6 @@ func (sc *ScryfallCard) FindMatchingCardParts(c *card.Card) []*MatchedPart {
 
 		return []*MatchedPart{{
 			Url:         sc.ImgUris.Normal,
-			CardId:      c.Id.Int64,
 			MatchedType: card.PartCard,
 			MatchedId:   c.Id.Int64,
 		}}
@@ -67,7 +63,6 @@ func (sc *ScryfallCard) FindMatchingCardParts(c *card.Card) []*MatchedPart {
 		}
 		matches = append(matches, &MatchedPart{
 			Url:         imageUrl,
-			CardId:      c.Id.Int64,
 			MatchedType: card.PartFace,
 			MatchedId:   f.Id.Int64,
 		})
@@ -86,7 +81,7 @@ func findMatchingPart(sc []ScryfallCard, term string) *ScryfallCard {
 	return nil
 }
 
-func New(f fetch.Fetcher, config config.Scryfall) *Client {
+func NewClient(f fetch.Fetcher, config config.Scryfall) *Client {
 	return &Client{
 		fetcher: f,
 		config:  config,
@@ -111,17 +106,6 @@ func (f *Client) GetByCardAndLang(c *card.Card, lang string) (*ScryfallCard, err
 	if err != nil {
 		return nil, err
 	}
-	defer func(toClose io.ReadCloser) {
-		cErr := toClose.Close()
-		if cErr != nil {
-			// report close errors
-			if err == nil {
-				err = cErr
-			} else {
-				err = errors.Wrap(err, cErr.Error())
-			}
-		}
-	}(cardJson.Body)
 
 	var sc ScryfallCard
 	err = json.NewDecoder(cardJson.Body).Decode(&sc)

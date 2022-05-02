@@ -34,7 +34,8 @@ type Logging struct {
 }
 
 type Scryfall struct {
-	DownloadURL string `yaml:"downloadURL"`
+	DownloadURL     string `yaml:"downloadURL"`
+	MaxDownloadSize int64  `yaml:"maxDownloadSize"`
 }
 
 func (i Scryfall) BuildJsonDownloadURL(setCode string, cardNumber string, lang string) string {

@@ -67,7 +67,7 @@ func main() {
 		log.Error().Err(err).Msg("failed to create local storage")
 		return
 	}
-	fetcher := fetch.NewDefaultFetcher()
+	fetcher := fetch.NewFetcher(fetch.DefaultAllowedTypes, cfg.Scryfall.MaxDownloadSize)
 
 	conn, err := postgres.Connect(context.Background(), cfg.Database)
 	if err != nil {
@@ -83,7 +83,7 @@ func main() {
 
 	cardDao := card.NewDao(conn)
 
-	report, err := images.NewImporter(cardDao, store, scryfall.NewProcessor(cfg.Scryfall, fetcher)).Import(pageConfig)
+	report, err := images.NewImporter(cardDao, store, scryfall.NewDownloader(cfg.Scryfall, fetcher)).Import(pageConfig)
 	if err != nil {
 		log.Error().Err(err).Msg("image import failed")
 		return

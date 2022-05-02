@@ -4,9 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/konstantinfoerster/card-importer-go/internal/api"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/cardset"
+	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
 	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
@@ -87,7 +87,7 @@ func main() {
 
 	imp := mtgjson.NewImporter(csService, cService)
 
-	var report *api.DatasetReport
+	var report *dataset.Report
 	if file != "" {
 		report, err = mtgjson.NewFileDataset(imp).Import(strings.NewReader(file))
 	} else {

@@ -7,75 +7,61 @@ import (
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	"github.com/konstantinfoerster/card-importer-go/internal/scryfall/client"
-	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
-type processor struct {
-	config  config.Scryfall
-	client  *client.Client
-	storage storage.Storage
+type downloader struct {
+	config config.Scryfall
+	client *client.Client
 }
 
-func NewProcessor(config config.Scryfall, fetcher fetch.Fetcher) images.CardProcessor {
-	return &processor{
+func NewDownloader(config config.Scryfall, fetcher fetch.Fetcher) images.ImageDownloader {
+	return &downloader{
 		config: config,
-		client: client.New(fetcher, config),
+		client: client.NewClient(fetcher, config),
 	}
 }
 
-func (p *processor) Process(c *card.Card, lang string) (*images.Result, error) {
-	externalCard, err := p.client.GetByCardAndLang(c, lang)
+func (d *downloader) Download(c *card.Card, lang string) (*images.Result, error) {
+	externalCard, err := d.client.GetByCardAndLang(c, lang)
 	if err != nil {
 		if errors.Is(err, fetch.NotFoundError) {
 			log.Warn().Msgf("no scryfall card found with set %s, name %s, number %s and language %s", c.CardSetCode, c.Name, c.Number, lang)
-			return &images.Result{}, nil
+			return &images.Result{Missing: 1}, nil
 		}
 		return nil, fmt.Errorf("failed to download scryfall card with set %s, name %s, number %s and language %s, reason: %w", c.CardSetCode, c.Name, c.Number, lang, err)
 	}
 
 	matches := externalCard.FindMatchingCardParts(c)
 
-	return p.downloadImage(matches, lang)
+	return d.downloadImage(matches)
 }
 
-func matchToCardImage(m *client.MatchedPart, lang string) *card.CardImage {
-	if m.MatchedType == card.PartCard {
-		return &card.CardImage{
-			Lang:   lang,
-			CardId: card.NewPrimaryId(m.MatchedId),
-		}
-	}
+func (d *downloader) downloadImage(matches []*client.MatchedPart) (*images.Result, error) {
+	var result []*images.ImageResult
 
-	return &card.CardImage{
-		Lang:   lang,
-		FaceId: card.NewPrimaryId(m.MatchedId),
-	}
-}
-
-func (p *processor) downloadImage(matches []*client.MatchedPart, lang string) (*images.Result, error) {
-	var result []func() (*card.CardImage, error)
-
+	var missingImages int
 	for _, m := range matches {
-		cardImage := matchToCardImage(m, lang)
-
-		fn := func() (*card.CardImage, error) {
-			img, err := p.client.GetImage(m.Url)
-			if err != nil {
-				if errors.Is(err, fetch.NotFoundError) {
-					log.Warn().Interface("url", m.Url).Msg("card image not found")
-					return nil, nil
-				}
-				return nil, fmt.Errorf("failed to download image from %s %w", m.Url, err)
+		img, err := d.client.GetImage(m.Url)
+		if err != nil {
+			if errors.Is(err, fetch.NotFoundError) {
+				log.Warn().Interface("url", m.Url).Msg("card image not found")
+				missingImages += 1
+				continue
 			}
-			cardImage.MimeType = img.ContentType
-			cardImage.File = img.Body
-			return cardImage, nil
+			return nil, fmt.Errorf("failed to download image from %s %w", m.Url, err)
 		}
 
-		result = append(result, fn)
+		cardImage := &images.ImageResult{
+			MatchingId:       m.MatchedId,
+			MatchingCardPart: m.MatchedType,
+			ContentType:      img.ContentType,
+			File:             img.Body,
+		}
+
+		result = append(result, cardImage)
 	}
 
-	return &images.Result{DownloadCard: result}, nil
+	return &images.Result{CardImages: result, Missing: missingImages}, nil
 }

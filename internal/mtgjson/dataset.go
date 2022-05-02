@@ -3,9 +3,9 @@ package mtgjson
 import (
 	"context"
 	"fmt"
-	"github.com/konstantinfoerster/card-importer-go/internal/api"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/cardset"
+	dataset2 "github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 	"io"
@@ -15,8 +15,8 @@ import (
 )
 
 var externalLangToLang = map[string]string{
-	"German":  api.SupportedLanguages[0],
-	"English": api.SupportedLanguages[1],
+	"German":  dataset2.SupportedLanguages[0],
+	"English": dataset2.SupportedLanguages[1],
 }
 
 var doubleFaceCards = map[string]*card.Card{}
@@ -26,14 +26,14 @@ type dataset struct {
 	cardService card.Service
 }
 
-func NewImporter(setService cardset.Service, cardService card.Service) api.Dataset {
+func NewImporter(setService cardset.Service, cardService card.Service) dataset2.Dataset {
 	return &dataset{
 		setService:  setService,
 		cardService: cardService,
 	}
 }
 
-func (imp *dataset) Import(r io.Reader) (*api.DatasetReport, error) {
+func (imp *dataset) Import(r io.Reader) (*dataset2.Report, error) {
 	errg, ctx := errgroup.WithContext(context.Background())
 
 	for r := range parse(ctx, r) {
@@ -95,7 +95,7 @@ func (imp *dataset) Import(r io.Reader) (*api.DatasetReport, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &api.DatasetReport{
+	return &dataset2.Report{
 		CardCount: cardCount,
 		SetCount:  setCount,
 	}, nil

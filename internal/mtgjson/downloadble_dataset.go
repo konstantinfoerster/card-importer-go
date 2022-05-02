@@ -3,7 +3,7 @@ package mtgjson
 import (
 	"archive/zip"
 	"fmt"
-	"github.com/konstantinfoerster/card-importer-go/internal/api"
+	dataset2 "github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"io"
@@ -16,11 +16,11 @@ import (
 )
 
 type downloadableDataset struct {
-	dataset   api.Dataset
+	dataset   dataset2.Dataset
 	readLimit int64
 }
 
-func NewDownloadableDataset(dataset api.Dataset) api.Dataset {
+func NewDownloadableDataset(dataset dataset2.Dataset) dataset2.Dataset {
 	return &downloadableDataset{
 		dataset:   dataset,
 		readLimit: 100, // max length of the url
@@ -36,7 +36,7 @@ func (f *downloadedFile) isZip() bool {
 	return f.contentType == "application/zip"
 }
 
-func (imp *downloadableDataset) Import(r io.Reader) (*api.DatasetReport, error) {
+func (imp *downloadableDataset) Import(r io.Reader) (*dataset2.Report, error) {
 	rLimit := &io.LimitedReader{
 		R: r,
 		N: imp.readLimit + 1, // + 1 to check if we read more bytes than expected

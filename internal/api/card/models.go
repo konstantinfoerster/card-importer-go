@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/diff"
-	"io"
 	"strings"
 )
 
@@ -351,21 +350,20 @@ func (v *Colors) UnmarshalJSON(data []byte) error {
 
 type CardImage struct {
 	Id        PrimaryId
-	ImagePath string
 	Lang      string
 	CardId    PrimaryId
 	FaceId    PrimaryId
+	ImagePath string
 	MimeType  string
-	File      io.ReadCloser
 }
 
 func (img *CardImage) getFilePrefix() (string, error) {
-	if img.CardId.Valid {
-		return fmt.Sprintf("card-%d", img.CardId.Get()), nil
-	}
-
+	// check face id first since card id is always set
 	if img.FaceId.Valid {
 		return fmt.Sprintf("face-%d", img.FaceId.Get()), nil
+	}
+	if img.CardId.Valid {
+		return fmt.Sprintf("card-%d", img.CardId.Get()), nil
 	}
 	return "", fmt.Errorf("failed to build file prefix, no valid id provided")
 }
@@ -375,8 +373,7 @@ func (img *CardImage) BuildFilename() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("can't build file name reason: %w", err)
 	}
-	ct := strings.Split(img.MimeType, ";")[0]
-	switch ct {
+	switch img.MimeType {
 	case "application/json":
 		return prefix + ".json", nil
 	case "application/zip":
@@ -386,6 +383,6 @@ func (img *CardImage) BuildFilename() (string, error) {
 	case "image/png":
 		return prefix + ".png", nil
 	default:
-		return "", fmt.Errorf("unsupported content type %s", ct)
+		return "", fmt.Errorf("unsupported content type %s", img.MimeType)
 	}
 }

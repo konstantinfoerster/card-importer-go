@@ -1,4 +1,4 @@
-package api
+package dataset
 
 import (
 	"io"
@@ -6,11 +6,11 @@ import (
 
 var SupportedLanguages = []string{"deu", "eng"}
 
-type DatasetReport struct {
+type Report struct {
 	CardCount int
 	SetCount  int
 }
 
 type Dataset interface {
-	Import(r io.Reader) (*DatasetReport, error)
+	Import(r io.Reader) (*Report, error)
 }

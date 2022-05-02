@@ -34,7 +34,7 @@ func TestFetch(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := NewFetcher(allowedTypes)
+			f := NewFetcher(allowedTypes, DefaultBodyLimit)
 
 			result, err := f.Fetch(tc.fixture)
 			if err != nil {
@@ -44,6 +44,21 @@ func TestFetch(t *testing.T) {
 			assertSameFile(t, tc.want, result)
 		})
 	}
+}
+
+func TestFetchLimit(t *testing.T) {
+	ts := httptest.NewServer(http.FileServer(http.Dir("testdata")))
+	defer ts.Close()
+
+	f := NewFetcher([]string{"application/json"}, 2)
+
+	result, err := f.Fetch(ts.URL + "/test_file_big.json")
+	if err == nil {
+		t.Fatalf("expected fetch error but got no error")
+	}
+
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "body must be <=")
 }
 
 func TestFetchFails(t *testing.T) {
@@ -69,7 +84,7 @@ func TestFetchFails(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := NewFetcher([]string{})
+			f := NewFetcher([]string{}, DefaultBodyLimit)
 
 			_, err := f.Fetch(tc.fixture)
 			if err == nil {
@@ -82,8 +97,6 @@ func TestFetchFails(t *testing.T) {
 }
 
 func assertSameFile(t *testing.T, expected string, f *Response) {
-	defer f.Body.Close()
-
 	got, err := io.ReadAll(f.Body)
 	if err != nil {
 		t.Fatalf("failed to read data, got: %v, wanted no error", err)

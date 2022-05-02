@@ -1,7 +1,7 @@
 package mtgjson
 
 import (
-	"github.com/konstantinfoerster/card-importer-go/internal/api"
+	dataset2 "github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
@@ -14,13 +14,13 @@ type mockImporter struct {
 	content string
 }
 
-func (imp *mockImporter) Import(r io.Reader) (*api.DatasetReport, error) {
+func (imp *mockImporter) Import(r io.Reader) (*dataset2.Report, error) {
 	c, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
 	imp.content = string(c)
-	return &api.DatasetReport{}, nil
+	return &dataset2.Report{}, nil
 }
 
 func TestDownloadableImport(t *testing.T) {
