@@ -18,7 +18,6 @@ func TestFetch(t *testing.T) {
 	ts := httptest.NewServer(http.FileServer(http.Dir("testdata")))
 	defer ts.Close()
 
-	allowedTypes := []string{MimeTypeZip, MimeTypeJson}
 	cases := []struct {
 		name    string
 		fixture string
@@ -38,7 +37,7 @@ func TestFetch(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := NewFetcher(cfg, NewContentTypeValidator(allowedTypes))
+			f := NewFetcher(cfg)
 
 			var got []byte
 			var err error
