@@ -11,7 +11,7 @@ type CardSet struct {
 	Code         string
 	Name         string
 	TotalCount   int
-	Released     time.Time
+	Released     time.Time // can be null ??
 	Block        CardBlock
 	Type         string
 	Translations []Translation

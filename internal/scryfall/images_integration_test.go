@@ -34,11 +34,11 @@ func TestMain(m *testing.M) {
 }
 
 type MockFetcher struct {
-	FakeFetch func(url string) (*fetch.Response, error)
+	FakeFetch func(url string, handleResponse func(result *fetch.Response) error) error
 }
 
-func (p *MockFetcher) Fetch(url string) (*fetch.Response, error) {
-	return p.FakeFetch(url)
+func (p *MockFetcher) Fetch(url string, handleResponse func(resp *fetch.Response) error) error {
+	return p.FakeFetch(url, handleResponse)
 }
 
 var runner *postgres.DatabaseRunner
@@ -279,40 +279,40 @@ func importMultiFaces(t *testing.T) {
 		fixture card.Card
 		want    int
 	}{
-		//{
-		//	name: "FirstFaceDoesNotMatch",
-		//	fixture: card.Card{
-		//		CardSetCode: "10E",
-		//		Number:      "multiFace",
-		//		Name:        "DoesNotMatch // First",
-		//		Faces: []*card.Face{
-		//			{
-		//				Name: "DoesNotMatch",
-		//			},
-		//			{
-		//				Name: "SecondFace",
-		//			},
-		//		},
-		//	},
-		//	want: 1,
-		//},
-		//{
-		//	name: "SecondFaceDoesNotMatch",
-		//	fixture: card.Card{
-		//		CardSetCode: "10E",
-		//		Number:      "multiFace",
-		//		Name:        "First // DoesNotMatch",
-		//		Faces: []*card.Face{
-		//			{
-		//				Name: "FirstFace",
-		//			},
-		//			{
-		//				Name: "DoesNotMatch",
-		//			},
-		//		},
-		//	},
-		//	want: 1,
-		//},
+		{
+			name: "FirstFaceDoesNotMatch",
+			fixture: card.Card{
+				CardSetCode: "10E",
+				Number:      "multiFace",
+				Name:        "DoesNotMatch // First",
+				Faces: []*card.Face{
+					{
+						Name: "DoesNotMatch",
+					},
+					{
+						Name: "SecondFace",
+					},
+				},
+			},
+			want: 1,
+		},
+		{
+			name: "SecondFaceDoesNotMatch",
+			fixture: card.Card{
+				CardSetCode: "10E",
+				Number:      "multiFace",
+				Name:        "First // DoesNotMatch",
+				Faces: []*card.Face{
+					{
+						Name: "FirstFace",
+					},
+					{
+						Name: "DoesNotMatch",
+					},
+				},
+			},
+			want: 1,
+		},
 		{
 			name: "BothFacesMatch",
 			fixture: card.Card{
@@ -498,28 +498,28 @@ func openFile(t *testing.T, path string) (io.ReadCloser, error) {
 }
 
 func testdataFileFetcher(t *testing.T) *MockFetcher {
-	return &MockFetcher{FakeFetch: func(url string) (*fetch.Response, error) {
+	return &MockFetcher{FakeFetch: func(url string, handleResponse func(resp *fetch.Response) error) error {
 		u := strings.TrimPrefix(url, "http://localhost/")
 
 		if strings.HasSuffix(u, ".jpg") {
 			f, err := openFile(t, "testdata/"+u)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			return &fetch.Response{
-				ContentType: "image/jpeg",
+			return handleResponse(&fetch.Response{
+				ContentType: fetch.MimeTypeJpeg,
 				Body:        f,
-			}, nil
+			})
 		}
 
 		f, err := openFile(t, "testdata/"+u)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return &fetch.Response{
-			ContentType: "application/json",
+		return handleResponse(&fetch.Response{
+			ContentType: fetch.MimeTypeJson,
 			Body:        f,
-		}, nil
+		})
 	}}
 }
 

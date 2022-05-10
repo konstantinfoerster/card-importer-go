@@ -102,30 +102,32 @@ func (f *Client) GetByCardAndLang(c *card.Card, lang string) (*ScryfallCard, err
 	url := f.config.BuildJsonDownloadURL(c.CardSetCode, c.Number, extLang)
 	log.Debug().Msgf("Downloading card metadata from %s", url)
 
-	cardJson, err := f.fetchDelayed(url)
-	if err != nil {
+	var sc ScryfallCard
+	decodeFn := func(resp *fetch.Response) error {
+		err := json.NewDecoder(resp.Body).Decode(&sc)
+		if err != nil {
+			return fmt.Errorf("failed to decode scryfall card result %w", err)
+		}
+		return nil
+	}
+
+	if err := f.fetchDelayed(url, decodeFn); err != nil {
 		return nil, err
 	}
 
-	var sc ScryfallCard
-	err = json.NewDecoder(cardJson.Body).Decode(&sc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode scryfall card result %w", err)
-	}
-	return &sc, err
+	return &sc, nil
 }
 
-func (f *Client) GetImage(url string) (*fetch.Response, error) {
-	image, err := f.fetchDelayed(url)
+func (f *Client) GetImage(url string, handleResponse func(resp *fetch.Response) error) error {
+	err := f.fetchDelayed(url, handleResponse)
 	if err != nil {
-		return nil, fmt.Errorf("failed to download card image from %s %w", url, err)
+		return fmt.Errorf("failed to download card image from %s %w", url, err)
 	}
-	return image, err
-
+	return nil
 }
 
-func (f *Client) fetchDelayed(url string) (*fetch.Response, error) {
-	image, err := f.fetcher.Fetch(url)
-	time.Sleep(time.Millisecond * 25)
-	return image, err
+func (f *Client) fetchDelayed(url string, handleResponse func(resp *fetch.Response) error) error {
+	err := f.fetcher.Fetch(url, handleResponse)
+	time.Sleep(time.Millisecond * 50)
+	return err
 }

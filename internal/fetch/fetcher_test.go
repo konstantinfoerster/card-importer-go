@@ -1,6 +1,7 @@
 package fetch
 
 import (
+	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
@@ -8,13 +9,16 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
+
+var cfg = config.Http{Timeout: 5 * time.Second}
 
 func TestFetch(t *testing.T) {
 	ts := httptest.NewServer(http.FileServer(http.Dir("testdata")))
 	defer ts.Close()
 
-	allowedTypes := []string{"application/zip", "application/json"}
+	allowedTypes := []string{MimeTypeZip, MimeTypeJson}
 	cases := []struct {
 		name    string
 		fixture string
@@ -34,31 +38,24 @@ func TestFetch(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := NewFetcher(allowedTypes, DefaultBodyLimit)
+			f := NewFetcher(cfg, NewContentTypeValidator(allowedTypes))
 
-			result, err := f.Fetch(tc.fixture)
+			var got []byte
+			var err error
+			err = f.Fetch(tc.fixture, func(r *Response) error {
+				got, err = io.ReadAll(r.Body)
+				if err != nil {
+					t.Fatalf("failed to read data, got: %v, wanted no error", err)
+				}
+				return nil
+			})
 			if err != nil {
 				t.Fatalf("unexpected fetch error, got: %v, wanted no error", err)
 			}
 
-			assertSameFile(t, tc.want, result)
+			assertSameFile(t, tc.want, got)
 		})
 	}
-}
-
-func TestFetchLimit(t *testing.T) {
-	ts := httptest.NewServer(http.FileServer(http.Dir("testdata")))
-	defer ts.Close()
-
-	f := NewFetcher([]string{"application/json"}, 2)
-
-	result, err := f.Fetch(ts.URL + "/test_file_big.json")
-	if err == nil {
-		t.Fatalf("expected fetch error but got no error")
-	}
-
-	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "body must be <=")
 }
 
 func TestFetchFails(t *testing.T) {
@@ -84,9 +81,11 @@ func TestFetchFails(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := NewFetcher([]string{}, DefaultBodyLimit)
+			f := NewFetcher(cfg, NewContentTypeValidator([]string{}))
 
-			_, err := f.Fetch(tc.fixture)
+			err := f.Fetch(tc.fixture, func(resp *Response) error {
+				return nil
+			})
 			if err == nil {
 				t.Fatal("expected import error, but got no err")
 			}
@@ -96,16 +95,11 @@ func TestFetchFails(t *testing.T) {
 	}
 }
 
-func assertSameFile(t *testing.T, expected string, f *Response) {
-	got, err := io.ReadAll(f.Body)
+func assertSameFile(t *testing.T, want string, got []byte) {
+	wantContent, err := os.ReadFile(want)
 	if err != nil {
 		t.Fatalf("failed to read data, got: %v, wanted no error", err)
 	}
 
-	want, err := os.ReadFile(expected)
-	if err != nil {
-		t.Fatalf("failed to read data, got: %v, wanted no error", err)
-	}
-
-	assert.Equal(t, want, got)
+	assert.Equal(t, wantContent, got)
 }

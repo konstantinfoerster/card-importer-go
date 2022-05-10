@@ -8,12 +8,14 @@ database:
   username: tester
   password: tester
 
+http:
+  timeout: 60s
+
 mtgjson:
   downloadURL: https://mtgjson.com/api/v5/AllPrintings.json.zip
 
 scryfall:
   downloadURL: https://api.scryfall.com/cards/{code}/{number}/{lang}?format={format}&version=normal
-  maxDownloadSize: 2048 # in kb
 
 storage:
   location: /tmp/images

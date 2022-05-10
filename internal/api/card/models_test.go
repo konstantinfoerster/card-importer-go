@@ -1,12 +1,16 @@
 package card
 
 import (
+	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestBuildFilename(t *testing.T) {
-	r := CardImage{MimeType: "application/json", CardId: NewPrimaryId(1)}
+	r := CardImage{
+		MimeType: fetch.NewMimeType(fetch.MimeTypeJson),
+		CardId:   NewPrimaryId(1),
+	}
 	want := "card-1.json"
 
 	got, err := r.BuildFilename()
@@ -19,7 +23,10 @@ func TestBuildFilename(t *testing.T) {
 }
 
 func TestBuildFilenameWithFaceName(t *testing.T) {
-	r := CardImage{MimeType: "application/json", FaceId: NewPrimaryId(1)}
+	r := CardImage{
+		MimeType: fetch.NewMimeType(fetch.MimeTypeJson),
+		FaceId:   NewPrimaryId(1),
+	}
 	want := "face-1.json"
 
 	got, err := r.BuildFilename()
@@ -32,7 +39,7 @@ func TestBuildFilenameWithFaceName(t *testing.T) {
 }
 
 func TestBuildFilenameFailsIfIdIsMissing(t *testing.T) {
-	r := CardImage{MimeType: "application/json"}
+	r := CardImage{MimeType: fetch.NewMimeType(fetch.MimeTypeJson)}
 
 	_, err := r.BuildFilename()
 
@@ -44,7 +51,7 @@ func TestBuildFilenameFailsIfIdIsMissing(t *testing.T) {
 }
 
 func TestBuildFilenameFailsOnUnknownContentType(t *testing.T) {
-	r := CardImage{MimeType: "unknown", CardId: NewPrimaryId(1)}
+	r := CardImage{MimeType: fetch.NewMimeType("unknown"), CardId: NewPrimaryId(1)}
 
 	_, err := r.BuildFilename()
 
@@ -52,5 +59,5 @@ func TestBuildFilenameFailsOnUnknownContentType(t *testing.T) {
 		t.Fatal("got no error, expected an error if content type is unknown")
 	}
 
-	assert.Contains(t, err.Error(), "unsupported content type")
+	assert.Contains(t, err.Error(), "unsupported mime type")
 }

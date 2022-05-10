@@ -7,11 +7,13 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Config struct {
 	Logging  Logging  `yaml:"logging"`
 	Database Database `yaml:"database"`
+	Http     Http     `yaml:"http"`
 	Mtgjson  Mtgjson  `yaml:"mtgjson"`
 	Scryfall Scryfall `yaml:"scryfall"`
 	Storage  Storage  `yaml:"storage"`
@@ -25,6 +27,10 @@ type Database struct {
 	Password string `yaml:"password"`
 }
 
+type Http struct {
+	Timeout time.Duration `yaml:"timeout"`
+}
+
 type Mtgjson struct {
 	DownloadURL string `yaml:"downloadURL"`
 }
@@ -34,8 +40,7 @@ type Logging struct {
 }
 
 type Scryfall struct {
-	DownloadURL     string `yaml:"downloadURL"`
-	MaxDownloadSize int64  `yaml:"maxDownloadSize"`
+	DownloadURL string `yaml:"downloadURL"`
 }
 
 func (i Scryfall) BuildJsonDownloadURL(setCode string, cardNumber string, lang string) string {

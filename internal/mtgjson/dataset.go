@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/cardset"
-	dataset2 "github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
+	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 	"io"
@@ -15,25 +15,25 @@ import (
 )
 
 var externalLangToLang = map[string]string{
-	"German":  dataset2.SupportedLanguages[0],
-	"English": dataset2.SupportedLanguages[1],
+	"German":  dataset.SupportedLanguages[0],
+	"English": dataset.SupportedLanguages[1],
 }
 
 var doubleFaceCards = map[string]*card.Card{}
 
-type dataset struct {
+type mtgJsonDataset struct {
 	setService  cardset.Service
 	cardService card.Service
 }
 
-func NewImporter(setService cardset.Service, cardService card.Service) dataset2.Dataset {
-	return &dataset{
+func NewImporter(setService cardset.Service, cardService card.Service) dataset.Dataset {
+	return &mtgJsonDataset{
 		setService:  setService,
 		cardService: cardService,
 	}
 }
 
-func (imp *dataset) Import(r io.Reader) (*dataset2.Report, error) {
+func (imp *mtgJsonDataset) Import(r io.Reader) (*dataset.Report, error) {
 	errg, ctx := errgroup.WithContext(context.Background())
 
 	for r := range parse(ctx, r) {
@@ -95,7 +95,7 @@ func (imp *dataset) Import(r io.Reader) (*dataset2.Report, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &dataset2.Report{
+	return &dataset.Report{
 		CardCount: cardCount,
 		SetCount:  setCount,
 	}, nil

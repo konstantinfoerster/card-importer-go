@@ -2,25 +2,25 @@ package mtgjson
 
 import (
 	"fmt"
-	dataset2 "github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
+	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
 	"github.com/pkg/errors"
 	"io"
 	"os"
 )
 
 type fileDataset struct {
-	dataset   dataset2.Dataset
+	dataset   dataset.Dataset
 	readLimit int64
 }
 
-func NewFileDataset(dataset dataset2.Dataset) dataset2.Dataset {
+func NewFileDataset(dataset dataset.Dataset) dataset.Dataset {
 	return &fileDataset{
 		dataset:   dataset,
 		readLimit: 255,
 	}
 }
 
-func (imp *fileDataset) Import(r io.Reader) (*dataset2.Report, error) {
+func (imp *fileDataset) Import(r io.Reader) (*dataset.Report, error) {
 	rLimit := &io.LimitedReader{
 		R: r,
 		N: imp.readLimit + 1, // + 1 to check if we read more bytes than expected

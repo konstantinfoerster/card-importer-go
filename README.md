@@ -8,10 +8,12 @@ into a local postgres database.
 ## Run locally
 
 ### Database
+
 First start a local postgres database e.g. via `docker-compose up -d`. This will start the database on port **15432**.
-Use `docker-compose pull` to update the image version. 
+Use `docker-compose pull` to update the image version.
 
 ### Import Dataset
+
 Run `go run cmd/dataset/main.go` to start the tool with the default configuration file (configs/application.yaml).
 
 Optional parameter:
@@ -23,6 +25,7 @@ Optional parameter:
 | `-f`,`--file`   | `-f ./dataset.json`                | not set                  | dataset as json file, has precedence over the url flag or config |
 
 ### Import Images
+
 Run `go run cmd/images/main.go` to start the tool with the default configuration file (configs/application.yaml).
 
 Optional parameter:
@@ -76,13 +79,14 @@ dir of the project to start the linting process.
 
 * Provide a make file
     * https://earthly.dev/blog/golang-makefile/
-* Persist NULL instead of empty string if column is nullable
-* Reuse Fetcher and Storage in downloadble_dataset.go
 
 First idea how to serve the images:
+
 1. Download all images via this tool
 2. Compress everything into one zip file
 3. Upload to a server to host the files
+    1. Maybe use Google Drive (got 15GB for free and the api can be accessed via
+       golang https://developers.google.com/drive/api/quickstart/go)
 4. Build container that is able to server the images from file system
-   1. Startup process of the container downloads the hosted compressed file
-   2. Extract all images into served dir
+    1. Startup process of the container downloads the hosted compressed file
+    2. Extract all images into served dir

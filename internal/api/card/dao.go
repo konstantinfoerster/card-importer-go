@@ -406,7 +406,7 @@ func (d *PostgresCardDao) AddImage(img *CardImage) error {
 		RETURNING
 			id`
 	var id int64
-	err := d.db.Conn.QueryRow(d.db.Ctx, query, img.ImagePath, img.Lang, img.CardId, img.FaceId, img.MimeType).Scan(&id)
+	err := d.db.Conn.QueryRow(d.db.Ctx, query, img.ImagePath, img.Lang, img.CardId, img.FaceId, img.MimeType.Raw()).Scan(&id)
 	if err != nil {
 		return fmt.Errorf("failed to execute card insert %w", err)
 	}

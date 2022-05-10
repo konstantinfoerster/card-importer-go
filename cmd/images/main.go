@@ -20,7 +20,7 @@ import (
 )
 
 const usage = `Usage: card-images-cli [options...]
-  -c, --config path to the config file (default: ./configs/application.yaml)
+  -c, --config path to the configuration file (default: ./configs/application.yaml)
   -p, --page start page number (default: 1)
   -s, --size amount of entries per page (default: 20)
   -h, --help prints help information
@@ -59,6 +59,7 @@ func init() {
 
 func main() {
 	defer timer.TimeTrack(time.Now(), "images")
+	defer stats.LogMemUsage()
 
 	cfg := config.Get()
 
@@ -67,7 +68,7 @@ func main() {
 		log.Error().Err(err).Msg("failed to create local storage")
 		return
 	}
-	fetcher := fetch.NewFetcher(fetch.DefaultAllowedTypes, cfg.Scryfall.MaxDownloadSize)
+	fetcher := fetch.NewFetcher(cfg.Http, fetch.NewContentTypeValidator(fetch.DefaultAllowedTypes))
 
 	conn, err := postgres.Connect(context.Background(), cfg.Database)
 	if err != nil {
@@ -89,6 +90,4 @@ func main() {
 		return
 	}
 	log.Info().Msgf("Report %#v", report)
-
-	stats.LogMemUsage()
 }

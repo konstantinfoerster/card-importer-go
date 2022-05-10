@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/diff"
+	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	"strings"
 )
 
@@ -18,9 +19,9 @@ type Card struct {
 	CardSetCode string
 	Name        string
 	Number      string
-	Border      string
-	Rarity      string
-	Layout      string
+	Border      string // ENUM
+	Rarity      string // ENUM
+	Layout      string // ENUM
 	Faces       []*Face
 }
 
@@ -354,7 +355,7 @@ type CardImage struct {
 	CardId    PrimaryId
 	FaceId    PrimaryId
 	ImagePath string
-	MimeType  string
+	MimeType  fetch.MimeType
 }
 
 func (img *CardImage) getFilePrefix() (string, error) {
@@ -373,16 +374,5 @@ func (img *CardImage) BuildFilename() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("can't build file name reason: %w", err)
 	}
-	switch img.MimeType {
-	case "application/json":
-		return prefix + ".json", nil
-	case "application/zip":
-		return prefix + ".zip", nil
-	case "image/jpeg":
-		return prefix + ".jpg", nil
-	case "image/png":
-		return prefix + ".png", nil
-	default:
-		return "", fmt.Errorf("unsupported content type %s", img.MimeType)
-	}
+	return img.MimeType.BuildFilename(prefix)
 }
