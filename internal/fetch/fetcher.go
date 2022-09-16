@@ -44,11 +44,11 @@ func (m MimeType) BuildFilename(prefix string) (string, error) {
 	}
 }
 
-func (m *MimeType) IsZip() bool {
+func (m MimeType) IsZip() bool {
 	return m.string == MimeTypeZip
 }
 
-func (m *MimeType) Raw() string {
+func (m MimeType) Raw() string {
 	return m.string
 }
 

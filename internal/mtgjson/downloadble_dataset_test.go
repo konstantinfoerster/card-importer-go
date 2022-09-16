@@ -7,7 +7,6 @@ import (
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -120,7 +119,7 @@ func TestDownloadableImportFails(t *testing.T) {
 }
 
 func tmpDirWithCleanup(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "downloads")
+	dir, err := os.MkdirTemp("", "downloads")
 	if err != nil {
 		t.Fatalf("failed to create temp dir %v", err)
 	}

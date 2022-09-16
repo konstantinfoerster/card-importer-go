@@ -32,8 +32,8 @@ var pageConfig images.PageConfig
 func init() {
 	logger.SetupConsoleLogger()
 
-	flag.StringVar(&configPath, "c", "./configs/application.yaml", "path to the config file")
-	flag.StringVar(&configPath, "config", "./configs/application.yaml", "path to the config file")
+	flag.StringVar(&configPath, "c", "./configs/application.yaml", "path to the configuration file")
+	flag.StringVar(&configPath, "config", "./configs/application.yaml", "path to the configuration file")
 	flag.IntVar(&pageConfig.Page, "p", 1, "start page number")
 	flag.IntVar(&pageConfig.Page, "page", 1, "start page number")
 	flag.IntVar(&pageConfig.Size, "s", 20, "amount of entries per page")

@@ -128,6 +128,6 @@ func (f *Client) GetImage(url string, handleResponse func(resp *fetch.Response) 
 
 func (f *Client) fetchDelayed(url string, handleResponse func(resp *fetch.Response) error) error {
 	err := f.fetcher.Fetch(url, handleResponse)
-	time.Sleep(time.Millisecond * 50)
+	time.Sleep(time.Millisecond * 25)
 	return err
 }

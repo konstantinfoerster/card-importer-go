@@ -19,7 +19,7 @@ func TestImportIntegration(t *testing.T) {
 		t.Skip("Skipping integration tests")
 	}
 	runner = postgres.NewRunner()
-	runner.Run(t, func() {
+	runner.Run(t, func(t *testing.T) {
 		t.Run("CardSet: create and update", cardSetCreateAndUpdate)
 		t.Run("CardSet Block: create and update", blockCreateAndUpdate)
 		t.Run("CardSet Translations: create, update and remove", cardSetTranslations)
@@ -451,8 +451,8 @@ func findUniqueCardWithReferences(t *testing.T, cDao *card.PostgresCardDao, setC
 		if err != nil {
 			t.Fatalf("unexpected error during find translation call %v", err)
 		}
-		for _, translation := range translations {
-			face.Translations = append(face.Translations, *translation)
+		for _, trans := range translations {
+			face.Translations = append(face.Translations, *trans)
 		}
 
 		subTypes, err := cDao.FindAssignedSubTypes(faceId)
@@ -469,12 +469,12 @@ func findUniqueCardWithReferences(t *testing.T, cDao *card.PostgresCardDao, setC
 		sort.Strings(superTypes)
 		face.Supertypes = superTypes
 
-		cardTypes, err := cDao.FindAssignedCardTypes(faceId)
+		cts, err := cDao.FindAssignedCardTypes(faceId)
 		if err != nil {
 			t.Fatalf("unexpected error during find card types call %v", err)
 		}
-		sort.Strings(cardTypes)
-		face.Cardtypes = cardTypes
+		sort.Strings(cts)
+		face.Cardtypes = cts
 
 		face.Id = card.PrimaryId{}
 		c.Faces = append(c.Faces, face)

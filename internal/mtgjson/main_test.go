@@ -6,6 +6,7 @@ import (
 	"fmt"
 	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
 	"github.com/nsf/jsondiff"
+	"github.com/rs/zerolog/log"
 	"io"
 	"os"
 	"testing"
@@ -19,10 +20,12 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
+	log.Warn().Msg("TestMain START DATASET")
 	exitVal := 0
 
 	exitVal = m.Run()
 
+	log.Warn().Msg("TestMain END DATASET")
 	os.Exit(exitVal)
 }
 

@@ -8,31 +8,25 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"io/ioutil"
+	"io"
 	"path/filepath"
 	"runtime"
 	"testing"
 )
 
 func NewRunner() *DatabaseRunner {
-	return NewRunnerWithInitialData("")
-}
-
-func NewRunnerWithInitialData(scriptPath string) *DatabaseRunner {
 	ctx := context.Background()
 	return &DatabaseRunner{
-		ctx:        ctx,
-		scriptPath: scriptPath,
+		ctx: ctx,
 	}
 }
 
 type DatabaseRunner struct {
-	ctx        context.Context
-	conn       *DBConnection
-	scriptPath string
+	ctx  context.Context
+	conn *DBConnection
 }
 
-func (r *DatabaseRunner) Run(t *testing.T, runTests func()) {
+func (r *DatabaseRunner) Run(t *testing.T, runTests func(t *testing.T)) {
 	err := r.runPostgresContainer(func(cfg config.Database) error {
 		conn, err := Connect(r.ctx, cfg)
 		if err != nil {
@@ -51,7 +45,7 @@ func (r *DatabaseRunner) Run(t *testing.T, runTests func()) {
 		}(conn)
 		r.conn = conn
 
-		runTests()
+		runTests(t)
 
 		return err
 	})
@@ -103,12 +97,14 @@ func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) e
 			"APP_DB_PASS":       password,
 			"APP_DB_NAME":       database,
 		},
-		WaitingFor: wait.ForLog("[1] LOG:  database system is ready to accept connections"),
+		AlwaysPullImage: true,
+		SkipReaper:      true,
+		WaitingFor:      wait.ForLog("[1] LOG:  database system is ready to accept connections"),
 	}
 
 	postgresC, err := testcontainers.GenericContainer(r.ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
-		Started:          false,
+		Started:          true,
 	})
 	if err != nil {
 		return err
@@ -125,18 +121,13 @@ func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) e
 		}
 	}(postgresC)
 
-	err = postgresC.Start(r.ctx)
-	if err != nil {
-		return err
-	}
-
 	if log.Debug().Enabled() {
 		logs, err := postgresC.Logs(r.ctx)
 		if err != nil {
 			return err
 		}
 		defer logs.Close()
-		b, err := ioutil.ReadAll(logs)
+		b, err := io.ReadAll(logs)
 		if err != nil {
 			return err
 		}
@@ -163,3 +154,68 @@ func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) e
 	err = f(dbConfig)
 	return err
 }
+
+//func StartDb() (testcontainers.Container, *config.Database, error) {
+//	_, file, _, ok := runtime.Caller(0)
+//	if !ok {
+//		return nil, nil, fmt.Errorf("failed to get caller")
+//	}
+//	dbDirLink := filepath.Join(filepath.Dir(file), "testdata", "db")
+//
+//	ctx := context.Background()
+//
+//	dbDir, err := filepath.EvalSymlinks(dbDirLink)
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//	username := "tester"
+//	password := "tester"
+//	database := "cardmanager"
+//
+//	// TODO read env variables from config
+//	req := testcontainers.ContainerRequest{
+//		Image:        "postgres:14.5-alpine",
+//		ExposedPorts: []string{"5432/tcp"},
+//		Mounts: testcontainers.Mounts(
+//			testcontainers.BindMount(dbDir, "/docker-entrypoint-initdb.d"),
+//		),
+//		Env: map[string]string{
+//			"POSTGRES_DB":       "postgres",
+//			"POSTGRES_PASSWORD": "test",
+//			"APP_DB_USER":       username,
+//			"APP_DB_PASS":       password,
+//			"APP_DB_NAME":       database,
+//		},
+//		Cmd:        []string{"postgres", "-c", "log_statement=all", "-c", "log_destination=stderr"},
+//		SkipReaper: true,
+//		WaitingFor: wait.ForListeningPort("5432/tcp"),
+//	}
+//
+//	postgresC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+//		ContainerRequest: req,
+//		Started:          true,
+//	})
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//
+//	ip, err := postgresC.Host(ctx)
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//
+//	mappedPort, err := postgresC.MappedPort(ctx, "5432")
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//
+//	dbConfig := config.Database{
+//		Username: username,
+//		Password: password,
+//		Host:     ip,
+//		Port:     mappedPort.Port(),
+//		Database: database,
+//	}
+//
+//	return postgresC, &dbConfig, err
+//}

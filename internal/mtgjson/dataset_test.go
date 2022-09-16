@@ -78,7 +78,7 @@ func TestImportCardsWithImportError(t *testing.T) {
 	importer := NewImporter(&setService, &cardService)
 	_, err := importer.Import(fromFile(t, "testdata/twoSetsSetMultipleCards.json"))
 
-	assert.Contains(t, err.Error(), "card import failed")
+	assert.Error(t, err, "Expected import to fail")
 
 	if len(cardService.Cards) != wantCards {
 		t.Errorf("unexpected card count, got: %d, wanted: %d", len(cardService.Cards), wantCards)

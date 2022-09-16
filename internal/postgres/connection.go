@@ -9,12 +9,8 @@ import (
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 )
-
-var once sync.Once
-var dbConn *DBConnection
 
 type DBConnection struct {
 	Ctx    context.Context
@@ -23,44 +19,36 @@ type DBConnection struct {
 }
 
 func Connect(ctx context.Context, config config.Database) (*DBConnection, error) {
-	var err error
+	c, err := pgxpool.ParseConfig(config.ConnectionUrl())
+	if err != nil {
+		return nil, err
+	}
+	c.MaxConnLifetime = time.Second * 5
+	c.MaxConnIdleTime = time.Millisecond * 500
+	c.HealthCheckPeriod = time.Millisecond * 500
+	c.MaxConns = int32(runtime.NumCPU()) + 5 // + 5 just in case
 
-	once.Do(func() {
-		c, pErr := pgxpool.ParseConfig(config.ConnectionUrl())
-		if pErr != nil {
-			err = pErr
-			return
-		}
-		c.MaxConnLifetime = time.Second * 5
-		c.MaxConnIdleTime = time.Millisecond * 500
-		c.HealthCheckPeriod = time.Millisecond * 500
-		c.MaxConns = int32(runtime.NumCPU()) + 5 // + 5 just in case
+	pool, err := pgxpool.ConnectConfig(ctx, c)
+	if err != nil {
+		return nil, err
+	}
 
-		pool, cErr := pgxpool.ConnectConfig(ctx, c)
-		if cErr != nil {
-			err = cErr
-			return
-		}
+	err = pool.Ping(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-		pErr = pool.Ping(ctx)
-		if pErr != nil {
-			err = pErr
-			return
-		}
-
-		dbConn = &DBConnection{
-			Ctx:    ctx,
-			Conn:   pool,
-			pgxCon: pool,
-		}
-	})
+	dbConn := &DBConnection{
+		Ctx:    ctx,
+		Conn:   pool,
+		pgxCon: pool,
+	}
 
 	return dbConn, err
 }
 
 func (d *DBConnection) Close() error {
 	d.pgxCon.Close()
-	once = sync.Once{}
 	return nil
 }
 
@@ -83,26 +71,26 @@ func (d *DBConnection) WithTransaction(f func(conn *DBConnection) error) error {
 
 func (d *DBConnection) Cleanup() error {
 	tables := []string{
-		"card_block_translation",
-		"card_block",
-
 		"card_set_translation",
 		"card_set",
+
+		"card_block_translation",
+		"card_block",
 
 		"face_super_type",
 		"face_sub_type",
 		"face_card_type",
 
-		"card_face",
 		"card_translation",
 		"card",
+		"card_face",
 
 		"card_type_translation",
 		"card_type",
 		"super_type_translation",
 		"super_type",
-		"sub_type",
 		"sub_type_translation",
+		"sub_type",
 
 		"card_image",
 	}

@@ -23,8 +23,8 @@ import (
 
 const usage = `Usage: card-dataset-cli [options...]
   -c, --config path to the configuration file (default: ./configs/application.yaml)
-  -u, --url dataset download url as json or zip file
-  -f, --file dataset as json file, has precedence over the url flag or configuration file
+  -u, --url dataset download url (only json and zip is supported)
+  -f, --file path to local dataset json file, has precedence over the url flag or configuration file
   -h, --help prints help information
 `
 
@@ -36,12 +36,12 @@ func init() {
 
 	var configPath string
 
-	flag.StringVar(&configPath, "c", "./configs/application.yaml", "path to the config file")
-	flag.StringVar(&configPath, "config", "./configs/application.yaml", "path to the config file")
-	flag.StringVar(&file, "f", "", "dataset as json file, has precedence over the url flag or config")
-	flag.StringVar(&file, "file", "", "dataset as json file, has precedence over the url flag or config")
-	flag.StringVar(&downloadUrl, "u", "", "dataset download url as json or zip file")
-	flag.StringVar(&downloadUrl, "url", "", "dataset download url as json or zip file")
+	flag.StringVar(&configPath, "c", "./configs/application.yaml", "path to the configuration file")
+	flag.StringVar(&configPath, "config", "./configs/application.yaml", "path to the configuration file")
+	flag.StringVar(&file, "f", "", "path to local dataset json file, has precedence over the url flag or configuration file")
+	flag.StringVar(&file, "file", "", "path to local dataset json file, has precedence over the url flag or configuration file")
+	flag.StringVar(&downloadUrl, "u", "", "dataset download url (only json and zip is supported)")
+	flag.StringVar(&downloadUrl, "url", "", "dataset download url (only json and zip is supported)")
 	flag.Usage = func() { fmt.Print(usage) }
 	flag.Parse()
 

@@ -18,11 +18,11 @@ Run `go run cmd/dataset/main.go` to start the tool with the default configuratio
 
 Optional parameter:
 
-| Flag            | Usage                              | Default Value            | Description                                                      |
-|-----------------|------------------------------------|--------------------------|------------------------------------------------------------------|
-| `-c`,`--config` | `-c configs/application-prod.yaml` | configs/application.yaml | path to the config file                                          |
-| `-u`,`--url`    | `-u https://localhost/dataset.zip` | not set                  | dataset download url as json or zip file                         |
-| `-f`,`--file`   | `-f ./dataset.json`                | not set                  | dataset as json file, has precedence over the url flag or config |
+| Flag            | Usage                              | Default Value            | Description                                                                             |
+|-----------------|------------------------------------|--------------------------|-----------------------------------------------------------------------------------------|
+| `-c`,`--config` | `-c configs/application-prod.yaml` | configs/application.yaml | path to the configuration file                                                          |
+| `-u`,`--url`    | `-u https://localhost/dataset.zip` | not set                  | dataset download url (only json and zip is supported)                                   |
+| `-f`,`--file`   | `-f ./dataset.json`                | not set                  | path to local dataset json file, has precedence over the url flag or configuration file |
 
 ### Import Images
 
@@ -30,17 +30,17 @@ Run `go run cmd/images/main.go` to start the tool with the default configuration
 
 Optional parameter:
 
-| Flag            | Usage                              | Default Value            | Description                |
-|-----------------|------------------------------------|--------------------------|----------------------------|
-| `-c`,`--config` | `-c configs/applicationLocal.yaml` | configs/application.yaml | path to the config file    | 
-| `-p`,`--page`   | `-p 21`                            | 1                        | start page number          |
-| `-s`,`--size`   | `-s 100`                           | 20                       | amount of entries per page |
+| Flag            | Usage                              | Default Value            | Description                    |
+|-----------------|------------------------------------|--------------------------|--------------------------------|
+| `-c`,`--config` | `-c configs/applicationLocal.yaml` | configs/application.yaml | path to the configuration file | 
+| `-p`,`--page`   | `-p 21`                            | 1                        | start page number              |
+| `-s`,`--size`   | `-s 100`                           | 20                       | amount of entries per page     |
 
 ## Test
 
-* Run **all** tests with `go test ./...`
-* Run **unit tests** `go test -short ./...`
-* Run **integration tests** `go test -run Integration ./...`
+* Run **all** tests with `go test -v ./...`
+* Run **unit tests** `go test -v -short ./...`
+* Run **integration tests** `go test -v -run Integration ./...`
 
 **Integration tests** require **docker** to be installed.
 

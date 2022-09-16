@@ -3,8 +3,6 @@ package card
 import (
 	"fmt"
 	"github.com/rs/zerolog/log"
-	"strings"
-	"time"
 )
 
 type Service interface {
@@ -147,40 +145,21 @@ func mergeCardFaces(dao *PostgresCardDao, ff []*Face, cardId int64, isNewCard bo
 }
 
 func mergeSubTypes(dao *PostgresCardDao, tt []string, faceId int64, isNewCard bool) error {
-	return withDuplicateKeyRetry(func() error {
-		return dao.withTransaction(func(txDao *PostgresCardDao) error {
-			return mergeTypes(txDao.subType, tt, faceId, isNewCard)
-		})
+	return dao.withTransaction(func(txDao *PostgresCardDao) error {
+		return mergeTypes(txDao.subType, tt, faceId, isNewCard)
 	})
 }
 
 func mergeSuperTypes(dao *PostgresCardDao, tt []string, faceId int64, isNewCard bool) error {
-	return withDuplicateKeyRetry(func() error {
-		return dao.withTransaction(func(txDao *PostgresCardDao) error {
-			return mergeTypes(txDao.superType, tt, faceId, isNewCard)
-		})
+	return dao.withTransaction(func(txDao *PostgresCardDao) error {
+		return mergeTypes(txDao.superType, tt, faceId, isNewCard)
 	})
 }
 
 func mergeCardTypes(dao *PostgresCardDao, tt []string, faceId int64, isNewCard bool) error {
-	return withDuplicateKeyRetry(func() error {
-		return dao.withTransaction(func(txDao *PostgresCardDao) error {
-			return mergeTypes(txDao.cardType, tt, faceId, isNewCard)
-		})
+	return dao.withTransaction(func(txDao *PostgresCardDao) error {
+		return mergeTypes(txDao.cardType, tt, faceId, isNewCard)
 	})
-}
-
-func withDuplicateKeyRetry(fn func() error) error {
-	err := fn()
-	if err == nil {
-		return nil
-	}
-	if strings.Contains(err.Error(), "duplicate key") {
-		log.Warn().Msgf("retry error  after short sleep %v", err)
-		time.Sleep(200 * time.Millisecond)
-		return fn()
-	}
-	return err
 }
 
 func mergeTypes(dao TypeDao, tt []string, faceId int64, isNewCard bool) error {

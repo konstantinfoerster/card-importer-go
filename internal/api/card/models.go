@@ -57,7 +57,7 @@ func (c *Card) isValid() error {
 	return nil
 }
 
-func (c Card) Diff(other *Card) *diff.Changeset {
+func (c *Card) Diff(other *Card) *diff.Changeset {
 	changes := diff.NewChangeset()
 
 	if c.Number != other.Number {
@@ -262,7 +262,7 @@ func (t Translation) Diff(other *Translation) *diff.Changeset {
 	return &changes
 }
 
-// CharacteristicType A type of a card. Can be a Cardtype, Subtype or Superype
+// CharacteristicType A type of card. Can be a Cardtype, Subtype or Superype
 // Cardtype: Creature, Artifact, Instant, Enchantment ...
 // Subtype: Archer, Shaman, Nomad, Nymph ...
 // Supertype: Basic, Host, Legendary, Ongoing, Snow, World
