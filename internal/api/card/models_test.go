@@ -2,6 +2,7 @@ package card_test
 
 import (
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
+	"github.com/konstantinfoerster/card-importer-go/internal/api/diff"
 	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -61,4 +62,25 @@ func TestBuildFilenameFailsOnUnknownContentType(t *testing.T) {
 	}
 
 	assert.Contains(t, err.Error(), "unsupported mime type")
+}
+
+func TestFaceDiffWithDifferentColors(t *testing.T) {
+	firstFace := card.Face{Colors: card.NewColors([]string{"W", "B"})}
+	secFace := card.Face{Colors: card.NewColors([]string{"W"})}
+	expected := diff.NewChangeset()
+	expected.Add("Colors", diff.Changes{From: firstFace.Colors, To: secFace.Colors})
+
+	actual := firstFace.Diff(&secFace)
+
+	assert.Equal(t, expected, actual)
+}
+
+func TestFaceDiffWithSameColors(t *testing.T) {
+	firstFace := card.Face{Colors: card.NewColors([]string{"W"})}
+	secFace := card.Face{Colors: card.NewColors([]string{"W"})}
+	expected := diff.NewChangeset()
+
+	actual := firstFace.Diff(&secFace)
+
+	assert.Equal(t, expected, actual)
 }

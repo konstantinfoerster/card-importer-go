@@ -313,16 +313,15 @@ func NewColors(colors []string) Colors {
 	}
 	valid := len(trimmed) > 0
 	colorsRow := strings.Join(trimmed, ",")
-	return Colors{NullString: sql.NullString{String: colorsRow, Valid: valid}, Array: colors}
+	return Colors{NullString: sql.NullString{String: colorsRow, Valid: valid}}
 }
 
 type Colors struct {
 	sql.NullString
-	Array []string
 }
 
 func (v Colors) Equal(other Colors) bool {
-	return v.String != other.String || len(v.Array) != len(other.Array)
+	return v.String == other.String
 }
 
 func (v Colors) MarshalJSON() ([]byte, error) {
@@ -342,7 +341,6 @@ func (v *Colors) UnmarshalJSON(data []byte) error {
 	if x != nil && len(*x) > 0 {
 		v.Valid = true
 		v.String = *x
-		v.Array = strings.Split(*x, ",")
 	} else {
 		v.Valid = false
 	}

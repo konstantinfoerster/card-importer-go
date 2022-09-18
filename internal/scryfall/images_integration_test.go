@@ -11,6 +11,7 @@ import (
 	"github.com/konstantinfoerster/card-importer-go/internal/scryfall"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io"
 	"os"
 	"path/filepath"
@@ -79,9 +80,7 @@ func createCard(t *testing.T, c *card.Card) {
 	}
 
 	err := cardService.Import(withDefaults(c))
-	if err != nil {
-		t.Fatalf("Failed to create card %v", err)
-	}
+	require.NoError(t, err, "failed to create card")
 }
 
 func noCardMatches(t *testing.T) {
@@ -129,7 +128,8 @@ func importDifferentSets(t *testing.T) {
 		Name:        "First",
 		Faces: []*card.Face{
 			{
-				Name: "First",
+				Name:   "First",
+				Colors: card.NewColors([]string{"W", "B", "R"}),
 			},
 		},
 	})
@@ -139,7 +139,8 @@ func importDifferentSets(t *testing.T) {
 		Name:        "Second",
 		Faces: []*card.Face{
 			{
-				Name: "Second",
+				Name:   "Second",
+				Colors: card.NewColors([]string{"W"}),
 			},
 		},
 	})

@@ -98,7 +98,7 @@ func (img *images) Import(pageConfig PageConfig) (*Report, error) {
 		page = page + 1
 		cards, err := img.cardDao.Paged(page, cardsPerPage)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get card list for page %d and size %d", page, cardsPerPage)
+			return nil, fmt.Errorf("failed to get card list for page %d and size %d. %w", page, cardsPerPage, err)
 		}
 		if len(cards) == 0 {
 			break

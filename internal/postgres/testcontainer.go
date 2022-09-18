@@ -74,7 +74,6 @@ func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) e
 		return fmt.Errorf("failed to get caller")
 	}
 	dbDirLink := filepath.Join(filepath.Dir(file), "testdata", "db")
-
 	dbDir, err := filepath.EvalSymlinks(dbDirLink)
 	if err != nil {
 		return err
@@ -154,68 +153,3 @@ func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) e
 	err = f(dbConfig)
 	return err
 }
-
-//func StartDb() (testcontainers.Container, *config.Database, error) {
-//	_, file, _, ok := runtime.Caller(0)
-//	if !ok {
-//		return nil, nil, fmt.Errorf("failed to get caller")
-//	}
-//	dbDirLink := filepath.Join(filepath.Dir(file), "testdata", "db")
-//
-//	ctx := context.Background()
-//
-//	dbDir, err := filepath.EvalSymlinks(dbDirLink)
-//	if err != nil {
-//		return nil, nil, err
-//	}
-//	username := "tester"
-//	password := "tester"
-//	database := "cardmanager"
-//
-//	// TODO read env variables from config
-//	req := testcontainers.ContainerRequest{
-//		Image:        "postgres:14.5-alpine",
-//		ExposedPorts: []string{"5432/tcp"},
-//		Mounts: testcontainers.Mounts(
-//			testcontainers.BindMount(dbDir, "/docker-entrypoint-initdb.d"),
-//		),
-//		Env: map[string]string{
-//			"POSTGRES_DB":       "postgres",
-//			"POSTGRES_PASSWORD": "test",
-//			"APP_DB_USER":       username,
-//			"APP_DB_PASS":       password,
-//			"APP_DB_NAME":       database,
-//		},
-//		Cmd:        []string{"postgres", "-c", "log_statement=all", "-c", "log_destination=stderr"},
-//		SkipReaper: true,
-//		WaitingFor: wait.ForListeningPort("5432/tcp"),
-//	}
-//
-//	postgresC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-//		ContainerRequest: req,
-//		Started:          true,
-//	})
-//	if err != nil {
-//		return nil, nil, err
-//	}
-//
-//	ip, err := postgresC.Host(ctx)
-//	if err != nil {
-//		return nil, nil, err
-//	}
-//
-//	mappedPort, err := postgresC.MappedPort(ctx, "5432")
-//	if err != nil {
-//		return nil, nil, err
-//	}
-//
-//	dbConfig := config.Database{
-//		Username: username,
-//		Password: password,
-//		Host:     ip,
-//		Port:     mappedPort.Port(),
-//		Database: database,
-//	}
-//
-//	return postgresC, &dbConfig, err
-//}
