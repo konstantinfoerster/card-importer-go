@@ -1,8 +1,8 @@
 package fetch
 
 import (
-	"bytes"
 	"fmt"
+	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/pkg/errors"
 	"io"
 	"net/http"
@@ -11,33 +11,74 @@ import (
 	"time"
 )
 
+const (
+	MimeTypeJson = "application/json"
+	MimeTypeJpeg = "image/jpeg"
+	MimeTypePng  = "image/png"
+	MimeTypeZip  = "application/zip"
+)
+
+func NewMimeType(mimeType string) MimeType {
+	return MimeType{string: strings.TrimSpace(strings.ToLower(mimeType))}
+}
+
+type MimeType struct {
+	string
+}
+
+func (m MimeType) BuildFilename(prefix string) (string, error) {
+	if strings.TrimSpace(prefix) == "" {
+		return "", fmt.Errorf("can't build file name without prefix")
+	}
+	switch m.string {
+	case MimeTypeJson:
+		return prefix + ".json", nil
+	case MimeTypeZip:
+		return prefix + ".zip", nil
+	case MimeTypeJpeg:
+		return prefix + ".jpg", nil
+	case MimeTypePng:
+		return prefix + ".png", nil
+	default:
+		return "", fmt.Errorf("unsupported mime type %s", m.string)
+	}
+}
+
+func (m MimeType) IsZip() bool {
+	return m.string == MimeTypeZip
+}
+
+func (m MimeType) Raw() string {
+	return m.string
+}
+
 type Response struct {
 	ContentType string
 	Body        io.Reader
 }
 
+func (r *Response) MimeType() MimeType {
+	return NewMimeType(strings.Split(r.ContentType, ";")[0])
+}
+
 type Fetcher interface {
-	Fetch(url string) (*Response, error)
+	Fetch(url string, handleResponse func(resp *Response) error) error
 }
 
 var doOnce sync.Once
 var client *http.Client
-var DefaultBodyLimit int64 = 2 * 1024 // in kb
-var DefaultAllowedTypes = []string{"application/json", "image/jpeg", "image/png"}
+var DefaultAllowedTypes = []string{MimeTypeJson, MimeTypeJpeg, MimeTypePng}
 
-// TODO Maybe use an interface to do the validation e.g. apply(resp *Response) bool
-func NewFetcher(allowedTypes []string, bodyLimit int64) Fetcher {
+func NewFetcher(cfg config.Http, validator ...Validator) Fetcher {
 	return &fetcher{
-		allowedTypes: allowedTypes,
-		timeout:      time.Second * 30,
-		bodyLimit:    bodyLimit,
+		validators: validator,
+		timeout:    cfg.Timeout,
 	}
 }
 
 type fetcher struct {
-	allowedTypes []string
-	timeout      time.Duration
-	bodyLimit    int64 // in kb
+	validators []Validator
+	timeout    time.Duration
 }
 
 func (f *fetcher) getClient() *http.Client {
@@ -49,10 +90,10 @@ func (f *fetcher) getClient() *http.Client {
 	return client
 }
 
-func (f *fetcher) Fetch(url string) (*Response, error) {
+func (f *fetcher) Fetch(url string, handleResponse func(resp *Response) error) error {
 	resp, err := f.getClient().Get(url)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer func(toClose io.ReadCloser) {
 		cErr := toClose.Close()
@@ -69,50 +110,21 @@ func (f *fetcher) Fetch(url string) (*Response, error) {
 	if resp.StatusCode != http.StatusOK {
 		body, err := io.ReadAll(io.LimitReader(resp.Body, 2048)) // limited size for the error message
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return nil, ExternalApiError{StatusCode: resp.StatusCode, Message: string(body)}
+		return ExternalApiError{StatusCode: resp.StatusCode, Message: string(body)}
 	}
 
-	contentType := resp.Header.Get("content-type")
-	if !f.isAllowedContentType(contentType) {
-		return nil, fmt.Errorf("unsupported content-type %s", contentType)
-	}
-
-	content, err := f.copyWithLimit(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	return &Response{
-		ContentType: contentType,
-		Body:        bytes.NewBuffer(content),
-	}, nil
-}
-
-func (f *fetcher) isAllowedContentType(ct string) bool {
-	for _, allowed := range f.allowedTypes {
-		t := strings.Split(ct, ";")[0]
-		if allowed == t {
-			return true
+	for _, v := range f.validators {
+		if err := v.Apply(resp); err != nil {
+			return err
 		}
 	}
-	return false
-}
 
-func (f *fetcher) copyWithLimit(r io.Reader) ([]byte, error) {
-	rLimit := &io.LimitedReader{
-		R: r,
-		N: (f.bodyLimit * 1024) + 1, // + 1 to check if we read more bytes than expected
-	}
-	content, err := io.ReadAll(rLimit)
-	if err != nil {
-		return nil, err
-	}
-	if rLimit.N == 0 {
-		return nil, fmt.Errorf("body must be <= %d kilobytes", f.bodyLimit)
-	}
-
-	return content, nil
+	return handleResponse(&Response{
+		ContentType: resp.Header.Get("content-type"),
+		Body:        resp.Body,
+	})
 }
 
 type ExternalApiError struct {

@@ -37,10 +37,13 @@ func newEntity(id PrimaryId, name string) *CharacteristicType {
 
 func (d *CharacteristicDao) Create(name string) (*CharacteristicType, error) {
 	query := fmt.Sprintf(`
-		INSERT INTO 
+		INSERT INTO
 			%s(name)
 		VALUES
 			($1)
+	    ON CONFLICT (name) DO UPDATE
+		SET 
+			name = $1
 		RETURNING
 			id`, d.tableName)
 	var id int64

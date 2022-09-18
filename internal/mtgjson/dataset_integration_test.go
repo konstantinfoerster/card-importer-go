@@ -1,10 +1,12 @@
-package mtgjson
+package mtgjson_test
 
 import (
 	"database/sql"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/cardset"
+	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
+	"github.com/konstantinfoerster/card-importer-go/internal/test"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"sort"
@@ -19,7 +21,7 @@ func TestImportIntegration(t *testing.T) {
 		t.Skip("Skipping integration tests")
 	}
 	runner = postgres.NewRunner()
-	runner.Run(t, func() {
+	runner.Run(t, func(t *testing.T) {
 		t.Run("CardSet: create and update", cardSetCreateAndUpdate)
 		t.Run("CardSet Block: create and update", blockCreateAndUpdate)
 		t.Run("CardSet Translations: create, update and remove", cardSetTranslations)
@@ -34,7 +36,7 @@ func cardSetCreateAndUpdate(t *testing.T) {
 	t.Cleanup(runner.Cleanup(t))
 
 	csDao := cardset.NewDao(runner.Connection())
-	importer := NewImporter(cardset.NewService(csDao), card.NewService(card.NewDao(runner.Connection())))
+	importer := mtgjson.NewImporter(cardset.NewService(csDao), card.NewService(card.NewDao(runner.Connection())))
 	want := &cardset.CardSet{
 		Code:       "10E",
 		Block:      cardset.CardBlock{Block: "Updated Block"},
@@ -44,11 +46,11 @@ func cardSetCreateAndUpdate(t *testing.T) {
 		Type:       "REPRINT",
 	}
 
-	_, err := importer.Import(fromFile(t, "testdata/set/set_no_cards_create.json"))
+	_, err := importer.Import(test.LoadFile(t, "testdata/set/set_no_cards_create.json"))
 	if err != nil {
 		t.Fatalf("unexpected error during import %v", err)
 	}
-	_, err = importer.Import(fromFile(t, "testdata/set/set_no_cards_update.json"))
+	_, err = importer.Import(test.LoadFile(t, "testdata/set/set_no_cards_update.json"))
 	if err != nil {
 		t.Fatalf("unexpected error during import %v", err)
 	}
@@ -57,20 +59,20 @@ func cardSetCreateAndUpdate(t *testing.T) {
 	assert.Equal(t, 1, count, "Unexpected set count.")
 	gotSet, _ := csDao.FindCardSetByCode("10E")
 	gotSet.Block.Id = sql.NullInt64{}
-	assertEquals(t, want, gotSet)
+	assert.Equal(t, want, gotSet)
 }
 
 func blockCreateAndUpdate(t *testing.T) {
 	t.Cleanup(runner.Cleanup(t))
 
 	csDao := cardset.NewDao(runner.Connection())
-	importer := NewImporter(cardset.NewService(csDao), card.NewService(card.NewDao(runner.Connection())))
+	importer := mtgjson.NewImporter(cardset.NewService(csDao), card.NewService(card.NewDao(runner.Connection())))
 
-	_, err := importer.Import(fromFile(t, "testdata/set/set_no_cards_create.json"))
+	_, err := importer.Import(test.LoadFile(t, "testdata/set/set_no_cards_create.json"))
 	if err != nil {
 		t.Fatalf("unexpected error during import %v", err)
 	}
-	_, err = importer.Import(fromFile(t, "testdata/set/set_no_cards_update.json"))
+	_, err = importer.Import(test.LoadFile(t, "testdata/set/set_no_cards_update.json"))
 	if err != nil {
 		t.Fatalf("unexpected error during import %v", err)
 	}
@@ -85,12 +87,12 @@ func cardSetTranslations(t *testing.T) {
 	cases := []struct {
 		name    string
 		fixture io.Reader
-		want    []cardset.Translation
+		want    []*cardset.Translation
 	}{
 		{
 			name:    "UpdateSetTranslations",
-			fixture: fromFile(t, "testdata/set/translations_update.json"),
-			want: []cardset.Translation{
+			fixture: test.LoadFile(t, "testdata/set/translations_update.json"),
+			want: []*cardset.Translation{
 				{
 					Name: "German Translation Updated",
 					Lang: "deu",
@@ -99,12 +101,12 @@ func cardSetTranslations(t *testing.T) {
 		},
 		{
 			name:    "RemoveSetTranslationsWhenNull",
-			fixture: fromFile(t, "testdata/set/translations_null.json"),
+			fixture: test.LoadFile(t, "testdata/set/translations_null.json"),
 			want:    nil,
 		},
 		{
 			name:    "RemoveSetTranslations",
-			fixture: fromFile(t, "testdata/set/translations_remove.json"),
+			fixture: test.LoadFile(t, "testdata/set/translations_remove.json"),
 			want:    nil,
 		},
 	}
@@ -112,9 +114,9 @@ func cardSetTranslations(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Cleanup(runner.Cleanup(t))
 			csDao := cardset.NewDao(runner.Connection())
-			importer := NewImporter(cardset.NewService(csDao), card.NewService(card.NewDao(runner.Connection())))
+			importer := mtgjson.NewImporter(cardset.NewService(csDao), card.NewService(card.NewDao(runner.Connection())))
 
-			_, err := importer.Import(fromFile(t, "testdata/set/translations_create.json"))
+			_, err := importer.Import(test.LoadFile(t, "testdata/set/translations_create.json"))
 			if err != nil {
 				t.Fatalf("unexpected error during import %v", err)
 			}
@@ -124,13 +126,13 @@ func cardSetTranslations(t *testing.T) {
 			}
 
 			translations, _ := csDao.FindTranslations("10E")
-			assertEquals(t, tc.want, translations)
+			assert.Equal(t, tc.want, translations)
 		})
 	}
 }
 
 func cardCreateUpdate(t *testing.T) {
-	want := []card.Card{
+	want := []*card.Card{
 		{
 			CardSetCode: "2ED",
 			Number:      "4",
@@ -210,13 +212,13 @@ func cardCreateUpdate(t *testing.T) {
 
 	t.Cleanup(runner.Cleanup(t))
 	cDao := card.NewDao(runner.Connection())
-	imp := NewImporter(cardset.NewService(cardset.NewDao(runner.Connection())), card.NewService(cDao))
+	imp := mtgjson.NewImporter(cardset.NewService(cardset.NewDao(runner.Connection())), card.NewService(cDao))
 
-	_, err := imp.Import(fromFile(t, "testdata/card/one_card_no_references_create.json"))
+	_, err := imp.Import(test.LoadFile(t, "testdata/card/one_card_no_references_create.json"))
 	if err != nil {
 		t.Fatalf("unexpected error during import %v", err)
 	}
-	_, err = imp.Import(fromFile(t, "testdata/card/one_card_no_references_update.json"))
+	_, err = imp.Import(test.LoadFile(t, "testdata/card/one_card_no_references_update.json"))
 	if err != nil {
 		t.Fatalf("unexpected error during import %v", err)
 	}
@@ -226,7 +228,7 @@ func cardCreateUpdate(t *testing.T) {
 
 	for _, w := range want {
 		gotCard := findUniqueCardWithReferences(t, cDao, w.CardSetCode, w.Number)
-		assertEquals(t, w, gotCard)
+		assert.Equal(t, w, gotCard)
 	}
 }
 
@@ -234,11 +236,11 @@ func cardTranslations(t *testing.T) {
 	cases := []struct {
 		name    string
 		fixture io.Reader
-		want    card.Card
+		want    *card.Card
 	}{
 		{
 			name: "CreateTranslations",
-			want: card.Card{
+			want: &card.Card{
 				CardSetCode: "2ED",
 				Number:      "4",
 				Name:        "Benalish Hero",
@@ -264,8 +266,8 @@ func cardTranslations(t *testing.T) {
 		},
 		{
 			name:    "UpdateTranslations",
-			fixture: fromFile(t, "testdata/card/two_translations_update.json"),
-			want: card.Card{
+			fixture: test.LoadFile(t, "testdata/card/two_translations_update.json"),
+			want: &card.Card{
 				CardSetCode: "2ED",
 				Number:      "4",
 				Name:        "Benalish Hero",
@@ -291,8 +293,8 @@ func cardTranslations(t *testing.T) {
 		},
 		{
 			name:    "RemoveTranslations",
-			fixture: fromFile(t, "testdata/card/two_translations_remove.json"),
-			want: card.Card{
+			fixture: test.LoadFile(t, "testdata/card/two_translations_remove.json"),
+			want: &card.Card{
 				CardSetCode: "2ED",
 				Number:      "4",
 				Name:        "Benalish Hero",
@@ -313,9 +315,9 @@ func cardTranslations(t *testing.T) {
 			t.Cleanup(runner.Cleanup(t))
 
 			cDao := card.NewDao(runner.Connection())
-			imp := NewImporter(cardset.NewService(cardset.NewDao(runner.Connection())), card.NewService(cDao))
+			imp := mtgjson.NewImporter(cardset.NewService(cardset.NewDao(runner.Connection())), card.NewService(cDao))
 
-			_, err := imp.Import(fromFile(t, "testdata/card/two_translations_create.json"))
+			_, err := imp.Import(test.LoadFile(t, "testdata/card/two_translations_create.json"))
 			if err != nil {
 				t.Fatalf("unexpected error during import %v", err)
 			}
@@ -327,7 +329,7 @@ func cardTranslations(t *testing.T) {
 			}
 
 			gotCard := findUniqueCardWithReferences(t, cDao, "2ED", "4")
-			assertEquals(t, tc.want, &gotCard)
+			assert.Equal(t, tc.want, gotCard)
 		})
 	}
 }
@@ -336,11 +338,11 @@ func cardTypes(t *testing.T) {
 	cases := []struct {
 		name    string
 		fixture io.Reader
-		want    card.Card
+		want    *card.Card
 	}{
 		{
 			name: "CreateTypes",
-			want: card.Card{
+			want: &card.Card{
 				CardSetCode: "2ED",
 				Number:      "4",
 				Name:        "Benalish Hero",
@@ -360,8 +362,8 @@ func cardTypes(t *testing.T) {
 		},
 		{
 			name:    "UpdateTypes",
-			fixture: fromFile(t, "testdata/type/update.json"),
-			want: card.Card{
+			fixture: test.LoadFile(t, "testdata/type/update.json"),
+			want: &card.Card{
 				CardSetCode: "2ED",
 				Number:      "4",
 				Name:        "Benalish Hero",
@@ -381,8 +383,8 @@ func cardTypes(t *testing.T) {
 		},
 		{
 			name:    "RemoveTypes",
-			fixture: fromFile(t, "testdata/type/remove.json"),
-			want: card.Card{
+			fixture: test.LoadFile(t, "testdata/type/remove.json"),
+			want: &card.Card{
 				CardSetCode: "2ED",
 				Number:      "4",
 				Name:        "Benalish Hero",
@@ -403,9 +405,9 @@ func cardTypes(t *testing.T) {
 			t.Cleanup(runner.Cleanup(t))
 
 			cDao := card.NewDao(runner.Connection())
-			importer := NewImporter(cardset.NewService(cardset.NewDao(runner.Connection())), card.NewService(cDao))
+			importer := mtgjson.NewImporter(cardset.NewService(cardset.NewDao(runner.Connection())), card.NewService(cDao))
 
-			_, err := importer.Import(fromFile(t, "testdata/type/create.json"))
+			_, err := importer.Import(test.LoadFile(t, "testdata/type/create.json"))
 			if err != nil {
 				t.Fatalf("unexpected error during import %v", err)
 			}
@@ -418,7 +420,7 @@ func cardTypes(t *testing.T) {
 
 			gotCard := findUniqueCardWithReferences(t, cDao, "2ED", "4")
 
-			assertEquals(t, tc.want, gotCard)
+			assert.Equal(t, tc.want, gotCard)
 		})
 	}
 }
@@ -427,9 +429,9 @@ func duplicatedCardTypes(t *testing.T) {
 	t.Cleanup(runner.Cleanup(t))
 
 	cDao := card.NewDao(runner.Connection())
-	importer := NewImporter(cardset.NewService(cardset.NewDao(runner.Connection())), card.NewService(cDao))
+	importer := mtgjson.NewImporter(cardset.NewService(cardset.NewDao(runner.Connection())), card.NewService(cDao))
 
-	_, err := importer.Import(fromFile(t, "testdata/type/duplicate.json"))
+	_, err := importer.Import(test.LoadFile(t, "testdata/type/duplicate.json"))
 	if err != nil {
 		t.Fatalf("unexpected error during import %v", err)
 	}
@@ -451,8 +453,8 @@ func findUniqueCardWithReferences(t *testing.T, cDao *card.PostgresCardDao, setC
 		if err != nil {
 			t.Fatalf("unexpected error during find translation call %v", err)
 		}
-		for _, translation := range translations {
-			face.Translations = append(face.Translations, *translation)
+		for _, trans := range translations {
+			face.Translations = append(face.Translations, *trans)
 		}
 
 		subTypes, err := cDao.FindAssignedSubTypes(faceId)
@@ -469,12 +471,12 @@ func findUniqueCardWithReferences(t *testing.T, cDao *card.PostgresCardDao, setC
 		sort.Strings(superTypes)
 		face.Supertypes = superTypes
 
-		cardTypes, err := cDao.FindAssignedCardTypes(faceId)
+		cts, err := cDao.FindAssignedCardTypes(faceId)
 		if err != nil {
 			t.Fatalf("unexpected error during find card types call %v", err)
 		}
-		sort.Strings(cardTypes)
-		face.Cardtypes = cardTypes
+		sort.Strings(cts)
+		face.Cardtypes = cts
 
 		face.Id = card.PrimaryId{}
 		c.Faces = append(c.Faces, face)

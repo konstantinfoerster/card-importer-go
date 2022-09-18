@@ -1,6 +1,7 @@
-package mtgjson
+package mtgjson_test
 
 import (
+	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"strings"
@@ -27,14 +28,14 @@ func TestFileImport(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeImporter := &mockImporter{}
-			imp := NewFileDataset(fakeImporter)
+			imp := mtgjson.NewFileDataset(fakeImporter)
 
 			_, err := imp.Import(tc.fixture)
 			if err != nil {
 				t.Fatalf("unexpected import error, got: %v, wanted no error", err)
 			}
 
-			assertEquals(t, tc.want, fakeImporter.content)
+			assert.Equal(t, tc.want, fakeImporter.content)
 		})
 	}
 }
@@ -60,7 +61,7 @@ func TestFileImportFails(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeImporter := &mockImporter{}
-			imp := NewFileDataset(fakeImporter)
+			imp := mtgjson.NewFileDataset(fakeImporter)
 
 			_, err := imp.Import(tc.fixture)
 			if err == nil {

@@ -1,12 +1,18 @@
-package card
+package card_test
 
 import (
+	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
+	"github.com/konstantinfoerster/card-importer-go/internal/api/diff"
+	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestBuildFilename(t *testing.T) {
-	r := CardImage{MimeType: "application/json", CardId: NewPrimaryId(1)}
+	r := card.CardImage{
+		MimeType: fetch.NewMimeType(fetch.MimeTypeJson),
+		CardId:   card.NewPrimaryId(1),
+	}
 	want := "card-1.json"
 
 	got, err := r.BuildFilename()
@@ -19,7 +25,10 @@ func TestBuildFilename(t *testing.T) {
 }
 
 func TestBuildFilenameWithFaceName(t *testing.T) {
-	r := CardImage{MimeType: "application/json", FaceId: NewPrimaryId(1)}
+	r := card.CardImage{
+		MimeType: fetch.NewMimeType(fetch.MimeTypeJson),
+		FaceId:   card.NewPrimaryId(1),
+	}
 	want := "face-1.json"
 
 	got, err := r.BuildFilename()
@@ -32,7 +41,7 @@ func TestBuildFilenameWithFaceName(t *testing.T) {
 }
 
 func TestBuildFilenameFailsIfIdIsMissing(t *testing.T) {
-	r := CardImage{MimeType: "application/json"}
+	r := card.CardImage{MimeType: fetch.NewMimeType(fetch.MimeTypeJson)}
 
 	_, err := r.BuildFilename()
 
@@ -44,7 +53,7 @@ func TestBuildFilenameFailsIfIdIsMissing(t *testing.T) {
 }
 
 func TestBuildFilenameFailsOnUnknownContentType(t *testing.T) {
-	r := CardImage{MimeType: "unknown", CardId: NewPrimaryId(1)}
+	r := card.CardImage{MimeType: fetch.NewMimeType("unknown"), CardId: card.NewPrimaryId(1)}
 
 	_, err := r.BuildFilename()
 
@@ -52,5 +61,26 @@ func TestBuildFilenameFailsOnUnknownContentType(t *testing.T) {
 		t.Fatal("got no error, expected an error if content type is unknown")
 	}
 
-	assert.Contains(t, err.Error(), "unsupported content type")
+	assert.Contains(t, err.Error(), "unsupported mime type")
+}
+
+func TestFaceDiffWithDifferentColors(t *testing.T) {
+	firstFace := card.Face{Colors: card.NewColors([]string{"W", "B"})}
+	secFace := card.Face{Colors: card.NewColors([]string{"W"})}
+	expected := diff.NewChangeset()
+	expected.Add("Colors", diff.Changes{From: firstFace.Colors, To: secFace.Colors})
+
+	actual := firstFace.Diff(&secFace)
+
+	assert.Equal(t, expected, actual)
+}
+
+func TestFaceDiffWithSameColors(t *testing.T) {
+	firstFace := card.Face{Colors: card.NewColors([]string{"W"})}
+	secFace := card.Face{Colors: card.NewColors([]string{"W"})}
+	expected := diff.NewChangeset()
+
+	actual := firstFace.Diff(&secFace)
+
+	assert.Equal(t, expected, actual)
 }

@@ -8,31 +8,25 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"io/ioutil"
+	"io"
 	"path/filepath"
 	"runtime"
 	"testing"
 )
 
 func NewRunner() *DatabaseRunner {
-	return NewRunnerWithInitialData("")
-}
-
-func NewRunnerWithInitialData(scriptPath string) *DatabaseRunner {
 	ctx := context.Background()
 	return &DatabaseRunner{
-		ctx:        ctx,
-		scriptPath: scriptPath,
+		ctx: ctx,
 	}
 }
 
 type DatabaseRunner struct {
-	ctx        context.Context
-	conn       *DBConnection
-	scriptPath string
+	ctx  context.Context
+	conn *DBConnection
 }
 
-func (r *DatabaseRunner) Run(t *testing.T, runTests func()) {
+func (r *DatabaseRunner) Run(t *testing.T, runTests func(t *testing.T)) {
 	err := r.runPostgresContainer(func(cfg config.Database) error {
 		conn, err := Connect(r.ctx, cfg)
 		if err != nil {
@@ -51,7 +45,7 @@ func (r *DatabaseRunner) Run(t *testing.T, runTests func()) {
 		}(conn)
 		r.conn = conn
 
-		runTests()
+		runTests(t)
 
 		return err
 	})
@@ -80,7 +74,6 @@ func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) e
 		return fmt.Errorf("failed to get caller")
 	}
 	dbDirLink := filepath.Join(filepath.Dir(file), "testdata", "db")
-
 	dbDir, err := filepath.EvalSymlinks(dbDirLink)
 	if err != nil {
 		return err
@@ -103,12 +96,14 @@ func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) e
 			"APP_DB_PASS":       password,
 			"APP_DB_NAME":       database,
 		},
-		WaitingFor: wait.ForLog("[1] LOG:  database system is ready to accept connections"),
+		AlwaysPullImage: true,
+		SkipReaper:      true,
+		WaitingFor:      wait.ForLog("[1] LOG:  database system is ready to accept connections"),
 	}
 
 	postgresC, err := testcontainers.GenericContainer(r.ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
-		Started:          false,
+		Started:          true,
 	})
 	if err != nil {
 		return err
@@ -125,18 +120,13 @@ func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) e
 		}
 	}(postgresC)
 
-	err = postgresC.Start(r.ctx)
-	if err != nil {
-		return err
-	}
-
 	if log.Debug().Enabled() {
 		logs, err := postgresC.Logs(r.ctx)
 		if err != nil {
 			return err
 		}
 		defer logs.Close()
-		b, err := ioutil.ReadAll(logs)
+		b, err := io.ReadAll(logs)
 		if err != nil {
 			return err
 		}

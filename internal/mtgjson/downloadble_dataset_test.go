@@ -1,31 +1,44 @@
-package mtgjson
+package mtgjson_test
 
 import (
-	dataset2 "github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
+	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
+	"github.com/konstantinfoerster/card-importer-go/internal/config"
+	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
+	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
+	"github.com/konstantinfoerster/card-importer-go/internal/storage"
+	"github.com/konstantinfoerster/card-importer-go/internal/test"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
+
+var cfg = config.Http{Timeout: 5 * time.Second}
 
 type mockImporter struct {
 	content string
 }
 
-func (imp *mockImporter) Import(r io.Reader) (*dataset2.Report, error) {
+func (imp *mockImporter) Import(r io.Reader) (*dataset.Report, error) {
 	c, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
 	imp.content = string(c)
-	return &dataset2.Report{}, nil
+	return &dataset.Report{}, nil
 }
 
 func TestDownloadableImport(t *testing.T) {
 	ts := httptest.NewServer(http.FileServer(http.Dir("testdata")))
 	defer ts.Close()
+	dir := test.NewTmpDirWithCleanup(t)
+	localStorage, err := storage.NewLocalStorage(config.Storage{Location: dir})
+	if err != nil {
+		t.Fatalf("failed to create local storage %v", err)
+	}
 
 	cases := []struct {
 		name    string
@@ -47,14 +60,14 @@ func TestDownloadableImport(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeImporter := &mockImporter{}
-			imp := NewDownloadableDataset(fakeImporter)
+			imp := mtgjson.NewDownloadableDataset(fakeImporter, fetch.NewFetcher(cfg), localStorage)
 
 			_, err := imp.Import(tc.fixture)
 			if err != nil {
 				t.Fatalf("unexpected import error, got: %v, wanted no error", err)
 			}
 
-			assertEquals(t, tc.want, fakeImporter.content)
+			assert.Equal(t, tc.want, fakeImporter.content)
 		})
 	}
 }
@@ -62,6 +75,11 @@ func TestDownloadableImport(t *testing.T) {
 func TestDownloadableImportFails(t *testing.T) {
 	ts := httptest.NewServer(http.FileServer(http.Dir("testdata")))
 	defer ts.Close()
+	dir := test.NewTmpDirWithCleanup(t)
+	localStorage, err := storage.NewLocalStorage(config.Storage{Location: dir})
+	if err != nil {
+		t.Fatalf("failed to create local storage %v", err)
+	}
 
 	cases := []struct {
 		name        string
@@ -79,16 +97,17 @@ func TestDownloadableImportFails(t *testing.T) {
 			wantContain: "unsupported content-type",
 		},
 		{
-			name:        "ImportUnsupportedType",
+			name:        "ImportNoneExistingFile",
 			fixture:     strings.NewReader(ts.URL + "/notFound.json"),
-			wantContain: "failed to download file",
+			wantContain: "not found",
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeImporter := &mockImporter{}
-			imp := NewDownloadableDataset(fakeImporter)
+			validator := fetch.NewContentTypeValidator([]string{fetch.MimeTypeZip, fetch.MimeTypeJson})
+			imp := mtgjson.NewDownloadableDataset(fakeImporter, fetch.NewFetcher(cfg, validator), localStorage)
 
 			_, err := imp.Import(tc.fixture)
 			if err == nil {

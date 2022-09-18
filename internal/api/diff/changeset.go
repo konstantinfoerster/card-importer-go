@@ -4,8 +4,8 @@ type Changeset struct {
 	changes map[string]Changes
 }
 
-func NewChangeset() Changeset {
-	return Changeset{
+func NewChangeset() *Changeset {
+	return &Changeset{
 		changes: map[string]Changes{},
 	}
 }
@@ -15,7 +15,7 @@ type Changes struct {
 	To   interface{}
 }
 
-func (c Changeset) Add(field string, changed Changes) {
+func (c *Changeset) Add(field string, changed Changes) {
 	c.changes[field] = changed
 }
 

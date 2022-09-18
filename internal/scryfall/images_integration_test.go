@@ -1,4 +1,4 @@
-package scryfall
+package scryfall_test
 
 import (
 	"fmt"
@@ -8,10 +8,11 @@ import (
 	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
+	"github.com/konstantinfoerster/card-importer-go/internal/scryfall"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,18 +28,17 @@ func TestMain(m *testing.M) {
 	}
 
 	exitVal := 0
-
 	exitVal = m.Run()
 
 	os.Exit(exitVal)
 }
 
 type MockFetcher struct {
-	FakeFetch func(url string) (*fetch.Response, error)
+	FakeFetch func(url string, handleResponse func(result *fetch.Response) error) error
 }
 
-func (p *MockFetcher) Fetch(url string) (*fetch.Response, error) {
-	return p.FakeFetch(url)
+func (p *MockFetcher) Fetch(url string, handleResponse func(resp *fetch.Response) error) error {
+	return p.FakeFetch(url, handleResponse)
 }
 
 var runner *postgres.DatabaseRunner
@@ -46,7 +46,7 @@ var fetcher fetch.Fetcher
 var cfg config.Scryfall
 var cardDao *card.PostgresCardDao
 
-var firstPage20Entries = images.PageConfig{Page: 1, Size: 20}
+var limitFirstPage20Entries = images.PageConfig{Page: 1, Size: 20}
 
 func TestImageIntegration(t *testing.T) {
 	if testing.Short() {
@@ -57,9 +57,8 @@ func TestImageIntegration(t *testing.T) {
 	fetcher = testdataFileFetcher(t)
 
 	runner = postgres.NewRunner()
-	runner.Run(t, func() {
+	runner.Run(t, func(t *testing.T) {
 		cardDao = card.NewDao(runner.Connection())
-
 		t.Run("import images for different sets", importDifferentSets)
 		t.Run("import image multiple times", importSameImageMultipleTimes)
 		t.Run("ignores card name cases", ignoresCardNamesCases)
@@ -70,7 +69,7 @@ func TestImageIntegration(t *testing.T) {
 	})
 }
 
-func createCard(t *testing.T, c *card.Card) *card.Card {
+func createCard(t *testing.T, c *card.Card) {
 	cardService := card.NewService(cardDao)
 
 	withDefaults := func(c *card.Card) *card.Card {
@@ -81,11 +80,7 @@ func createCard(t *testing.T, c *card.Card) *card.Card {
 	}
 
 	err := cardService.Import(withDefaults(c))
-	if err != nil {
-		t.Fatalf("Failed to create card %v", err)
-	}
-
-	return c
+	require.NoError(t, err, "failed to create card")
 }
 
 func noCardMatches(t *testing.T) {
@@ -106,8 +101,8 @@ func noCardMatches(t *testing.T) {
 		},
 	})
 
-	importer := images.NewImporter(cardDao, localStorage, NewDownloader(cfg, fetcher))
-	report, err := importer.Import(firstPage20Entries)
+	importer := images.NewImporter(cardDao, localStorage, scryfall.NewDownloader(cfg, fetcher))
+	report, err := importer.Import(limitFirstPage20Entries)
 	if err != nil {
 		t.Fatalf("import failed %v", err)
 	}
@@ -133,7 +128,8 @@ func importDifferentSets(t *testing.T) {
 		Name:        "First",
 		Faces: []*card.Face{
 			{
-				Name: "First",
+				Name:   "First",
+				Colors: card.NewColors([]string{"W", "B", "R"}),
 			},
 		},
 	})
@@ -143,7 +139,8 @@ func importDifferentSets(t *testing.T) {
 		Name:        "Second",
 		Faces: []*card.Face{
 			{
-				Name: "Second",
+				Name:   "Second",
+				Colors: card.NewColors([]string{"W"}),
 			},
 		},
 	})
@@ -158,8 +155,8 @@ func importDifferentSets(t *testing.T) {
 		},
 	})
 
-	importer := images.NewImporter(cardDao, localStorage, NewDownloader(cfg, fetcher))
-	report, err := importer.Import(firstPage20Entries)
+	importer := images.NewImporter(cardDao, localStorage, scryfall.NewDownloader(cfg, fetcher))
+	report, err := importer.Import(limitFirstPage20Entries)
 	if err != nil {
 		t.Fatalf("import failed %v", err)
 	}
@@ -194,8 +191,8 @@ func ignoresCardNamesCases(t *testing.T) {
 		},
 	})
 
-	importer := images.NewImporter(cardDao, localStorage, NewDownloader(cfg, fetcher))
-	report, err := importer.Import(firstPage20Entries)
+	importer := images.NewImporter(cardDao, localStorage, scryfall.NewDownloader(cfg, fetcher))
+	report, err := importer.Import(limitFirstPage20Entries)
 	if err != nil {
 		t.Fatalf("import failed %v", err)
 	}
@@ -256,8 +253,8 @@ func importNextLanguageOnMissingCard(t *testing.T) {
 			}
 			createCard(t, &tc.fixture)
 
-			importer := images.NewImporter(cardDao, localStorage, NewDownloader(cfg, fetcher))
-			report, err := importer.Import(firstPage20Entries)
+			importer := images.NewImporter(cardDao, localStorage, scryfall.NewDownloader(cfg, fetcher))
+			report, err := importer.Import(limitFirstPage20Entries)
 			if err != nil {
 				t.Fatalf("import failed %v", err)
 			}
@@ -279,40 +276,40 @@ func importMultiFaces(t *testing.T) {
 		fixture card.Card
 		want    int
 	}{
-		//{
-		//	name: "FirstFaceDoesNotMatch",
-		//	fixture: card.Card{
-		//		CardSetCode: "10E",
-		//		Number:      "multiFace",
-		//		Name:        "DoesNotMatch // First",
-		//		Faces: []*card.Face{
-		//			{
-		//				Name: "DoesNotMatch",
-		//			},
-		//			{
-		//				Name: "SecondFace",
-		//			},
-		//		},
-		//	},
-		//	want: 1,
-		//},
-		//{
-		//	name: "SecondFaceDoesNotMatch",
-		//	fixture: card.Card{
-		//		CardSetCode: "10E",
-		//		Number:      "multiFace",
-		//		Name:        "First // DoesNotMatch",
-		//		Faces: []*card.Face{
-		//			{
-		//				Name: "FirstFace",
-		//			},
-		//			{
-		//				Name: "DoesNotMatch",
-		//			},
-		//		},
-		//	},
-		//	want: 1,
-		//},
+		{
+			name: "FirstFaceDoesNotMatch",
+			fixture: card.Card{
+				CardSetCode: "10E",
+				Number:      "multiFace",
+				Name:        "DoesNotMatch // First",
+				Faces: []*card.Face{
+					{
+						Name: "DoesNotMatch",
+					},
+					{
+						Name: "SecondFace",
+					},
+				},
+			},
+			want: 1,
+		},
+		{
+			name: "SecondFaceDoesNotMatch",
+			fixture: card.Card{
+				CardSetCode: "10E",
+				Number:      "multiFace",
+				Name:        "First // DoesNotMatch",
+				Faces: []*card.Face{
+					{
+						Name: "FirstFace",
+					},
+					{
+						Name: "DoesNotMatch",
+					},
+				},
+			},
+			want: 1,
+		},
 		{
 			name: "BothFacesMatch",
 			fixture: card.Card{
@@ -342,8 +339,8 @@ func importMultiFaces(t *testing.T) {
 			}
 			createCard(t, &tc.fixture)
 
-			importer := images.NewImporter(cardDao, localStorage, NewDownloader(cfg, fetcher))
-			report, err := importer.Import(firstPage20Entries)
+			importer := images.NewImporter(cardDao, localStorage, scryfall.NewDownloader(cfg, fetcher))
+			report, err := importer.Import(limitFirstPage20Entries)
 			if err != nil {
 				t.Fatalf("import failed %v", err)
 			}
@@ -377,13 +374,13 @@ func importSameImageMultipleTimes(t *testing.T) {
 			},
 		},
 	})
-	importer := images.NewImporter(cardDao, localStorage, NewDownloader(cfg, fetcher))
+	importer := images.NewImporter(cardDao, localStorage, scryfall.NewDownloader(cfg, fetcher))
 
-	_, err = importer.Import(firstPage20Entries)
+	_, err = importer.Import(limitFirstPage20Entries)
 	if err != nil {
 		t.Fatalf("import failed %v", err)
 	}
-	report, err := importer.Import(firstPage20Entries)
+	report, err := importer.Import(limitFirstPage20Entries)
 	if err != nil {
 		t.Fatalf("import failed %v", err)
 	}
@@ -468,9 +465,9 @@ func testErrorCases(t *testing.T) {
 			t.Cleanup(runner.Cleanup(t))
 			createCard(t, &tc.fixture)
 
-			importer := images.NewImporter(cardDao, localStorage, NewDownloader(cfg, fetcher))
+			importer := images.NewImporter(cardDao, localStorage, scryfall.NewDownloader(cfg, fetcher))
 
-			report, err := importer.Import(firstPage20Entries)
+			report, err := importer.Import(limitFirstPage20Entries)
 			if err != nil {
 				t.Fatalf("import failed %v", err)
 			}
@@ -498,33 +495,33 @@ func openFile(t *testing.T, path string) (io.ReadCloser, error) {
 }
 
 func testdataFileFetcher(t *testing.T) *MockFetcher {
-	return &MockFetcher{FakeFetch: func(url string) (*fetch.Response, error) {
+	return &MockFetcher{FakeFetch: func(url string, handleResponse func(resp *fetch.Response) error) error {
 		u := strings.TrimPrefix(url, "http://localhost/")
 
 		if strings.HasSuffix(u, ".jpg") {
 			f, err := openFile(t, "testdata/"+u)
 			if err != nil {
-				return nil, err
+				return err
 			}
-			return &fetch.Response{
-				ContentType: "image/jpeg",
+			return handleResponse(&fetch.Response{
+				ContentType: fetch.MimeTypeJpeg,
 				Body:        f,
-			}, nil
+			})
 		}
 
 		f, err := openFile(t, "testdata/"+u)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		return &fetch.Response{
-			ContentType: "application/json",
+		return handleResponse(&fetch.Response{
+			ContentType: fetch.MimeTypeJson,
 			Body:        f,
-		}, nil
+		})
 	}}
 }
 
 func assertFileCount(t *testing.T, path string, expectedCount int) {
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
 		t.Fatalf("failed to read dir %s %v", path, err)
 	}
@@ -532,7 +529,7 @@ func assertFileCount(t *testing.T, path string, expectedCount int) {
 }
 
 func tmpDirWithCleanup(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "images")
+	dir, err := os.MkdirTemp("", "images")
 	if err != nil {
 		t.Fatalf("failed to create temp dir %v", err)
 	}

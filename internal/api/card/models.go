@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/diff"
+	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	"strings"
 )
 
@@ -18,9 +19,9 @@ type Card struct {
 	CardSetCode string
 	Name        string
 	Number      string
-	Border      string
-	Rarity      string
-	Layout      string
+	Border      string // ENUM
+	Rarity      string // ENUM
+	Layout      string // ENUM
 	Faces       []*Face
 }
 
@@ -56,7 +57,7 @@ func (c *Card) isValid() error {
 	return nil
 }
 
-func (c Card) Diff(other *Card) *diff.Changeset {
+func (c *Card) Diff(other *Card) *diff.Changeset {
 	changes := diff.NewChangeset()
 
 	if c.Number != other.Number {
@@ -93,7 +94,7 @@ func (c Card) Diff(other *Card) *diff.Changeset {
 		})
 	}
 
-	return &changes
+	return changes
 }
 
 // Face The face data of a card.
@@ -212,7 +213,7 @@ func (f Face) Diff(other *Face) *diff.Changeset {
 		})
 	}
 
-	return &changes
+	return changes
 }
 
 // Translation The translation of the card. Does not include english (the default language).
@@ -258,10 +259,10 @@ func (t Translation) Diff(other *Translation) *diff.Changeset {
 			To:   other.MultiverseId,
 		})
 	}
-	return &changes
+	return changes
 }
 
-// CharacteristicType A type of a card. Can be a Cardtype, Subtype or Superype
+// CharacteristicType A type of card. Can be a Cardtype, Subtype or Superype
 // Cardtype: Creature, Artifact, Instant, Enchantment ...
 // Subtype: Archer, Shaman, Nomad, Nymph ...
 // Supertype: Basic, Host, Legendary, Ongoing, Snow, World
@@ -312,16 +313,15 @@ func NewColors(colors []string) Colors {
 	}
 	valid := len(trimmed) > 0
 	colorsRow := strings.Join(trimmed, ",")
-	return Colors{NullString: sql.NullString{String: colorsRow, Valid: valid}, Array: colors}
+	return Colors{NullString: sql.NullString{String: colorsRow, Valid: valid}}
 }
 
 type Colors struct {
 	sql.NullString
-	Array []string
 }
 
 func (v Colors) Equal(other Colors) bool {
-	return v.String != other.String || len(v.Array) != len(other.Array)
+	return v.String == other.String
 }
 
 func (v Colors) MarshalJSON() ([]byte, error) {
@@ -341,7 +341,6 @@ func (v *Colors) UnmarshalJSON(data []byte) error {
 	if x != nil && len(*x) > 0 {
 		v.Valid = true
 		v.String = *x
-		v.Array = strings.Split(*x, ",")
 	} else {
 		v.Valid = false
 	}
@@ -354,7 +353,7 @@ type CardImage struct {
 	CardId    PrimaryId
 	FaceId    PrimaryId
 	ImagePath string
-	MimeType  string
+	MimeType  fetch.MimeType
 }
 
 func (img *CardImage) getFilePrefix() (string, error) {
@@ -373,16 +372,5 @@ func (img *CardImage) BuildFilename() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("can't build file name reason: %w", err)
 	}
-	switch img.MimeType {
-	case "application/json":
-		return prefix + ".json", nil
-	case "application/zip":
-		return prefix + ".zip", nil
-	case "image/jpeg":
-		return prefix + ".jpg", nil
-	case "image/png":
-		return prefix + ".png", nil
-	default:
-		return "", fmt.Errorf("unsupported content type %s", img.MimeType)
-	}
+	return img.MimeType.BuildFilename(prefix)
 }

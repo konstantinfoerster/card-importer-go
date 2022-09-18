@@ -11,7 +11,7 @@ type CardSet struct {
 	Code         string
 	Name         string
 	TotalCount   int
-	Released     time.Time
+	Released     time.Time // can be null ??
 	Block        CardBlock
 	Type         string
 	Translations []Translation
@@ -27,7 +27,7 @@ func (s *CardSet) isValid() error {
 	return nil
 }
 
-func (s CardSet) Diff(other *CardSet) *diff.Changeset {
+func (s *CardSet) Diff(other *CardSet) *diff.Changeset {
 	changes := diff.NewChangeset()
 
 	if other.Block.Id.Valid && other.Block.notEquals(s.Block) {
@@ -61,7 +61,7 @@ func (s CardSet) Diff(other *CardSet) *diff.Changeset {
 		})
 	}
 
-	return &changes
+	return changes
 }
 
 type CardBlock struct {

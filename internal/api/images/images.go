@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
+	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/rs/zerolog/log"
 	"io"
@@ -13,17 +14,16 @@ import (
 type ImageResult struct {
 	MatchingCardPart string
 	MatchingId       int64
-	ContentType      string
+	MimeType         fetch.MimeType
 	File             io.Reader
 }
 
 func (img *ImageResult) toCardImage(c *card.Card, lang string) *card.CardImage {
-	mimeType := strings.Split(img.ContentType, ";")[0]
 	if strings.EqualFold(img.MatchingCardPart, card.PartCard) {
 		return &card.CardImage{
 			Lang:     lang,
 			CardId:   card.NewPrimaryId(img.MatchingId),
-			MimeType: mimeType,
+			MimeType: img.MimeType,
 		}
 	}
 
@@ -31,17 +31,17 @@ func (img *ImageResult) toCardImage(c *card.Card, lang string) *card.CardImage {
 		Lang:     lang,
 		CardId:   c.Id,
 		FaceId:   card.NewPrimaryId(img.MatchingId),
-		MimeType: mimeType,
+		MimeType: img.MimeType,
 	}
 }
 
-type Result struct {
-	CardImages []*ImageResult
+type DownloadResult struct {
+	Downloaded int
 	Missing    int
 }
 
 type ImageDownloader interface {
-	Download(c *card.Card, lang string) (*Result, error)
+	Download(c *card.Card, lang string, afterDownload func(result *ImageResult) error) (*DownloadResult, error)
 }
 
 type Report struct {
@@ -98,7 +98,7 @@ func (img *images) Import(pageConfig PageConfig) (*Report, error) {
 		page = page + 1
 		cards, err := img.cardDao.Paged(page, cardsPerPage)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get card list for page %d and size %d", page, cardsPerPage)
+			return nil, fmt.Errorf("failed to get card list for page %d and size %d. %w", page, cardsPerPage, err)
 		}
 		if len(cards) == 0 {
 			break
@@ -127,21 +127,15 @@ func (img *images) importCard(c *card.Card, lang string) error {
 		img.imgReport.Skipped += 1
 		return nil
 	}
-	result, err := img.downloader.Download(c, lang)
-	if err != nil {
-		return err
-	}
 
-	img.imgReport.Missing += result.Missing
-
-	for _, image := range result.CardImages {
-		cardImage := image.toCardImage(c, lang)
+	afterDownload := func(result *ImageResult) error {
+		cardImage := result.toCardImage(c, lang)
 		fileName, err := cardImage.BuildFilename()
 		if err != nil {
 			return fmt.Errorf("failed to build filename %w", err)
 		}
 
-		storedFile, err := img.storage.Store(image.File, lang, c.CardSetCode, fileName)
+		storedFile, err := img.storage.Store(result.File, lang, c.CardSetCode, fileName)
 		if err != nil {
 			return fmt.Errorf("failed to store card with number %s and set %s %w", c.Number, c.CardSetCode, err)
 		}
@@ -151,8 +145,15 @@ func (img *images) importCard(c *card.Card, lang string) error {
 			return fmt.Errorf("failed to add image entry for card name %s, number %s and set %s %w", c.Name, c.Number, c.CardSetCode, err)
 		}
 		log.Debug().Msgf("stored card image %s for lang %s at %s", c.Name, lang, cardImage.ImagePath)
-		img.imgReport.Downloaded += 1
+		return nil
 	}
 
+	result, err := img.downloader.Download(c, lang, afterDownload)
+	if err != nil {
+		return err
+	}
+
+	img.imgReport.Missing += result.Missing
+	img.imgReport.Downloaded += result.Downloaded
 	return nil
 }
