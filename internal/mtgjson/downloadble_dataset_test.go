@@ -1,15 +1,16 @@
-package mtgjson
+package mtgjson_test
 
 import (
 	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
+	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
+	"github.com/konstantinfoerster/card-importer-go/internal/test"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -33,7 +34,7 @@ func (imp *mockImporter) Import(r io.Reader) (*dataset.Report, error) {
 func TestDownloadableImport(t *testing.T) {
 	ts := httptest.NewServer(http.FileServer(http.Dir("testdata")))
 	defer ts.Close()
-	dir := tmpDirWithCleanup(t)
+	dir := test.NewTmpDirWithCleanup(t)
 	localStorage, err := storage.NewLocalStorage(config.Storage{Location: dir})
 	if err != nil {
 		t.Fatalf("failed to create local storage %v", err)
@@ -59,14 +60,14 @@ func TestDownloadableImport(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeImporter := &mockImporter{}
-			imp := NewDownloadableDataset(fakeImporter, fetch.NewFetcher(cfg), localStorage)
+			imp := mtgjson.NewDownloadableDataset(fakeImporter, fetch.NewFetcher(cfg), localStorage)
 
 			_, err := imp.Import(tc.fixture)
 			if err != nil {
 				t.Fatalf("unexpected import error, got: %v, wanted no error", err)
 			}
 
-			assertEquals(t, tc.want, fakeImporter.content)
+			assert.Equal(t, tc.want, fakeImporter.content)
 		})
 	}
 }
@@ -74,7 +75,7 @@ func TestDownloadableImport(t *testing.T) {
 func TestDownloadableImportFails(t *testing.T) {
 	ts := httptest.NewServer(http.FileServer(http.Dir("testdata")))
 	defer ts.Close()
-	dir := tmpDirWithCleanup(t)
+	dir := test.NewTmpDirWithCleanup(t)
 	localStorage, err := storage.NewLocalStorage(config.Storage{Location: dir})
 	if err != nil {
 		t.Fatalf("failed to create local storage %v", err)
@@ -106,7 +107,7 @@ func TestDownloadableImportFails(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeImporter := &mockImporter{}
 			validator := fetch.NewContentTypeValidator([]string{fetch.MimeTypeZip, fetch.MimeTypeJson})
-			imp := NewDownloadableDataset(fakeImporter, fetch.NewFetcher(cfg, validator), localStorage)
+			imp := mtgjson.NewDownloadableDataset(fakeImporter, fetch.NewFetcher(cfg, validator), localStorage)
 
 			_, err := imp.Import(tc.fixture)
 			if err == nil {
@@ -115,23 +116,5 @@ func TestDownloadableImportFails(t *testing.T) {
 
 			assert.Contains(t, err.Error(), tc.wantContain)
 		})
-	}
-}
-
-func tmpDirWithCleanup(t *testing.T) string {
-	dir, err := os.MkdirTemp("", "downloads")
-	if err != nil {
-		t.Fatalf("failed to create temp dir %v", err)
-	}
-	t.Cleanup(cleanup(t, dir))
-	return dir
-}
-
-func cleanup(t *testing.T, path string) func() {
-	return func() {
-		err := os.RemoveAll(path)
-		if err != nil {
-			t.Fatalf("failed to delete tmp dir %v", err)
-		}
 	}
 }

@@ -1,12 +1,12 @@
-package storage
+package storage_test
 
 import (
 	"fmt"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
+	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 
 func TestStoredFileIsAlwaysInsideBasePath(t *testing.T) {
 	dir := tmpDirWithCleanup(t)
-	store, err := NewLocalStorage(config.Storage{
+	store, err := storage.NewLocalStorage(config.Storage{
 		Location: dir,
 		Mode:     config.CREATE,
 	})
@@ -49,7 +49,7 @@ func TestStoredFileIsAlwaysInsideBasePath(t *testing.T) {
 
 func TestStoreWithSubDirs(t *testing.T) {
 	dir := tmpDirWithCleanup(t)
-	store, err := NewLocalStorage(config.Storage{
+	store, err := storage.NewLocalStorage(config.Storage{
 		Location: dir,
 		Mode:     config.CREATE,
 	})
@@ -68,7 +68,7 @@ func TestStoreWithSubDirs(t *testing.T) {
 
 func TestStoreReturnsCorrectPath(t *testing.T) {
 	dir := tmpDirWithCleanup(t)
-	store, err := NewLocalStorage(config.Storage{
+	store, err := storage.NewLocalStorage(config.Storage{
 		Location: dir,
 		Mode:     config.CREATE,
 	})
@@ -88,7 +88,7 @@ func TestStoreReturnsCorrectPath(t *testing.T) {
 
 func TestStoreModeCreate(t *testing.T) {
 	dir := tmpDirWithCleanup(t)
-	store, err := NewLocalStorage(config.Storage{
+	store, err := storage.NewLocalStorage(config.Storage{
 		Location: dir,
 		Mode:     config.CREATE,
 	})
@@ -108,7 +108,7 @@ func TestStoreModeCreate(t *testing.T) {
 
 func TestStoreModeCreateFails(t *testing.T) {
 	dir := tmpDirWithCleanup(t)
-	store, err := NewLocalStorage(config.Storage{
+	store, err := storage.NewLocalStorage(config.Storage{
 		Location: dir,
 		Mode:     config.CREATE,
 	})
@@ -131,7 +131,7 @@ func TestStoreModeCreateFails(t *testing.T) {
 
 func TestStoreModeReplace(t *testing.T) {
 	dir := tmpDirWithCleanup(t)
-	store, err := NewLocalStorage(config.Storage{
+	store, err := storage.NewLocalStorage(config.Storage{
 		Location: dir,
 		Mode:     config.REPLACE,
 	})
@@ -155,7 +155,7 @@ func TestStoreModeReplace(t *testing.T) {
 
 func TestLoadNoneExistingFile(t *testing.T) {
 	dir := tmpDirWithCleanup(t)
-	store, err := NewLocalStorage(config.Storage{
+	store, err := storage.NewLocalStorage(config.Storage{
 		Location: dir,
 	})
 	if err != nil {
@@ -173,7 +173,7 @@ func TestLoadNoneExistingFile(t *testing.T) {
 
 func TestLoadWithoutAnyPath(t *testing.T) {
 	dir := tmpDirWithCleanup(t)
-	store, err := NewLocalStorage(config.Storage{
+	store, err := storage.NewLocalStorage(config.Storage{
 		Location: dir,
 	})
 	if err != nil {
@@ -190,7 +190,7 @@ func TestLoadWithoutAnyPath(t *testing.T) {
 
 func TestLoadFile(t *testing.T) {
 	dir := tmpDirWithCleanup(t)
-	store, err := NewLocalStorage(config.Storage{
+	store, err := storage.NewLocalStorage(config.Storage{
 		Location: dir,
 		Mode:     config.CREATE,
 	})
@@ -245,7 +245,7 @@ func assertContentEquals(t *testing.T, expected string, r io.Reader) {
 }
 
 func assertFileContent(t *testing.T, expected string, path string) {
-	actual, err := ioutil.ReadFile(path)
+	actual, err := os.ReadFile(path)
 	if err != nil {
 		t.Errorf("failed to read file %s %v", path, err)
 		return
@@ -255,7 +255,7 @@ func assertFileContent(t *testing.T, expected string, path string) {
 }
 
 func tmpDirWithCleanup(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "store")
+	dir, err := os.MkdirTemp("", "store")
 	if err != nil {
 		t.Fatalf("failed to create temp dir %v", err)
 	}

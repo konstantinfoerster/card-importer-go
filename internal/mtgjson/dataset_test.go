@@ -1,9 +1,11 @@
-package mtgjson
+package mtgjson_test
 
 import (
 	"fmt"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/cardset"
+	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
+	"github.com/konstantinfoerster/card-importer-go/internal/test"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"sort"
@@ -75,8 +77,8 @@ func TestImportCardsWithImportError(t *testing.T) {
 	}
 	wantCards := 1
 
-	importer := NewImporter(&setService, &cardService)
-	_, err := importer.Import(fromFile(t, "testdata/twoSetsSetMultipleCards.json"))
+	importer := mtgjson.NewImporter(&setService, &cardService)
+	_, err := importer.Import(test.LoadFile(t, "testdata/twoSetsSetMultipleCards.json"))
 
 	assert.Error(t, err, "Expected import to fail")
 
@@ -97,8 +99,8 @@ func TestImportSetsWithImportError(t *testing.T) {
 	cardService := MockCardService{}
 	wantSets := 1
 
-	importer := NewImporter(&setService, &cardService)
-	_, err := importer.Import(fromFile(t, "testdata/twoSetsSetMultipleCards.json"))
+	importer := mtgjson.NewImporter(&setService, &cardService)
+	_, err := importer.Import(test.LoadFile(t, "testdata/twoSetsSetMultipleCards.json"))
 
 	assert.Contains(t, err.Error(), "set import failed")
 	if len(setService.Sets) != wantSets {
@@ -115,7 +117,7 @@ func TestImportCards(t *testing.T) {
 	}{
 		{
 			name:     "ImportMultipleCards",
-			fixture:  fromFile(t, "testdata/twoSetsSetMultipleCards.json"),
+			fixture:  test.LoadFile(t, "testdata/twoSetsSetMultipleCards.json"),
 			wantSets: 2,
 			want: []card.Card{
 				{
@@ -195,7 +197,7 @@ func TestImportCards(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			setService := MockSetService{}
 			cardService := MockCardService{}
-			importer := NewImporter(&setService, &cardService)
+			importer := mtgjson.NewImporter(&setService, &cardService)
 
 			_, err := importer.Import(tc.fixture)
 			if err != nil {
@@ -208,7 +210,7 @@ func TestImportCards(t *testing.T) {
 				t.Fatalf("unexpected card count, got: %d, wanted %d", len(cardService.Cards), len(tc.want))
 			}
 
-			assertEquals(t, tc.want, cardService.CardsOrdered())
+			assert.Equal(t, tc.want, cardService.CardsOrdered())
 		})
 	}
 }
@@ -221,7 +223,7 @@ func TestImportCardWithMultipleFaces(t *testing.T) {
 	}{
 		{
 			name:    "ImportMultipleCardsWithMultipleFaces",
-			fixture: fromFile(t, "testdata/card/multiple_cards_multiple_faces.json"),
+			fixture: test.LoadFile(t, "testdata/card/multiple_cards_multiple_faces.json"),
 			want: []card.Card{
 				{
 					CardSetCode: "2ED",
@@ -289,7 +291,7 @@ func TestImportCardWithMultipleFaces(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			setService := MockSetService{}
 			cardService := MockCardService{}
-			importer := NewImporter(&setService, &cardService)
+			importer := mtgjson.NewImporter(&setService, &cardService)
 
 			_, err := importer.Import(tc.fixture)
 			if err != nil {
@@ -299,7 +301,7 @@ func TestImportCardWithMultipleFaces(t *testing.T) {
 				t.Fatalf("unexpected card count, got: %d, wanted %d", len(cardService.Cards), len(tc.want))
 			}
 
-			assertEquals(t, tc.want, cardService.CardsOrdered())
+			assert.Equal(t, tc.want, cardService.CardsOrdered())
 		})
 	}
 }
@@ -312,7 +314,7 @@ func TestImportCardWithInvalidFaces(t *testing.T) {
 	}{
 		{
 			name:        "ImportCardsWithInvalidFaces",
-			fixture:     fromFile(t, "testdata/card/cards_invalid_faces.json"),
+			fixture:     test.LoadFile(t, "testdata/card/cards_invalid_faces.json"),
 			wantContain: "unprocessed double face cards",
 		},
 	}
@@ -321,7 +323,7 @@ func TestImportCardWithInvalidFaces(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			setService := MockSetService{}
 			cardService := MockCardService{}
-			importer := NewImporter(&setService, &cardService)
+			importer := mtgjson.NewImporter(&setService, &cardService)
 
 			_, err := importer.Import(tc.fixture)
 			if err == nil {

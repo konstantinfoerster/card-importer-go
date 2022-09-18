@@ -61,7 +61,7 @@ func (s *CardSet) Diff(other *CardSet) *diff.Changeset {
 		})
 	}
 
-	return &changes
+	return changes
 }
 
 type CardBlock struct {

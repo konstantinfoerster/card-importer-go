@@ -11,7 +11,11 @@ import (
 
 func SetupConsoleLogger() {
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).With().Stack().Caller().Logger()
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
+		With().
+		Stack().
+		Caller().
+		Logger()
 }
 
 func SetLogLevel(logLevel string) error {

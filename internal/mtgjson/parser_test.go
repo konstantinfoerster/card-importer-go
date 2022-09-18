@@ -2,6 +2,7 @@ package mtgjson
 
 import (
 	"context"
+	"github.com/konstantinfoerster/card-importer-go/internal/test"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"reflect"
@@ -55,7 +56,7 @@ func TestParseSet(t *testing.T) {
 	}{
 		{
 			name:    "FindAllSets",
-			fixture: fromFile(t, "testdata/twoSetsNoCards.json"),
+			fixture: test.LoadFile(t, "testdata/twoSetsNoCards.json"),
 			want: []mtgjsonCardSet{
 				{
 					Code:       "10E",
@@ -131,7 +132,7 @@ func TestParseSet(t *testing.T) {
 				actual = append(actual, *r.Result.(*mtgjsonCardSet))
 			}
 
-			assertEquals(t, &tc.want, &actual)
+			assert.Equal(t, &tc.want, &actual)
 		})
 	}
 }
@@ -147,7 +148,7 @@ func TestParseCards(t *testing.T) {
 	}{
 		{
 			name:     "FindSetWithCards",
-			fixture:  fromFile(t, "testdata/twoSetsSetMultipleCards.json"),
+			fixture:  test.LoadFile(t, "testdata/twoSetsSetMultipleCards.json"),
 			wantSets: []string{"2ED", "9ED"},
 			want: []mtgjsonCard{
 				{
@@ -245,7 +246,7 @@ func TestParseCards(t *testing.T) {
 				t.Errorf("found different set result\ngot:\t%v\nwant:\t%v", actualSets, tc.wantSets)
 			}
 
-			assertEquals(t, &tc.want, &actualCards)
+			assert.Equal(t, &tc.want, &actualCards)
 		})
 	}
 }

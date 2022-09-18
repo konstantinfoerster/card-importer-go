@@ -94,7 +94,7 @@ func (c *Card) Diff(other *Card) *diff.Changeset {
 		})
 	}
 
-	return &changes
+	return changes
 }
 
 // Face The face data of a card.
@@ -213,7 +213,7 @@ func (f Face) Diff(other *Face) *diff.Changeset {
 		})
 	}
 
-	return &changes
+	return changes
 }
 
 // Translation The translation of the card. Does not include english (the default language).
@@ -259,7 +259,7 @@ func (t Translation) Diff(other *Translation) *diff.Changeset {
 			To:   other.MultiverseId,
 		})
 	}
-	return &changes
+	return changes
 }
 
 // CharacteristicType A type of card. Can be a Cardtype, Subtype or Superype

@@ -1,12 +1,13 @@
-package fetch
+package fetch_test
 
 import (
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
+	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
+	"github.com/konstantinfoerster/card-importer-go/internal/test"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -21,27 +22,27 @@ func TestFetch(t *testing.T) {
 	cases := []struct {
 		name    string
 		fixture string
-		want    string
+		want    []byte
 	}{
 		{
 			name:    "FetchZip",
 			fixture: ts.URL + "/test_file.zip",
-			want:    filepath.Join("testdata", "test_file.zip"),
+			want:    test.FileContent(t, filepath.Join("testdata", "test_file.zip")),
 		},
 		{
 			name:    "FetchJson",
 			fixture: ts.URL + "/test_file.json",
-			want:    filepath.Join("testdata", "test_file.json"),
+			want:    test.FileContent(t, filepath.Join("testdata", "test_file.json")),
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := NewFetcher(cfg)
+			f := fetch.NewFetcher(cfg)
 
 			var got []byte
 			var err error
-			err = f.Fetch(tc.fixture, func(r *Response) error {
+			err = f.Fetch(tc.fixture, func(r *fetch.Response) error {
 				got, err = io.ReadAll(r.Body)
 				if err != nil {
 					t.Fatalf("failed to read data, got: %v, wanted no error", err)
@@ -52,7 +53,7 @@ func TestFetch(t *testing.T) {
 				t.Fatalf("unexpected fetch error, got: %v, wanted no error", err)
 			}
 
-			assertSameFile(t, tc.want, got)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -80,9 +81,9 @@ func TestFetchFails(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := NewFetcher(cfg, NewContentTypeValidator([]string{}))
+			f := fetch.NewFetcher(cfg, fetch.NewContentTypeValidator([]string{}))
 
-			err := f.Fetch(tc.fixture, func(resp *Response) error {
+			err := f.Fetch(tc.fixture, func(resp *fetch.Response) error {
 				return nil
 			})
 			if err == nil {
@@ -92,13 +93,4 @@ func TestFetchFails(t *testing.T) {
 			assert.Contains(t, err.Error(), tc.wantContain)
 		})
 	}
-}
-
-func assertSameFile(t *testing.T, want string, got []byte) {
-	wantContent, err := os.ReadFile(want)
-	if err != nil {
-		t.Fatalf("failed to read data, got: %v, wanted no error", err)
-	}
-
-	assert.Equal(t, wantContent, got)
 }

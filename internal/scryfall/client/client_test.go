@@ -1,7 +1,8 @@
-package client
+package client_test
 
 import (
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
+	"github.com/konstantinfoerster/card-importer-go/internal/scryfall/client"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -16,11 +17,11 @@ func TestFindMatchingCard(t *testing.T) {
 			},
 		},
 	}
-	sc := ScryfallCard{
-		ImgUris: ScyfallImgUris{Normal: "http://localhost/first"},
+	sc := client.ScryfallCard{
+		ImgUris: client.ScyfallImgUris{Normal: "http://localhost/first"},
 		Name:    "First",
 	}
-	want := []*MatchedPart{
+	want := []*client.MatchedPart{
 		{
 			Url:         "http://localhost/first",
 			MatchedType: "CARD",
@@ -37,7 +38,7 @@ func TestFindMatchingFace(t *testing.T) {
 	cases := []struct {
 		name    string
 		fixture card.Card
-		want    []*MatchedPart
+		want    []*client.MatchedPart
 	}{
 		{
 			name: "FaceMatches",
@@ -51,7 +52,7 @@ func TestFindMatchingFace(t *testing.T) {
 					},
 				},
 			},
-			want: []*MatchedPart{
+			want: []*client.MatchedPart{
 				{
 					Url:         "http://localhost/first",
 					MatchedType: "FACE",
@@ -75,7 +76,7 @@ func TestFindMatchingFace(t *testing.T) {
 					},
 				},
 			},
-			want: []*MatchedPart{
+			want: []*client.MatchedPart{
 				{
 					Url:         "http://localhost/first",
 					MatchedType: "FACE",
@@ -92,16 +93,16 @@ func TestFindMatchingFace(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			sc := ScryfallCard{
+			sc := client.ScryfallCard{
 				Name: "First // Second",
-				Faces: []ScryfallCard{
+				Faces: []client.ScryfallCard{
 					{
 						Name:    "First",
-						ImgUris: ScyfallImgUris{Normal: "http://localhost/first"},
+						ImgUris: client.ScyfallImgUris{Normal: "http://localhost/first"},
 					},
 					{
 						Name:    "Second",
-						ImgUris: ScyfallImgUris{Normal: "http://localhost/second"},
+						ImgUris: client.ScyfallImgUris{Normal: "http://localhost/second"},
 					},
 				},
 			}
