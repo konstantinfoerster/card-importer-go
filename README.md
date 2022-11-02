@@ -51,7 +51,7 @@ accessible via nginx at `localhost:8080`.
 
 **Hint**
 
-Run the test with flag `--count=1` to disable the caching.
+Run the test with flag `--count=1` to disable caching.
 
 
 ## Build
