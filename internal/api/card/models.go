@@ -9,9 +9,6 @@ import (
 	"strings"
 )
 
-var PartCard = "CARD"
-var PartFace = "FACE"
-
 // Card A complete card including all faces (sides) and translations.
 // The number of a card is unique per set
 type Card struct {
@@ -58,7 +55,7 @@ func (c *Card) isValid() error {
 }
 
 func (c *Card) Diff(other *Card) *diff.Changeset {
-	changes := diff.NewChangeset()
+	changes := diff.New()
 
 	if c.Number != other.Number {
 		changes.Add("Number", diff.Changes{
@@ -120,13 +117,17 @@ type Face struct {
 	Translations      []Translation
 }
 
-// card 'Stitch in Time' has the same name on both faces but a different flavor text
+// card 'Stitch in Time' from set SLD has the same name on both faces but a different flavor text
 func (f Face) isSame(other *Face) bool {
 	return f.Name == other.Name && f.Text == other.Text && f.FlavorText == other.FlavorText
 }
 
+func (f Face) couldBeSame(other *Face) bool {
+	return f.Name == other.Name
+}
+
 func (f Face) Diff(other *Face) *diff.Changeset {
-	changes := diff.NewChangeset()
+	changes := diff.New()
 
 	if f.Name != other.Name {
 		changes.Add("Name", diff.Changes{
@@ -227,7 +228,7 @@ type Translation struct {
 }
 
 func (t Translation) Diff(other *Translation) *diff.Changeset {
-	changes := diff.NewChangeset()
+	changes := diff.New()
 
 	if t.Name != other.Name {
 		changes.Add("Name", diff.Changes{

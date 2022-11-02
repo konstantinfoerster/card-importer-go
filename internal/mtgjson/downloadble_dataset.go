@@ -73,6 +73,19 @@ func (imp *downloadableDataset) Import(r io.Reader) (*dataset.Report, error) {
 
 	var fileToImport string
 	if dFile.mimeType.IsZip() {
+		defer func(name string) {
+			rErr := os.Remove(name)
+			if rErr != nil {
+				// report remove errors
+				if err == nil {
+					err = rErr
+				} else {
+					err = errors.Wrap(err, rErr.Error())
+				}
+			}
+			log.Info().Msgf("Delete zip file %s", name)
+		}(dFile.filepath)
+
 		dest := filepath.Dir(dFile.filepath)
 		files, err := unzip(dFile.filepath, dest)
 		if err != nil {

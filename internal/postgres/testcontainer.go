@@ -97,7 +97,7 @@ func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) e
 			"APP_DB_NAME":       database,
 		},
 		AlwaysPullImage: true,
-		SkipReaper:      true,
+		SkipReaper:      false,
 		WaitingFor:      wait.ForLog("[1] LOG:  database system is ready to accept connections"),
 	}
 

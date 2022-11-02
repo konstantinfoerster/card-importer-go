@@ -67,7 +67,7 @@ func TestBuildFilenameFailsOnUnknownContentType(t *testing.T) {
 func TestFaceDiffWithDifferentColors(t *testing.T) {
 	firstFace := card.Face{Colors: card.NewColors([]string{"W", "B"})}
 	secFace := card.Face{Colors: card.NewColors([]string{"W"})}
-	expected := diff.NewChangeset()
+	expected := diff.New()
 	expected.Add("Colors", diff.Changes{From: firstFace.Colors, To: secFace.Colors})
 
 	actual := firstFace.Diff(&secFace)
@@ -78,7 +78,7 @@ func TestFaceDiffWithDifferentColors(t *testing.T) {
 func TestFaceDiffWithSameColors(t *testing.T) {
 	firstFace := card.Face{Colors: card.NewColors([]string{"W"})}
 	secFace := card.Face{Colors: card.NewColors([]string{"W"})}
-	expected := diff.NewChangeset()
+	expected := diff.New()
 
 	actual := firstFace.Diff(&secFace)
 

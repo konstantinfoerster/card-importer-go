@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
-	"runtime"
+	"github.com/rs/zerolog/log"
 	"strings"
 	"time"
 )
@@ -26,7 +26,8 @@ func Connect(ctx context.Context, config config.Database) (*DBConnection, error)
 	c.MaxConnLifetime = time.Second * 5
 	c.MaxConnIdleTime = time.Millisecond * 500
 	c.HealthCheckPeriod = time.Millisecond * 500
-	c.MaxConns = int32(runtime.NumCPU()) + 5 // + 5 just in case
+	c.MaxConns = int32(config.MaxConnectionsOrDefault())
+	log.Info().Msgf("max database connection is set to  %d", c.MaxConns)
 
 	pool, err := pgxpool.ConnectConfig(ctx, c)
 	if err != nil {

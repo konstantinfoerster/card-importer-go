@@ -13,6 +13,7 @@ func TestFindMatchingCard(t *testing.T) {
 		Name: "First",
 		Faces: []*card.Face{
 			{
+				Id:   card.NewPrimaryId(2),
 				Name: "First",
 			},
 		},
@@ -21,11 +22,10 @@ func TestFindMatchingCard(t *testing.T) {
 		ImgUris: client.ScyfallImgUris{Normal: "http://localhost/first"},
 		Name:    "First",
 	}
-	want := []*client.MatchedPart{
+	want := []*client.MatchingFace{
 		{
-			Url:         "http://localhost/first",
-			MatchedType: "CARD",
-			MatchedId:   1,
+			Url: "http://localhost/first",
+			Id:  2,
 		},
 	}
 
@@ -38,7 +38,7 @@ func TestFindMatchingFace(t *testing.T) {
 	cases := []struct {
 		name    string
 		fixture card.Card
-		want    []*client.MatchedPart
+		want    []*client.MatchingFace
 	}{
 		{
 			name: "FaceMatches",
@@ -52,11 +52,10 @@ func TestFindMatchingFace(t *testing.T) {
 					},
 				},
 			},
-			want: []*client.MatchedPart{
+			want: []*client.MatchingFace{
 				{
-					Url:         "http://localhost/first",
-					MatchedType: "FACE",
-					MatchedId:   2,
+					Url: "http://localhost/first",
+					Id:  2,
 				},
 			},
 		},
@@ -76,16 +75,14 @@ func TestFindMatchingFace(t *testing.T) {
 					},
 				},
 			},
-			want: []*client.MatchedPart{
+			want: []*client.MatchingFace{
 				{
-					Url:         "http://localhost/first",
-					MatchedType: "FACE",
-					MatchedId:   2,
+					Url: "http://localhost/first",
+					Id:  2,
 				},
 				{
-					Url:         "http://localhost/second",
-					MatchedType: "FACE",
-					MatchedId:   3,
+					Url: "http://localhost/second",
+					Id:  3,
 				},
 			},
 		},

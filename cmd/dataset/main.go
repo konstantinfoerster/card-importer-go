@@ -63,6 +63,7 @@ func init() {
 	log.Info().Msgf("OS\t\t %s", runtime.GOOS)
 	log.Info().Msgf("ARCH\t\t %s", runtime.GOARCH)
 	log.Info().Msgf("CPUs\t\t %d", runtime.NumCPU())
+
 	if file == "" {
 		log.Info().Msgf("Using dataset from url %s", downloadUrl)
 	} else {
@@ -108,7 +109,7 @@ func main() {
 		report, iErr = mtgjson.NewDownloadableDataset(imp, fetcher, store).Import(strings.NewReader(downloadUrl))
 	}
 	if iErr != nil {
-		log.Error().Err(err).Msg("dataset import failed")
+		log.Error().Err(iErr).Msg("dataset import failed")
 		return
 	}
 	log.Info().Msgf("Report %#v", report)

@@ -61,9 +61,9 @@ func (s *setService) Import(set *CardSet) error {
 			return err
 		}
 	} else {
-		diff := set.Diff(existingSet)
+		diff := existingSet.Diff(set)
 		if diff.HasChanges() {
-			log.Info().Msgf("Update set set %s with changes %#v", set.Code, diff)
+			log.Info().Msgf("Update set %s with changes %s", set.Code, diff.String())
 			if err := s.dao.UpdateCardSet(set); err != nil {
 				return err
 			}
