@@ -8,29 +8,19 @@ import (
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/rs/zerolog/log"
 	"io"
-	"strings"
 )
 
 type ImageResult struct {
-	MatchingCardPart string
-	MatchingId       int64
-	MimeType         fetch.MimeType
-	File             io.Reader
+	MatchingFaceId int64
+	MimeType       fetch.MimeType
+	File           io.Reader
 }
 
 func (img *ImageResult) toCardImage(c *card.Card, lang string) *card.CardImage {
-	if strings.EqualFold(img.MatchingCardPart, card.PartCard) {
-		return &card.CardImage{
-			Lang:     lang,
-			CardId:   card.NewPrimaryId(img.MatchingId),
-			MimeType: img.MimeType,
-		}
-	}
-
 	return &card.CardImage{
 		Lang:     lang,
 		CardId:   c.Id,
-		FaceId:   card.NewPrimaryId(img.MatchingId),
+		FaceId:   card.NewPrimaryId(img.MatchingFaceId),
 		MimeType: img.MimeType,
 	}
 }

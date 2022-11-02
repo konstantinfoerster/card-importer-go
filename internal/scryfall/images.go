@@ -41,10 +41,9 @@ func (d *downloader) Download(c *card.Card, lang string, afterDownload func(resu
 		err = d.client.GetImage(m.Url, func(resp *fetch.Response) error {
 			downloaded += 1
 			return afterDownload(&images.ImageResult{
-				MatchingId:       m.MatchedId,
-				MatchingCardPart: m.MatchedType,
-				MimeType:         resp.MimeType(),
-				File:             resp.Body,
+				MatchingFaceId: m.Id,
+				MimeType:       resp.MimeType(),
+				File:           resp.Body,
 			})
 		})
 		if err != nil {

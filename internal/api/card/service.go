@@ -52,9 +52,9 @@ func (s *cardService) Import(card *Card) error {
 		} else {
 			card.Id = existingCard.Id
 
-			diff := card.Diff(existingCard)
+			diff := existingCard.Diff(card)
 			if diff.HasChanges() {
-				log.Info().Msgf("Update card %s from set %s with changes %#v", card.Name, card.CardSetCode, diff)
+				log.Info().Msgf("Update card %s from set %s with changes %s", card.Name, card.CardSetCode, diff.String())
 				if err := txDao.UpdateCard(card); err != nil {
 					return err
 				}
@@ -69,7 +69,7 @@ func (s *cardService) Import(card *Card) error {
 
 	for _, f := range card.Faces {
 		if !f.Id.Valid {
-			return fmt.Errorf("expected face %s for card %s and set %s to be created", f.Name, card.Number, card.CardSetCode)
+			return fmt.Errorf("expected face %s of card %s and set %s to be created", f.Name, card.Number, card.CardSetCode)
 		}
 
 		faceId := f.Id.Int64
@@ -96,39 +96,37 @@ func mergeFaceTranslations(dao *PostgresCardDao, tt []Translation, faceId int64,
 	})
 }
 func mergeCardFaces(dao *PostgresCardDao, ff []*Face, cardId int64, isNewCard bool) error {
-	var toCreate []*Face
-	toCreate = append(toCreate, ff...)
+	var incomingFaces []*Face
+	incomingFaces = append(incomingFaces, ff...)
 	if !isNewCard {
-		assignedFaces, err := dao.FindAssignedFaces(cardId)
+		existingFaces, err := dao.FindAssignedFaces(cardId)
 		if err != nil {
 			return fmt.Errorf("failed to get assigned faces %w", err)
 		}
-		for _, assigned := range assignedFaces {
-			if ok, pos := containsFace(toCreate, assigned); ok {
-				faceToMerge := toCreate[pos]
-				faceToMerge.Id = assigned.Id
-				diff := faceToMerge.Diff(assigned)
+		for _, existingFace := range existingFaces {
+			if ok, pos := containsFace(incomingFaces, existingFace); ok {
+				incomingFace := incomingFaces[pos]
+				incomingFace.Id = existingFace.Id
+
+				diff := existingFace.Diff(incomingFace)
 				if diff.HasChanges() {
-					log.Info().Msgf("Update face %s for card %v with changes %#v", faceToMerge.Name, cardId, diff)
-					if err := dao.UpdateFace(faceToMerge); err != nil {
+					log.Info().Msgf("Update face %s of card %v with changes %s", incomingFace.Name, cardId, diff.String())
+					if err := dao.UpdateFace(incomingFace); err != nil {
 						return err
 					}
 				}
-				toCreate = removeFace(toCreate, pos)
-			} else {
-				faceId := assigned.Id.Int64
-				if err := dao.DeleteAllTranslation(faceId); err != nil {
-					return err
-				}
-				if err := dao.DeleteFace(faceId); err != nil {
-					return err
-				}
-				log.Info().Msgf("Deleted card face %v for card %v", assigned.Name, cardId)
+				incomingFaces = removeFace(incomingFaces, pos)
+				continue
 			}
+			faceId := existingFace.Id.Int64
+			if err := dao.DeleteFace(faceId); err != nil {
+				return err
+			}
+			log.Warn().Msgf("Deleted card face %v of card %v", existingFace.Name, cardId)
 		}
 	}
 
-	for _, newFace := range toCreate {
+	for _, newFace := range incomingFaces {
 		if err := dao.AddFace(cardId, newFace); err != nil {
 			return err
 		}
@@ -171,17 +169,17 @@ func mergeTypes(dao TypeDao, tt []string, faceId int64, isNewCard bool) error {
 	var toCreate []string
 	toCreate = append(toCreate, tt...)
 	if !isNewCard {
-		assignedTypes, err := dao.FindAssignments(faceId)
+		existingTypes, err := dao.FindAssignments(faceId)
 		if err != nil {
 			return fmt.Errorf("failed to get assigned types %w", err)
 		}
 		var toRemove []int64
 		// remove all entries that are already assigned to the card
-		for _, t := range assignedTypes {
-			if ok, pos := contains(toCreate, t.Name); ok {
+		for _, existingType := range existingTypes {
+			if ok, pos := contains(toCreate, existingType.Name); ok {
 				toCreate = remove(toCreate, pos)
 			} else {
-				toRemove = append(toRemove, t.Id.Int64)
+				toRemove = append(toRemove, existingType.Id.Int64)
 			}
 		}
 		if len(toRemove) > 0 {
@@ -226,26 +224,26 @@ func mergeTranslations(dao *PostgresCardDao, tt []Translation, faceId int64, isN
 	var toCreate []Translation
 	toCreate = append(toCreate, tt...)
 	if !isNewCard {
-		assignedTranslations, err := dao.FindTranslations(faceId)
+		existingTranslations, err := dao.FindTranslations(faceId)
 		if err != nil {
 			return fmt.Errorf("failed to get existing translations %w", err)
 		}
 
-		for _, assigned := range assignedTranslations {
-			if ok, pos := containsTranslation(tt, *assigned); ok {
-				toCreate = removeTranslation(toCreate, *assigned)
+		for _, existingTranslation := range existingTranslations {
+			if ok, pos := containsTranslation(tt, *existingTranslation); ok {
+				toCreate = removeTranslation(toCreate, *existingTranslation)
 
 				translation := &tt[pos]
 
-				diff := translation.Diff(assigned)
+				diff := existingTranslation.Diff(translation)
 				if diff.HasChanges() {
-					log.Info().Msgf("Update translation for face %v and language %v with changes %#v", faceId, assigned.Lang, diff)
+					log.Info().Msgf("Update translation for face %v and language %v with changes %s", faceId, existingTranslation.Lang, diff.String())
 					if err := dao.UpdateTranslation(faceId, translation); err != nil {
 						return err
 					}
 				}
 			} else {
-				if err := dao.DeleteTranslation(faceId, assigned.Lang); err != nil {
+				if err := dao.DeleteTranslation(faceId, existingTranslation.Lang); err != nil {
 					return err
 				}
 			}
@@ -283,6 +281,12 @@ func removeFace(arr []*Face, pos int) []*Face {
 func containsFace(arr []*Face, searchTerm *Face) (bool, int) {
 	for i, f := range arr {
 		if f.isSame(searchTerm) {
+			return true, i
+		}
+	}
+
+	for i, f := range arr {
+		if f.couldBeSame(searchTerm) {
 			return true, i
 		}
 	}

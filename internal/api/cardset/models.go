@@ -28,7 +28,7 @@ func (s *CardSet) isValid() error {
 }
 
 func (s *CardSet) Diff(other *CardSet) *diff.Changeset {
-	changes := diff.NewChangeset()
+	changes := diff.New()
 
 	if other.Block.Id.Valid && other.Block.notEquals(s.Block) {
 		changes.Add("Block", diff.Changes{

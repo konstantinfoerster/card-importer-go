@@ -12,6 +12,7 @@ type TypeDao interface {
 	AssignToFace(faceId int64, typeId int64) error
 	FindAssignments(faceId int64) ([]*CharacteristicType, error)
 	DeleteAssignments(faceId int64, subTypeIds ...int64) error
+	DeleteAllAssignments(faceId int64) error
 }
 
 func NewSubTypeDao(db *postgres.DBConnection) TypeDao {
@@ -165,6 +166,16 @@ func (d *CharacteristicDao) DeleteAssignments(faceId int64, typeIds ...int64) er
 	ra := ct.RowsAffected()
 	if ra != int64(len(typeIds)) {
 		return fmt.Errorf("expected to deleted %d assigned types but deleted %d from card face with id %d, %s", len(typeIds), ra, faceId, query)
+	}
+	return nil
+}
+
+func (d *CharacteristicDao) DeleteAllAssignments(faceId int64) error {
+	query := "DELETE FROM " + d.joinTable + " WHERE face_id = $1"
+
+	_, err := d.db.Conn.Exec(d.db.Ctx, query, faceId)
+	if err != nil {
+		return err
 	}
 	return nil
 }

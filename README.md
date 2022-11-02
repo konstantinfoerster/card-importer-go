@@ -16,7 +16,7 @@ Use `docker-compose pull` to update the image version.
 
 Run `go run cmd/dataset/main.go` to start the tool with the default configuration file (configs/application.yaml).
 
-Optional parameter:
+Flags:
 
 | Flag            | Usage                              | Default Value            | Description                                                                             |
 |-----------------|------------------------------------|--------------------------|-----------------------------------------------------------------------------------------|
@@ -28,13 +28,18 @@ Optional parameter:
 
 Run `go run cmd/images/main.go` to start the tool with the default configuration file (configs/application.yaml).
 
-Optional parameter:
+Flags:
 
 | Flag            | Usage                              | Default Value            | Description                    |
 |-----------------|------------------------------------|--------------------------|--------------------------------|
 | `-c`,`--config` | `-c configs/applicationLocal.yaml` | configs/application.yaml | path to the configuration file | 
 | `-p`,`--page`   | `-p 21`                            | 1                        | start page number              |
 | `-s`,`--size`   | `-s 100`                           | 20                       | amount of entries per page     |
+
+### Serve images
+
+Run `docker run --name card-images -p 8080:80 -v $(pwd)/images:/usr/share/nginx/html:ro nginx:1.23` to make the images
+accessible via nginx at `localhost:8080`.
 
 ## Test
 
@@ -43,6 +48,11 @@ Optional parameter:
 * Run **integration tests** `go test -v -run Integration ./...`
 
 **Integration tests** require **docker** to be installed.
+
+**Hint**
+
+Run the test with flag `--count=1` to disable the caching.
+
 
 ## Build
 
@@ -72,13 +82,20 @@ Just run `docker run --rm -i hadolint/hadolint < Dockerfile` to check your Docke
 The lint aggregator [golangci-lint](https://golangci-lint.run/) can be used to apply best practice and find errors in
 your golang code.
 
-Just run `docker run --rm -v $(pwd):/app -w /app golangci/golangci-lint:v1.49.0 golangci-lint run -v` inside the root
+Just run `docker run --rm -v $(pwd):/app -w /app golangci/golangci-lint:latest golangci-lint run -v` inside the root
 dir of the project to start the linting process.
 
 ## TODOS
 
 * Provide a make file
     * https://earthly.dev/blog/golang-makefile/
+* Make import more reliable
+  * Retry on database connection loss
+  * Retry if external API returns an error
+* Don't use face ids to identify images
+  * Faces could be deleted
+  * Maybe just the name?
+* Use attribute side to identify card face?  
 
 First idea how to serve the images:
 

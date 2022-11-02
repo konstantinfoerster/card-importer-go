@@ -27,31 +27,18 @@ type ScyfallImgUris struct {
 	Normal string `json:"normal"`
 }
 
-type MatchedPart struct {
-	Url         string
-	MatchedType string
-	MatchedId   int64
+type MatchingFace struct {
+	Url string
+	Id  int64
 }
 
-func (sc *ScryfallCard) FindMatchingCardParts(c *card.Card) []*MatchedPart {
-	// this property is set if there is only one image for the card
-	if sc.ImgUris.Normal != "" {
-		sf := findMatchingPart([]ScryfallCard{*sc}, c.Name)
-		if sf == nil {
-			log.Warn().Interface("externalCard", sc).Msgf("no matching entry found for card %s in external card", c.Name)
-			return []*MatchedPart{}
-		}
+func (sc *ScryfallCard) FindMatchingCardParts(c *card.Card) []*MatchingFace {
+	possibleCards := []ScryfallCard{*sc}
+	possibleCards = append(possibleCards, sc.Faces...)
 
-		return []*MatchedPart{{
-			Url:         sc.ImgUris.Normal,
-			MatchedType: card.PartCard,
-			MatchedId:   c.Id.Int64,
-		}}
-	}
-
-	var matches []*MatchedPart
+	var matches []*MatchingFace
 	for _, f := range c.Faces {
-		sf := findMatchingPart(sc.Faces, f.Name)
+		sf := findMatchingPart(possibleCards, f.Name)
 		if sf == nil {
 			log.Warn().Interface("externalCard", sc).Msgf("no matching entry found for face %s in external card", f.Name)
 			continue
@@ -61,10 +48,9 @@ func (sc *ScryfallCard) FindMatchingCardParts(c *card.Card) []*MatchedPart {
 			log.Warn().Interface("externalCard", sc).Msgf("matching face %s has an empty image url", f.Name)
 			continue
 		}
-		matches = append(matches, &MatchedPart{
-			Url:         imageUrl,
-			MatchedType: card.PartFace,
-			MatchedId:   f.Id.Int64,
+		matches = append(matches, &MatchingFace{
+			Url: imageUrl,
+			Id:  f.Id.Int64,
 		})
 	}
 

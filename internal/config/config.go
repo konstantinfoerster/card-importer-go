@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -19,11 +20,23 @@ type Config struct {
 }
 
 type Database struct {
-	Host     string `yaml:"host"`
-	Port     string `yaml:"port"`
-	Database string `yaml:"database"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
+	Host           string `yaml:"host"`
+	Port           string `yaml:"port"`
+	Database       string `yaml:"database"`
+	Username       string `yaml:"username"`
+	Password       string `yaml:"password"`
+	MaxConnections int    `yaml:"maxConnections"`
+}
+
+func (d Database) ConnectionUrl() string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s", d.Username, d.Password, d.Host, d.Port, d.Database)
+}
+
+func (d Database) MaxConnectionsOrDefault() int {
+	if d.MaxConnections == 0 {
+		return runtime.NumCPU()
+	}
+	return d.MaxConnections
 }
 
 type Http struct {
@@ -36,6 +49,14 @@ type Mtgjson struct {
 
 type Logging struct {
 	Level string `yaml:"level"`
+}
+
+func (l Logging) LevelOrDefault() string {
+	level := strings.TrimSpace(l.Level)
+	if level == "" {
+		level = "INFO"
+	}
+	return strings.ToLower(level)
 }
 
 type Scryfall struct {
@@ -55,18 +76,6 @@ const (
 type Storage struct {
 	Location string `yaml:"location"`
 	Mode     string `yaml:"mode"`
-}
-
-func (l *Logging) LevelOrDefault() string {
-	level := strings.TrimSpace(l.Level)
-	if level == "" {
-		level = "INFO"
-	}
-	return strings.ToLower(level)
-}
-
-func (d *Database) ConnectionUrl() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s", d.Username, d.Password, d.Host, d.Port, d.Database)
 }
 
 var doOnce sync.Once

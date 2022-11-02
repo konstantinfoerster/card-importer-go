@@ -218,6 +218,18 @@ func (d *PostgresCardDao) UpdateFace(f *Face) error {
 }
 
 func (d *PostgresCardDao) DeleteFace(faceId int64) error {
+	if err := d.deleteAllTranslation(faceId); err != nil {
+		return err
+	}
+	if err := d.cardType.DeleteAllAssignments(faceId); err != nil {
+		return err
+	}
+	if err := d.subType.DeleteAllAssignments(faceId); err != nil {
+		return err
+	}
+	if err := d.superType.DeleteAllAssignments(faceId); err != nil {
+		return err
+	}
 	query := `
 		DELETE FROM
 			card_face
@@ -225,7 +237,7 @@ func (d *PostgresCardDao) DeleteFace(faceId int64) error {
 			id = $1`
 	ct, err := d.db.Conn.Exec(d.db.Ctx, query, faceId)
 	if err != nil {
-		return fmt.Errorf("failed to execute card face delete %w", err)
+		return fmt.Errorf("failed to execute delete on card face with id %d %w", faceId, err)
 	}
 	ra := ct.RowsAffected()
 	if ra != 1 {
@@ -300,7 +312,7 @@ func (d *PostgresCardDao) UpdateTranslation(faceId int64, t *Translation) error 
 	return nil
 }
 
-func (d *PostgresCardDao) DeleteAllTranslation(faceId int64) error {
+func (d *PostgresCardDao) deleteAllTranslation(faceId int64) error {
 	query := `
 		DELETE FROM
 			card_translation
@@ -308,7 +320,7 @@ func (d *PostgresCardDao) DeleteAllTranslation(faceId int64) error {
 			face_id = $1`
 	_, err := d.db.Conn.Exec(d.db.Ctx, query, faceId)
 	if err != nil {
-		return fmt.Errorf("failed to execute face translation delete %w", err)
+		return fmt.Errorf("failed to execute delete on face translation with id %d %w", faceId, err)
 	}
 	return nil
 }
@@ -321,7 +333,7 @@ func (d *PostgresCardDao) DeleteTranslation(faceId int64, lang string) error {
 			face_id = $1 AND lang_lang = $2`
 	ct, err := d.db.Conn.Exec(d.db.Ctx, query, faceId, lang)
 	if err != nil {
-		return fmt.Errorf("failed to execute face translation delete %w", err)
+		return fmt.Errorf("failed to execute delete on face translation with id %d %w", faceId, err)
 	}
 	ra := ct.RowsAffected()
 	if ra != 1 {
