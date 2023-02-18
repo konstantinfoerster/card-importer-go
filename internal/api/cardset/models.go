@@ -3,8 +3,9 @@ package cardset
 import (
 	"database/sql"
 	"fmt"
-	"github.com/konstantinfoerster/card-importer-go/internal/api/diff"
 	"time"
+
+	"github.com/konstantinfoerster/card-importer-go/internal/api/diff"
 )
 
 type CardSet struct {
@@ -21,16 +22,18 @@ func (s *CardSet) isValid() error {
 	if s.Code == "" {
 		return fmt.Errorf("field 'code' must not be empty")
 	}
+
 	if s.Type == "" {
 		return fmt.Errorf("field 'type' must not be empty in set %s", s.Code)
 	}
+
 	return nil
 }
 
 func (s *CardSet) Diff(other *CardSet) *diff.Changeset {
 	changes := diff.New()
 
-	if other.Block.Id.Valid && other.Block.notEquals(s.Block) {
+	if other.Block.ID.Valid && other.Block.notEquals(s.Block) {
 		changes.Add("Block", diff.Changes{
 			From: s.Block,
 			To:   other.Block,
@@ -65,12 +68,12 @@ func (s *CardSet) Diff(other *CardSet) *diff.Changeset {
 }
 
 type CardBlock struct {
-	Id    sql.NullInt64
+	ID    sql.NullInt64
 	Block string
 }
 
 func (b CardBlock) notEquals(other CardBlock) bool {
-	return b.Id.Int64 != other.Id.Int64
+	return b.ID.Int64 != other.ID.Int64
 }
 
 type Translation struct {

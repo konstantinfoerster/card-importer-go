@@ -1,9 +1,12 @@
 package cardset
 
 import (
+	"context"
 	"errors"
 	"fmt"
+
 	"github.com/jackc/pgx/v4"
+	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 )
 
@@ -25,14 +28,18 @@ func (d *PostgresSetDao) UpdateTranslation(setCode string, t *Translation) error
 			name = $1
 		WHERE
 			lang_lang = $2 AND card_set_code = $3`
-	ct, err := d.db.Conn.Exec(d.db.Ctx, query, t.Name, t.Lang, setCode)
+
+	ct, err := d.db.Conn.Exec(context.TODO(), query, t.Name, t.Lang, setCode)
 	if err != nil {
 		return fmt.Errorf("failed to update set translation %w", err)
 	}
+
 	ra := ct.RowsAffected()
 	if ra != 1 {
-		return fmt.Errorf("%d translations updated but expected to update translation for set with code %s and lang %s", ra, setCode, t.Lang)
+		return fmt.Errorf("%d translations updated but expected to update translation for set with code %s and lang %s",
+			ra, setCode, t.Lang)
 	}
+
 	return nil
 }
 
@@ -44,10 +51,12 @@ func (d *PostgresSetDao) CreateTranslation(setCode string, t *Translation) error
 				)
 			VALUES
 				($1, $2, $3)`
-	_, err := d.db.Conn.Exec(d.db.Ctx, query, t.Name, t.Lang, setCode)
+
+	_, err := d.db.Conn.Exec(context.TODO(), query, t.Name, t.Lang, setCode)
 	if err != nil {
 		return fmt.Errorf("failed to insert set translation %w", err)
 	}
+
 	return nil
 }
 
@@ -57,14 +66,18 @@ func (d *PostgresSetDao) DeleteTranslation(setCode string, lang string) error {
 				card_set_translation
 			WHERE
 				lang_lang = $1 AND card_set_code = $2`
-	ct, err := d.db.Conn.Exec(d.db.Ctx, query, lang, setCode)
+
+	ct, err := d.db.Conn.Exec(context.TODO(), query, lang, setCode)
 	if err != nil {
 		return fmt.Errorf("failed to delete set translation %w", err)
 	}
+
 	ra := ct.RowsAffected()
 	if ra != 1 {
-		return fmt.Errorf("%d set translations deleted but expected to delete translation for set with code %s and lang %s", ra, setCode, lang)
+		return fmt.Errorf("%d set translations deleted but expected to delete translation for set with "+
+			"code %s and lang %s", ra, setCode, lang)
 	}
+
 	return nil
 }
 
@@ -78,11 +91,13 @@ func (d *PostgresSetDao) FindTranslations(setCode string) ([]*Translation, error
 			card_set_code = $1
 		ORDER BY
 			lang_lang, name`
-	rows, err := d.db.Conn.Query(d.db.Ctx, query, setCode)
+
+	rows, err := d.db.Conn.Query(context.TODO(), query, setCode)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+
 	var result []*Translation
 	for rows.Next() {
 		t := &Translation{}
@@ -91,9 +106,11 @@ func (d *PostgresSetDao) FindTranslations(setCode string) ([]*Translation, error
 		}
 		result = append(result, t)
 	}
+
 	if rows.Err() != nil {
 		return nil, fmt.Errorf("failed to read row after set translation select %w", rows.Err())
 	}
+
 	return result, nil
 }
 
@@ -105,14 +122,18 @@ func (d *PostgresSetDao) UpdateCardSet(set *CardSet) error {
 			name = $1, type = $2, released = $3, total_count = $4, card_block_id = $5
 		WHERE
 			code = $6`
-	ct, err := d.db.Conn.Exec(d.db.Ctx, query, set.Name, set.Type, set.Released, set.TotalCount, set.Block.Id, set.Code)
+
+	ct, err := d.db.Conn.Exec(context.TODO(), query, set.Name, set.Type, set.Released, set.TotalCount, set.Block.ID,
+		set.Code)
 	if err != nil {
 		return fmt.Errorf("failed to update set %w", err)
 	}
+
 	ra := ct.RowsAffected()
 	if ra != 1 {
 		return fmt.Errorf("%d sets updated but expected to update set with code %s", ra, set.Code)
 	}
+
 	return nil
 }
 
@@ -125,10 +146,13 @@ func (d *PostgresSetDao) CreateCardSet(set *CardSet) error {
 		VALUES (
 			$1, $2, $3, $4, $5, $6
 		)`
-	_, err := d.db.Conn.Exec(d.db.Ctx, query, set.Code, set.Name, set.Type, set.Released, set.TotalCount, set.Block.Id)
+
+	_, err := d.db.Conn.Exec(context.TODO(), query, set.Code, set.Name, set.Type, set.Released, set.TotalCount,
+		set.Block.ID)
 	if err != nil {
 		return fmt.Errorf("failed to create set %w", err)
 	}
+
 	return nil
 }
 
@@ -144,16 +168,18 @@ func (d *PostgresSetDao) FindCardSetByCode(code string) (*CardSet, error) {
 			cs.card_block_id = cb.id
 		WHERE
 			cs.code = $1`
+
 	set := &CardSet{Block: CardBlock{}}
-	err := d.db.Conn.QueryRow(d.db.Ctx, query, code).
-		Scan(&set.Code, &set.Name, &set.Type, &set.Released, &set.TotalCount, &set.Block.Id, &set.Block.Block)
+	err := d.db.Conn.QueryRow(context.TODO(), query, code).
+		Scan(&set.Code, &set.Name, &set.Type, &set.Released, &set.TotalCount, &set.Block.ID, &set.Block.Block)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, card.ErrEntryNotFound
 		}
 
 		return nil, fmt.Errorf("failed to select set by code %s %w", code, err)
 	}
+
 	return set, nil
 }
 
@@ -165,13 +191,15 @@ func (d *PostgresSetDao) CreateBlock(block string) (*CardBlock, error) {
 			($1)
 		RETURNING
 			id`
+
 	b := &CardBlock{
 		Block: block,
 	}
-	err := d.db.Conn.QueryRow(d.db.Ctx, query, block).Scan(&b.Id)
+	err := d.db.Conn.QueryRow(context.TODO(), query, block).Scan(&b.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert block %w", err)
 	}
+
 	return b, nil
 }
 
@@ -183,16 +211,17 @@ func (d *PostgresSetDao) FindBlockByName(blockName string) (*CardBlock, error) {
 			card_block
 		WHERE
 			block = $1`
+
 	var block CardBlock
-	err := d.db.Conn.QueryRow(d.db.Ctx, query, blockName).
-		Scan(&block.Id, &block.Block)
+	err := d.db.Conn.QueryRow(context.TODO(), query, blockName).Scan(&block.ID, &block.Block)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, card.ErrEntryNotFound
 		}
 
 		return nil, fmt.Errorf("failed to select block by name %s %w", blockName, err)
 	}
+
 	return &block, nil
 }
 
@@ -202,10 +231,13 @@ func (d *PostgresSetDao) Count() (int, error) {
 			count(code)
 		FROM
 			card_set`
+
+	row := d.db.Conn.QueryRow(context.TODO(), query)
+
 	var count int
-	row := d.db.Conn.QueryRow(d.db.Ctx, query)
 	if err := row.Scan(&count); err != nil {
 		return 0, fmt.Errorf("failed to count sets %w", err)
 	}
+
 	return count, nil
 }

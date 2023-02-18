@@ -1,18 +1,17 @@
 package fetch
 
 import (
+	"context"
 	"fmt"
-	"github.com/konstantinfoerster/card-importer-go/internal/config"
-	"github.com/pkg/errors"
 	"io"
 	"net/http"
 	"strings"
-	"sync"
-	"time"
+
+	"github.com/pkg/errors"
 )
 
 const (
-	MimeTypeJson = "application/json"
+	MimeTypeJSON = "application/json"
 	MimeTypeJpeg = "image/jpeg"
 	MimeTypePng  = "image/png"
 	MimeTypeZip  = "application/zip"
@@ -31,7 +30,7 @@ func (m MimeType) BuildFilename(prefix string) (string, error) {
 		return "", fmt.Errorf("can't build file name without prefix")
 	}
 	switch m.string {
-	case MimeTypeJson:
+	case MimeTypeJSON:
 		return prefix + ".json", nil
 	case MimeTypeZip:
 		return prefix + ".zip", nil
@@ -65,33 +64,25 @@ type Fetcher interface {
 	Fetch(url string, handleResponse func(resp *Response) error) error
 }
 
-var doOnce sync.Once
-var client *http.Client
-var DefaultAllowedTypes = []string{MimeTypeJson, MimeTypeJpeg, MimeTypePng}
-
-func NewFetcher(cfg config.Http, validator ...Validator) Fetcher {
+func NewFetcher(client *http.Client, validator ...Validator) Fetcher {
 	return &fetcher{
 		validators: validator,
-		timeout:    cfg.Timeout,
+		client:     client,
 	}
 }
 
 type fetcher struct {
 	validators []Validator
-	timeout    time.Duration
-}
-
-func (f *fetcher) getClient() *http.Client {
-	doOnce.Do(func() {
-		client = &http.Client{
-			Timeout: f.timeout,
-		}
-	})
-	return client
+	client     *http.Client
 }
 
 func (f *fetcher) Fetch(url string, handleResponse func(resp *Response) error) error {
-	resp, err := f.getClient().Get(url)
+	req, err := http.NewRequestWithContext(context.TODO(), http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := f.client.Do(req) //nolint:bodyclose
 	if err != nil {
 		return err
 	}
@@ -108,11 +99,13 @@ func (f *fetcher) Fetch(url string, handleResponse func(resp *Response) error) e
 	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(io.LimitReader(resp.Body, 2048)) // limited size for the error message
+		var maxErrorMsgLengthBytes int64 = 2048
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxErrorMsgLengthBytes))
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to read response body for %s %w", url, err)
 		}
-		return ExternalApiError{StatusCode: resp.StatusCode, Message: string(body)}
+
+		return ExternalAPIError{StatusCode: resp.StatusCode, Message: string(body)}
 	}
 
 	for _, v := range f.validators {
@@ -127,21 +120,22 @@ func (f *fetcher) Fetch(url string, handleResponse func(resp *Response) error) e
 	})
 }
 
-type ExternalApiError struct {
+type ExternalAPIError struct {
 	StatusCode int
 	Message    string
 }
 
-func (e ExternalApiError) Error() string {
+func (e ExternalAPIError) Error() string {
 	return fmt.Sprintf("%d:%s", e.StatusCode, e.Message)
 }
 
-func (e ExternalApiError) Is(target error) bool {
-	t, ok := target.(*ExternalApiError)
-	if !ok {
-		return false
+func (e ExternalAPIError) Is(target error) bool {
+	var apiErr *ExternalAPIError
+	if errors.As(target, &apiErr) {
+		return apiErr.StatusCode == e.StatusCode
 	}
-	return t.StatusCode == e.StatusCode
+
+	return false
 }
 
-var NotFoundError = &ExternalApiError{StatusCode: 404, Message: "Not found"}
+var ErrNotFound = &ExternalAPIError{StatusCode: 404, Message: "Not found"}

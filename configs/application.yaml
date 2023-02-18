@@ -12,10 +12,10 @@ http:
   timeout: 60s
 
 mtgjson:
-  downloadURL: https://mtgjson.com/api/v5/AllPrintings.json.zip
+  downloadUrl: https://mtgjson.com/api/v5/AllPrintings.json.zip
 
 scryfall:
-  downloadURL: https://api.scryfall.com/cards/{code}/{number}/{lang}?format={format}&version=normal
+  downloadUrl: https://api.scryfall.com/cards/{code}/{number}/{lang}?format={format}&version=normal
 
 storage:
   location: /tmp/images

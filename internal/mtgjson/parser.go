@@ -8,6 +8,8 @@ import (
 	"regexp"
 )
 
+var cardSetCodeRegex = regexp.MustCompile("^[A-Z0-9]{3,10}$")
+
 type result struct {
 	Result interface{}
 	Err    error
@@ -23,32 +25,33 @@ func parse(ctx context.Context, r io.Reader) <-chan *result {
 
 		if err := expectNext(json.Delim('{'), dec); err != nil {
 			c <- &result{Result: nil, Err: err}
+
 			return
 		}
 
-		isSetCodeFn, err := verifySetCodeStartFn()
-		if err != nil {
-			c <- &result{Result: nil, Err: err}
-			return
-		}
+		isSetCodeFn := verifySetCodeStartFn()
 
 		for dec.More() {
 			t, err := dec.Token()
 			if err != nil {
 				c <- &result{Result: nil, Err: err}
+
 				return
 			}
 
 			if t != "data" {
 				if err := skip(dec); err != nil {
 					c <- &result{Result: nil, Err: err}
+
 					return
 				}
+
 				continue
 			}
 
 			if err := expectNext(json.Delim('{'), dec); err != nil {
 				c <- &result{Result: nil, Err: err}
+
 				return
 			}
 
@@ -56,20 +59,23 @@ func parse(ctx context.Context, r io.Reader) <-chan *result {
 				t, err := dec.Token() // 10E
 				if err != nil {
 					c <- &result{Result: nil, Err: err}
+
 					return
 				}
 				if !isSetCodeFn(t) {
 					if err := skip(dec); err != nil {
 						c <- &result{Result: nil, Err: err}
 					}
+
 					continue
 				}
 
-				if err := parseSet(dec, c, ctx); err != nil {
+				if err := parseSet(ctx, dec, c); err != nil {
 					if ctx.Err() != nil {
 						return
 					}
 					c <- &result{Result: nil, Err: err}
+
 					return
 				}
 			}
@@ -79,7 +85,7 @@ func parse(ctx context.Context, r io.Reader) <-chan *result {
 	return c
 }
 
-func parseSet(dec *json.Decoder, c chan<- *result, ctx context.Context) error {
+func parseSet(ctx context.Context, dec *json.Decoder, c chan<- *result) error {
 	if err := expectNext(json.Delim('{'), dec); err != nil {
 		return err
 	}
@@ -104,67 +110,59 @@ func parseSet(dec *json.Decoder, c chan<- *result, ctx context.Context) error {
 		switch t {
 		case "block":
 			if et.next(dec) != nil {
-				block = et.token.(string)
+				var ok bool
+				block, ok = et.token.(string)
+				if !ok {
+					return fmt.Errorf("field block is not a string but %T", block)
+				}
 			}
 		case "name":
 			if et.next(dec) != nil {
-				name = et.token.(string)
+				var ok bool
+				name, ok = et.token.(string)
+				if !ok {
+					return fmt.Errorf("field name is not a string but %T", name)
+				}
 			}
 		case "code":
 			if et.next(dec) != nil {
-				code = et.token.(string)
+				var ok bool
+				code, ok = et.token.(string)
+				if !ok {
+					return fmt.Errorf("field code is not a string but %T", code)
+				}
 			}
 		case "type":
 			if et.next(dec) != nil {
-				setType = et.token.(string)
+				var ok bool
+				setType, ok = et.token.(string)
+				if !ok {
+					return fmt.Errorf("field setType is not a string but %T", setType)
+				}
 			}
 		case "totalSetSize":
 			if et.next(dec) != nil {
-				totalCount = et.token.(float64)
+				var ok bool
+				totalCount, ok = et.token.(float64)
+				if !ok {
+					return fmt.Errorf("field totalCount is not a float but %T", totalCount)
+				}
 			}
 		case "releaseDate":
 			if et.next(dec) != nil {
-				released = et.token.(string)
+				var ok bool
+				released, ok = et.token.(string)
+				if !ok {
+					return fmt.Errorf("field released is not a string but %T", released)
+				}
 			}
 		case "translations":
-			if err := expectNext(json.Delim('{'), dec); err != nil {
-				return err
-			}
-			for dec.More() {
-				var lang string
-				var translated string
-				if et.next(dec) != nil {
-					lang = et.token.(string)
-				}
-				if et.next(dec) != nil {
-					translated = et.token.(string)
-				}
-				translations = append(translations, translation{Language: lang, Name: translated})
-			}
-			if err := expectNext(json.Delim('}'), dec); err != nil {
+			translations, err = parseTranslations(dec, et)
+			if err != nil {
 				return err
 			}
 		case "cards":
-			if err := expectNext(json.Delim('['), dec); err != nil {
-				return err
-			}
-
-			for dec.More() {
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				default:
-				}
-
-				var card *mtgjsonCard
-				err := dec.Decode(&card)
-				if err != nil {
-					return err
-				}
-				c <- &result{Result: card, Err: nil}
-			}
-
-			if err := expectNext(json.Delim(']'), dec); err != nil {
+			if err := parseCard(ctx, c, dec); err != nil {
 				return err
 			}
 		default:
@@ -181,6 +179,7 @@ func parseSet(dec *json.Decoder, c chan<- *result, ctx context.Context) error {
 		// most likely no set found
 		return nil
 	}
+
 	c <- &result{Result: &mtgjsonCardSet{
 		Code:         code,
 		Name:         name,
@@ -198,6 +197,65 @@ func parseSet(dec *json.Decoder, c chan<- *result, ctx context.Context) error {
 	return nil
 }
 
+func parseCard(ctx context.Context, c chan<- *result, dec *json.Decoder) error {
+	if err := expectNext(json.Delim('['), dec); err != nil {
+		return err
+	}
+
+	for dec.More() {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		var card *mtgjsonCard
+		err := dec.Decode(&card)
+		if err != nil {
+			return err
+		}
+		c <- &result{Result: card, Err: nil}
+	}
+
+	if err := expectNext(json.Delim(']'), dec); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func parseTranslations(dec *json.Decoder, et *errToken) ([]translation, error) {
+	if err := expectNext(json.Delim('{'), dec); err != nil {
+		return nil, err
+	}
+	var translations []translation
+	for dec.More() {
+		var lang string
+		var translated string
+		if et.next(dec) != nil {
+			var ok bool
+			lang, ok = et.token.(string)
+			if !ok {
+				return nil, fmt.Errorf("field lang is not a string but %T", lang)
+			}
+		}
+		if et.next(dec) != nil {
+			var ok bool
+			translated, ok = et.token.(string)
+			if !ok {
+				return nil, fmt.Errorf("field translated is not a string but %T", translated)
+			}
+		}
+		translations = append(translations, translation{Language: lang, Name: translated})
+	}
+
+	if err := expectNext(json.Delim('}'), dec); err != nil {
+		return nil, err
+	}
+
+	return translations, nil
+}
+
 type errToken struct {
 	token json.Token
 	err   error
@@ -208,6 +266,7 @@ func (et *errToken) next(dec *json.Decoder) json.Token {
 		return nil
 	}
 	et.token, et.err = dec.Token()
+
 	return et.token
 }
 
@@ -231,29 +290,27 @@ func skip(dec *json.Decoder) error {
 		if err != nil {
 			return err
 		}
+
 		switch t {
 		case json.Delim('['), json.Delim('{'):
 			n++
 		case json.Delim(']'), json.Delim('}'):
 			n--
 		}
+
 		if n == 0 {
 			return nil
 		}
 	}
 }
 
-func verifySetCodeStartFn() (func(t json.Token) bool, error) {
-	regex, err := regexp.Compile("^[A-Z0-9]{3,10}$")
-	if err != nil {
-		return nil, err
-	}
-
+func verifySetCodeStartFn() func(t json.Token) bool {
 	return func(t json.Token) bool {
 		key, ok := t.(string)
-		if ok && regex.MatchString(key) {
+		if ok && cardSetCodeRegex.MatchString(key) {
 			return true
 		}
+
 		return false
-	}, err
+	}
 }

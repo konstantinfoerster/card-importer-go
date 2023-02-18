@@ -2,6 +2,12 @@ package scryfall_test
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/images"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
@@ -10,13 +16,9 @@ import (
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 	"github.com/konstantinfoerster/card-importer-go/internal/scryfall"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
+	"github.com/konstantinfoerster/card-importer-go/internal/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
-	"testing"
 )
 
 func TestMain(m *testing.M) {
@@ -70,15 +72,17 @@ func TestImageIntegration(t *testing.T) {
 }
 
 func createCard(t *testing.T, c *card.Card) {
-	cardService := card.NewService(cardDao)
+	t.Helper()
 
 	withDefaults := func(c *card.Card) *card.Card {
 		c.Rarity = "RARE"
 		c.Border = "WHITE"
 		c.Layout = "NORMAL"
+
 		return c
 	}
 
+	cardService := card.NewService(cardDao)
 	err := cardService.Import(withDefaults(c))
 	require.NoError(t, err, "failed to create card")
 }
@@ -484,17 +488,22 @@ func testErrorCases(t *testing.T) {
 }
 
 func openFile(t *testing.T, path string) (io.ReadCloser, error) {
+	t.Helper()
+
 	open, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fetch.NotFoundError
+			return nil, fetch.ErrNotFound
 		}
 		t.Fatalf("failed to open file %s, %s", path, err)
 	}
+
 	return open, nil
 }
 
 func testdataFileFetcher(t *testing.T) *MockFetcher {
+	t.Helper()
+
 	return &MockFetcher{FakeFetch: func(url string, handleResponse func(resp *fetch.Response) error) error {
 		u := strings.TrimPrefix(url, "http://localhost/")
 
@@ -503,6 +512,7 @@ func testdataFileFetcher(t *testing.T) *MockFetcher {
 			if err != nil {
 				return err
 			}
+
 			return handleResponse(&fetch.Response{
 				ContentType: fetch.MimeTypeJpeg,
 				Body:        f,
@@ -513,14 +523,17 @@ func testdataFileFetcher(t *testing.T) *MockFetcher {
 		if err != nil {
 			return err
 		}
+
 		return handleResponse(&fetch.Response{
-			ContentType: fetch.MimeTypeJson,
+			ContentType: fetch.MimeTypeJSON,
 			Body:        f,
 		})
 	}}
 }
 
 func assertFileCount(t *testing.T, path string, expectedCount int) {
+	t.Helper()
+
 	files, err := os.ReadDir(path)
 	if err != nil {
 		t.Fatalf("failed to read dir %s %v", path, err)
@@ -529,19 +542,13 @@ func assertFileCount(t *testing.T, path string, expectedCount int) {
 }
 
 func tmpDirWithCleanup(t *testing.T) string {
+	t.Helper()
+
 	dir, err := os.MkdirTemp("", "images")
 	if err != nil {
 		t.Fatalf("failed to create temp dir %v", err)
 	}
-	t.Cleanup(cleanup(t, dir))
-	return dir
-}
+	t.Cleanup(test.Cleanup(t, dir))
 
-func cleanup(t *testing.T, path string) func() {
-	return func() {
-		err := os.RemoveAll(path)
-		if err != nil {
-			t.Fatalf("failed to delete tmp dir %v", err)
-		}
-	}
+	return dir
 }

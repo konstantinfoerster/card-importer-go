@@ -3,32 +3,32 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"io"
+	"path/filepath"
+	"runtime"
+	"testing"
+
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"io"
-	"path/filepath"
-	"runtime"
-	"testing"
 )
 
 func NewRunner() *DatabaseRunner {
-	ctx := context.Background()
-	return &DatabaseRunner{
-		ctx: ctx,
-	}
+	return &DatabaseRunner{}
 }
 
 type DatabaseRunner struct {
-	ctx  context.Context
 	conn *DBConnection
 }
 
 func (r *DatabaseRunner) Run(t *testing.T, runTests func(t *testing.T)) {
-	err := r.runPostgresContainer(func(cfg config.Database) error {
-		conn, err := Connect(r.ctx, cfg)
+	t.Helper()
+
+	ctx := context.Background()
+	err := r.runPostgresContainer(ctx, func(cfg config.Database) error {
+		conn, err := Connect(ctx, cfg)
 		if err != nil {
 			return err
 		}
@@ -60,6 +60,8 @@ func (r *DatabaseRunner) Connection() *DBConnection {
 }
 
 func (r *DatabaseRunner) Cleanup(t *testing.T) func() {
+	t.Helper()
+
 	return func() {
 		cErr := r.conn.Cleanup()
 		if cErr != nil {
@@ -68,16 +70,17 @@ func (r *DatabaseRunner) Cleanup(t *testing.T) func() {
 	}
 }
 
-func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) error {
+func (r *DatabaseRunner) runPostgresContainer(ctx context.Context, f func(c config.Database) error) error {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		return fmt.Errorf("failed to get caller")
 	}
-	dbDirLink := filepath.Join(filepath.Dir(file), "testdata", "db")
-	dbDir, err := filepath.EvalSymlinks(dbDirLink)
+
+	dbDir, err := filepath.EvalSymlinks(filepath.Join(filepath.Dir(file), "testdata", "db"))
 	if err != nil {
 		return err
 	}
+
 	username := "tester"
 	password := "tester"
 	database := "cardmanager"
@@ -101,7 +104,7 @@ func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) e
 		WaitingFor:      wait.ForLog("[1] LOG:  database system is ready to accept connections"),
 	}
 
-	postgresC, err := testcontainers.GenericContainer(r.ctx, testcontainers.GenericContainerRequest{
+	postgresC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
 		Started:          true,
 	})
@@ -109,7 +112,7 @@ func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) e
 		return err
 	}
 	defer func(toClose testcontainers.Container) {
-		cErr := toClose.Terminate(r.ctx)
+		cErr := toClose.Terminate(ctx)
 		if cErr != nil {
 			// report close errors
 			if err == nil {
@@ -121,24 +124,26 @@ func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) e
 	}(postgresC)
 
 	if log.Debug().Enabled() {
-		logs, err := postgresC.Logs(r.ctx)
+		logs, err := postgresC.Logs(ctx)
 		if err != nil {
 			return err
 		}
 		defer logs.Close()
+
 		b, err := io.ReadAll(logs)
 		if err != nil {
 			return err
 		}
+
 		log.Debug().Msg(string(b))
 	}
 
-	ip, err := postgresC.Host(r.ctx)
+	ip, err := postgresC.Host(ctx)
 	if err != nil {
 		return err
 	}
 
-	mappedPort, err := postgresC.MappedPort(r.ctx, "5432")
+	mappedPort, err := postgresC.MappedPort(ctx, "5432")
 	if err != nil {
 		return err
 	}
@@ -151,5 +156,6 @@ func (r *DatabaseRunner) runPostgresContainer(f func(c config.Database) error) e
 		Database: database,
 	}
 	err = f(dbConfig)
+
 	return err
 }

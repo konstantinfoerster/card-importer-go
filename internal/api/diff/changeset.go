@@ -33,5 +33,6 @@ func (c *Changeset) String() string {
 	for k, v := range c.changes {
 		changes = append(changes, fmt.Sprintf("Field '%s' from '%v' to '%v'", k, v.From, v.To))
 	}
+
 	return strings.Join(changes, ", ")
 }

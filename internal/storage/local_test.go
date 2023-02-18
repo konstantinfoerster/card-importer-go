@@ -2,15 +2,18 @@ package storage_test
 
 import (
 	"fmt"
-	"github.com/konstantinfoerster/card-importer-go/internal/config"
-	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
-	"github.com/konstantinfoerster/card-importer-go/internal/storage"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/konstantinfoerster/card-importer-go/internal/config"
+	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
+	"github.com/konstantinfoerster/card-importer-go/internal/storage"
+	"github.com/konstantinfoerster/card-importer-go/internal/test"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -34,15 +37,11 @@ func TestStoredFileIsAlwaysInsideBasePath(t *testing.T) {
 		Location: dir,
 		Mode:     config.CREATE,
 	})
-	if err != nil {
-		t.Fatalf("failed to create local storage, got: %v, wanted no error", err)
-	}
+	require.NoError(t, err)
 	path := []string{"..", "dir", "..", "test.txt"}
 
 	f, err := store.Store(strings.NewReader("content"), path...)
-	if err != nil {
-		t.Fatalf("failed to store in local storage, got: %v, wanted no error", err)
-	}
+	assert.NoError(t, err, "failed to store file")
 
 	assert.Equal(t, filepath.Join(dir, "dir", "test.txt"), f.AbsolutePath)
 }
@@ -53,15 +52,11 @@ func TestStoreWithSubDirs(t *testing.T) {
 		Location: dir,
 		Mode:     config.CREATE,
 	})
-	if err != nil {
-		t.Fatalf("failed to create local storage, got: %v, wanted no error", err)
-	}
+	require.NoError(t, err)
 	path := []string{"dir", "sub", "sub2", "sub3", "test.txt"}
 
 	f, err := store.Store(strings.NewReader("content"), path...)
-	if err != nil {
-		t.Fatalf("failed to store in local storage, got: %v, wanted no error", err)
-	}
+	assert.NoError(t, err, "failed to store file")
 
 	assert.FileExists(t, f.AbsolutePath)
 }
@@ -72,15 +67,11 @@ func TestStoreReturnsCorrectPath(t *testing.T) {
 		Location: dir,
 		Mode:     config.CREATE,
 	})
-	if err != nil {
-		t.Fatalf("failed to create local storage, got: %v, wanted no error", err)
-	}
+	require.NoError(t, err)
 	path := []string{"dir", "test.txt"}
 
 	f, err := store.Store(strings.NewReader("content"), path...)
-	if err != nil {
-		t.Fatalf("failed to store in local storage, got: %v, wanted no error", err)
-	}
+	assert.NoError(t, err, "failed to store file")
 
 	assert.Equal(t, filepath.Join(dir, "dir", "test.txt"), f.AbsolutePath)
 	assert.Equal(t, filepath.Join("dir", "test.txt"), f.Path)
@@ -92,15 +83,11 @@ func TestStoreModeCreate(t *testing.T) {
 		Location: dir,
 		Mode:     config.CREATE,
 	})
-	if err != nil {
-		t.Fatalf("failed to create local storage, got: %v, wanted no error", err)
-	}
+	require.NoError(t, err)
 	fileName := "test.txt"
 
 	f, err := store.Store(strings.NewReader("content"), fileName)
-	if err != nil {
-		t.Fatalf("failed to store file, got: %v, wanted no error", err)
-	}
+	assert.NoError(t, err, "failed to store file")
 
 	assert.FileExists(t, f.AbsolutePath)
 	assertFileContent(t, "content", f.AbsolutePath)
@@ -112,20 +99,15 @@ func TestStoreModeCreateFails(t *testing.T) {
 		Location: dir,
 		Mode:     config.CREATE,
 	})
-	if err != nil {
-		t.Fatalf("failed to create local storage, got: %v, wanted no error", err)
-	}
+	require.NoError(t, err)
 	fileName := "test.txt"
 
 	_, err = store.Store(strings.NewReader("content"), fileName)
-	if err != nil {
-		t.Fatalf("failed to store file, got: %v, wanted no error", err)
-	}
-	_, err = store.Store(strings.NewReader("differentContent"), fileName)
-	if err == nil {
-		t.Fatalf("expected store to fail if file already exists")
-	}
+	assert.NoError(t, err, "failed to store file")
 
+	_, err = store.Store(strings.NewReader("differentContent"), fileName)
+
+	assert.Error(t, err, "expected store to fail if file already exists")
 	assert.ErrorIs(t, err, os.ErrExist)
 }
 
@@ -135,19 +117,14 @@ func TestStoreModeReplace(t *testing.T) {
 		Location: dir,
 		Mode:     config.REPLACE,
 	})
-	if err != nil {
-		t.Fatalf("failed to create local storage, got: %v, wanted no error", err)
-	}
+	require.NoError(t, err)
 	fileName := "test.txt"
 
 	_, err = store.Store(strings.NewReader("content"), fileName)
-	if err != nil {
-		t.Fatalf("failed to create file, got: %v, wanted no error", err)
-	}
+	assert.NoError(t, err, "failed to store file")
+
 	f, err := store.Store(strings.NewReader("differentContent"), fileName)
-	if err != nil {
-		t.Fatalf("failed to replace file, got: %v, wanted no error", err)
-	}
+	assert.NoError(t, err, "failed to store file")
 
 	assert.FileExists(t, f.AbsolutePath)
 	assertFileContent(t, "differentContent", f.AbsolutePath)
@@ -158,15 +135,10 @@ func TestLoadNoneExistingFile(t *testing.T) {
 	store, err := storage.NewLocalStorage(config.Storage{
 		Location: dir,
 	})
-	if err != nil {
-		t.Fatalf("failed to create local storage, got: %v, wanted no error", err)
-	}
+	require.NoError(t, err)
 	fileName := "notFound.txt"
 
 	_, err = store.Load(fileName)
-	if err == nil {
-		t.Fatalf("expected a file not exists error but got no error")
-	}
 
 	assert.ErrorIs(t, err, os.ErrNotExist)
 }
@@ -176,14 +148,10 @@ func TestLoadWithoutAnyPath(t *testing.T) {
 	store, err := storage.NewLocalStorage(config.Storage{
 		Location: dir,
 	})
-	if err != nil {
-		t.Fatalf("failed to create local storage, got: %v, wanted no error", err)
-	}
+	require.NoError(t, err)
 
 	_, err = store.Load("")
-	if err == nil {
-		t.Fatalf("expected not found error but got no error")
-	}
+	assert.Error(t, err, "expected not found error but got no error")
 
 	assert.Contains(t, err.Error(), "not supported")
 }
@@ -194,15 +162,13 @@ func TestLoadFile(t *testing.T) {
 		Location: dir,
 		Mode:     config.CREATE,
 	})
-	if err != nil {
-		t.Fatalf("failed to create local storage, got: %v, wanted no error", err)
-	}
+	require.NoError(t, err)
+
 	fileName := "test.txt"
 	expected := "content"
+
 	_, err = store.Store(strings.NewReader(expected), fileName)
-	if err != nil {
-		t.Fatalf("failed to create file, got: %v, wanted no error", err)
-	}
+	assert.NoError(t, err, "failed to store file")
 
 	cases := []struct {
 		name string
@@ -224,9 +190,7 @@ func TestLoadFile(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			actual, err := store.Load(tc.path...)
-			if err != nil {
-				t.Fatalf("failed to load file, got: %v, wanted no error", err)
-			}
+			assert.NoError(t, err, "failed to store file")
 			defer actual.Close()
 
 			assertContentEquals(t, tc.want, actual)
@@ -235,39 +199,30 @@ func TestLoadFile(t *testing.T) {
 }
 
 func assertContentEquals(t *testing.T, expected string, r io.Reader) {
+	t.Helper()
+
 	actual, err := io.ReadAll(r)
-	if err != nil {
-		t.Errorf("failed to read file %v", err)
-		return
-	}
+	assert.NoError(t, err, "failed to read file")
 
 	assert.Equal(t, expected, string(actual))
 }
 
 func assertFileContent(t *testing.T, expected string, path string) {
+	t.Helper()
+
 	actual, err := os.ReadFile(path)
-	if err != nil {
-		t.Errorf("failed to read file %s %v", path, err)
-		return
-	}
+	require.NoErrorf(t, err, "failed to read file %s", path)
 
 	assert.Equal(t, expected, string(actual))
 }
 
 func tmpDirWithCleanup(t *testing.T) string {
-	dir, err := os.MkdirTemp("", "store")
-	if err != nil {
-		t.Fatalf("failed to create temp dir %v", err)
-	}
-	t.Cleanup(cleanup(t, dir))
-	return dir
-}
+	t.Helper()
 
-func cleanup(t *testing.T, path string) func() {
-	return func() {
-		err := os.RemoveAll(path)
-		if err != nil {
-			t.Fatalf("failed to delete tmp dir %v", err)
-		}
-	}
+	dir, err := os.MkdirTemp("", "store")
+	require.NoError(t, err, "failed to create temp dir")
+
+	t.Cleanup(test.Cleanup(t, dir))
+
+	return dir
 }

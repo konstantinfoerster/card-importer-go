@@ -2,6 +2,8 @@ package card
 
 import (
 	"fmt"
+
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -35,132 +37,150 @@ func (s *cardService) Import(card *Card) error {
 
 	var isNewCard bool
 	err := s.dao.withTransaction(func(txDao *PostgresCardDao) error {
-		existingCard, err := txDao.FindUniqueCard(card.CardSetCode, card.Number)
+		var err error
+		card, isNewCard, err = mergeCard(txDao, card)
 		if err != nil {
-			return fmt.Errorf("failed to find card with code %s and number %s. %w", card.CardSetCode, card.Number, err)
+			return err
 		}
 
-		if existingCard == nil {
-			if err := txDao.CreateCard(card); err != nil {
-				log.Error().Err(err).Msgf("Failed to create card %#v", card)
-				return err
-			}
-			if log.Trace().Enabled() {
-				log.Trace().Msgf("Created card %s from set %s", card.Number, card.CardSetCode)
-			}
-			isNewCard = true
-		} else {
-			card.Id = existingCard.Id
-
-			diff := existingCard.Diff(card)
-			if diff.HasChanges() {
-				log.Info().Msgf("Update card %s from set %s with changes %s", card.Name, card.CardSetCode, diff.String())
-				if err := txDao.UpdateCard(card); err != nil {
-					return err
-				}
-			}
-		}
-
-		return mergeCardFaces(txDao, card.Faces[:], card.Id.Int64, isNewCard)
+		return mergeCardFaces(txDao, card.Faces, card.ID.Int64, isNewCard)
 	})
 	if err != nil {
 		return err
 	}
 
 	for _, f := range card.Faces {
-		if !f.Id.Valid {
+		if !f.ID.Valid {
 			return fmt.Errorf("expected face %s of card %s and set %s to be created", f.Name, card.Number, card.CardSetCode)
 		}
 
-		faceId := f.Id.Int64
-		if err := mergeSubTypes(s.dao, f.Subtypes, faceId, isNewCard); err != nil {
+		faceID := f.ID.Int64
+		if err := mergeSubTypes(s.dao, f.Subtypes, faceID, isNewCard); err != nil {
 			return err
 		}
-		if err := mergeSuperTypes(s.dao, f.Supertypes, faceId, isNewCard); err != nil {
+		if err := mergeSuperTypes(s.dao, f.Supertypes, faceID, isNewCard); err != nil {
 			return err
 		}
-		if err := mergeCardTypes(s.dao, f.Cardtypes, faceId, isNewCard); err != nil {
+		if err := mergeCardTypes(s.dao, f.Cardtypes, faceID, isNewCard); err != nil {
 			return err
 		}
 
-		if err := mergeFaceTranslations(s.dao, f.Translations, faceId, isNewCard); err != nil {
+		if err := mergeFaceTranslations(s.dao, f.Translations, faceID, isNewCard); err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
-func mergeFaceTranslations(dao *PostgresCardDao, tt []Translation, faceId int64, isNewCard bool) error {
+func mergeCard(txDao *PostgresCardDao, c *Card) (*Card, bool, error) {
+	existingCard, err := txDao.FindUniqueCard(c.CardSetCode, c.Number)
+	if err != nil {
+		if !errors.Is(err, ErrEntryNotFound) {
+			return nil, false, fmt.Errorf("failed to find card with code %s and number %s. %w", c.CardSetCode, c.Number, err)
+		}
+	}
+
+	if existingCard == nil {
+		if err := txDao.CreateCard(c); err != nil {
+			log.Error().Err(err).Msgf("Failed to create card %#v", c)
+
+			return nil, false, err
+		}
+		if log.Trace().Enabled() {
+			log.Trace().Msgf("Created card %s from set %s", c.Number, c.CardSetCode)
+		}
+
+		return c, true, nil
+	}
+
+	c.ID = existingCard.ID
+
+	diff := existingCard.Diff(c)
+	if diff.HasChanges() {
+		log.Info().Msgf("Update card %s from set %s with changes %s", c.Name, c.CardSetCode, diff.String())
+		if err := txDao.UpdateCard(c); err != nil {
+			return nil, false, err
+		}
+	}
+
+	return c, false, err
+}
+
+func mergeFaceTranslations(dao *PostgresCardDao, tt []Translation, faceID int64, isNewCard bool) error {
 	return dao.withTransaction(func(txDao *PostgresCardDao) error {
-		return mergeTranslations(txDao, tt, faceId, isNewCard)
+		return mergeTranslations(txDao, tt, faceID, isNewCard)
 	})
 }
-func mergeCardFaces(dao *PostgresCardDao, ff []*Face, cardId int64, isNewCard bool) error {
+func mergeCardFaces(dao *PostgresCardDao, ff []*Face, cardID int64, isNewCard bool) error {
 	var incomingFaces []*Face
 	incomingFaces = append(incomingFaces, ff...)
 	if !isNewCard {
-		existingFaces, err := dao.FindAssignedFaces(cardId)
+		existingFaces, err := dao.FindAssignedFaces(cardID)
 		if err != nil {
 			return fmt.Errorf("failed to get assigned faces %w", err)
 		}
 		for _, existingFace := range existingFaces {
 			if ok, pos := containsFace(incomingFaces, existingFace); ok {
 				incomingFace := incomingFaces[pos]
-				incomingFace.Id = existingFace.Id
+				incomingFace.ID = existingFace.ID
 
 				diff := existingFace.Diff(incomingFace)
 				if diff.HasChanges() {
-					log.Info().Msgf("Update face %s of card %v with changes %s", incomingFace.Name, cardId, diff.String())
+					log.Info().Msgf("Update face %s of card %v with changes %s", incomingFace.Name, cardID, diff.String())
 					if err := dao.UpdateFace(incomingFace); err != nil {
 						return err
 					}
 				}
 				incomingFaces = removeFace(incomingFaces, pos)
+
 				continue
 			}
-			faceId := existingFace.Id.Int64
-			if err := dao.DeleteFace(faceId); err != nil {
+			faceID := existingFace.ID.Int64
+			if err := dao.DeleteFace(faceID); err != nil {
 				return err
 			}
-			log.Warn().Msgf("Deleted card face %v of card %v", existingFace.Name, cardId)
+			log.Warn().Msgf("Deleted card face %v of card %v", existingFace.Name, cardID)
 		}
 	}
 
 	for _, newFace := range incomingFaces {
-		if err := dao.AddFace(cardId, newFace); err != nil {
+		if err := dao.AddFace(cardID, newFace); err != nil {
 			return err
 		}
 	}
 
-	assigned, err := dao.FindAssignedFaces(cardId)
+	assigned, err := dao.FindAssignedFaces(cardID)
 	if err != nil {
 		return fmt.Errorf("failed to get assigned faces %w", err)
 	}
 	if len(assigned) != len(ff) {
-		return fmt.Errorf("unexpected face count assigned to card %d, expected %d but found %d", cardId, len(ff), len(assigned))
+		return fmt.Errorf("unexpected face count assigned to card %d, expected %d but found %d",
+			cardID, len(ff), len(assigned))
 	}
+
 	return nil
 }
 
-func mergeSubTypes(dao *PostgresCardDao, tt []string, faceId int64, isNewCard bool) error {
+func mergeSubTypes(dao *PostgresCardDao, tt []string, faceID int64, isNewCard bool) error {
 	return dao.withTransaction(func(txDao *PostgresCardDao) error {
-		return mergeTypes(txDao.subType, tt, faceId, isNewCard)
+		return mergeTypes(txDao.subType, tt, faceID, isNewCard)
 	})
 }
 
-func mergeSuperTypes(dao *PostgresCardDao, tt []string, faceId int64, isNewCard bool) error {
+func mergeSuperTypes(dao *PostgresCardDao, tt []string, faceID int64, isNewCard bool) error {
 	return dao.withTransaction(func(txDao *PostgresCardDao) error {
-		return mergeTypes(txDao.superType, tt, faceId, isNewCard)
+		return mergeTypes(txDao.superType, tt, faceID, isNewCard)
 	})
 }
 
-func mergeCardTypes(dao *PostgresCardDao, tt []string, faceId int64, isNewCard bool) error {
+func mergeCardTypes(dao *PostgresCardDao, tt []string, faceID int64, isNewCard bool) error {
 	return dao.withTransaction(func(txDao *PostgresCardDao) error {
-		return mergeTypes(txDao.cardType, tt, faceId, isNewCard)
+		return mergeTypes(txDao.cardType, tt, faceID, isNewCard)
 	})
 }
 
-func mergeTypes(dao TypeDao, tt []string, faceId int64, isNewCard bool) error {
+func mergeTypes(dao TypeDao, tt []string, faceID int64, isNewCard bool) error {
 	if isNewCard && len(tt) == 0 {
 		// skip, nothing to create or delete
 		return nil
@@ -169,7 +189,7 @@ func mergeTypes(dao TypeDao, tt []string, faceId int64, isNewCard bool) error {
 	var toCreate []string
 	toCreate = append(toCreate, tt...)
 	if !isNewCard {
-		existingTypes, err := dao.FindAssignments(faceId)
+		existingTypes, err := dao.FindAssignments(faceID)
 		if err != nil {
 			return fmt.Errorf("failed to get assigned types %w", err)
 		}
@@ -179,24 +199,29 @@ func mergeTypes(dao TypeDao, tt []string, faceId int64, isNewCard bool) error {
 			if ok, pos := contains(toCreate, existingType.Name); ok {
 				toCreate = remove(toCreate, pos)
 			} else {
-				toRemove = append(toRemove, existingType.Id.Int64)
+				toRemove = append(toRemove, existingType.ID.Int64)
 			}
 		}
 		if len(toRemove) > 0 {
-			if err := dao.DeleteAssignments(faceId, toRemove...); err != nil {
+			if err := dao.DeleteAssignments(faceID, toRemove...); err != nil {
 				return fmt.Errorf("failed to removed assigned types %w", err)
 			}
 		}
+	}
 
-		if len(toCreate) == 0 {
-			return nil
-		}
+	return assignTypes(dao, toCreate, faceID)
+}
+
+func assignTypes(dao TypeDao, toCreate []string, faceID int64) error {
+	if len(toCreate) == 0 {
+		return nil
 	}
 
 	types, err := dao.Find(toCreate...)
 	if err != nil {
 		return fmt.Errorf("failed to find types %v %w", toCreate, err)
 	}
+
 	for _, t := range toCreate {
 		var entry *CharacteristicType
 
@@ -206,25 +231,24 @@ func mergeTypes(dao TypeDao, tt []string, faceId int64, isNewCard bool) error {
 			}
 		}
 		if entry == nil {
-			entry, err = dao.Create(t)
-			if err != nil {
+			if entry, err = dao.Create(t); err != nil {
 				return fmt.Errorf("failed to create type %s %w", t, err)
 			}
 		}
 
-		if err := dao.AssignToFace(faceId, entry.Id.Int64); err != nil {
-			return fmt.Errorf("failed to assign type %v to card %d %w", entry, faceId, err)
+		if err := dao.AssignToFace(faceID, entry.ID.Int64); err != nil {
+			return fmt.Errorf("failed to assign type %v to card %d %w", entry, faceID, err)
 		}
 	}
 
 	return nil
 }
 
-func mergeTranslations(dao *PostgresCardDao, tt []Translation, faceId int64, isNewCard bool) error {
+func mergeTranslations(dao *PostgresCardDao, tt []Translation, faceID int64, isNewCard bool) error {
 	var toCreate []Translation
 	toCreate = append(toCreate, tt...)
 	if !isNewCard {
-		existingTranslations, err := dao.FindTranslations(faceId)
+		existingTranslations, err := dao.FindTranslations(faceID)
 		if err != nil {
 			return fmt.Errorf("failed to get existing translations %w", err)
 		}
@@ -237,13 +261,14 @@ func mergeTranslations(dao *PostgresCardDao, tt []Translation, faceId int64, isN
 
 				diff := existingTranslation.Diff(translation)
 				if diff.HasChanges() {
-					log.Info().Msgf("Update translation for face %v and language %v with changes %s", faceId, existingTranslation.Lang, diff.String())
-					if err := dao.UpdateTranslation(faceId, translation); err != nil {
+					log.Info().Msgf("Update translation for face %v and language %v with changes %s",
+						faceID, existingTranslation.Lang, diff.String())
+					if err := dao.UpdateTranslation(faceID, translation); err != nil {
 						return err
 					}
 				}
 			} else {
-				if err := dao.DeleteTranslation(faceId, existingTranslation.Lang); err != nil {
+				if err := dao.DeleteTranslation(faceID, existingTranslation.Lang); err != nil {
 					return err
 				}
 			}
@@ -251,7 +276,8 @@ func mergeTranslations(dao *PostgresCardDao, tt []Translation, faceId int64, isN
 	}
 
 	for _, t := range toCreate {
-		if err := dao.AddTranslation(faceId, &t); err != nil {
+		t := t
+		if err := dao.AddTranslation(faceID, &t); err != nil {
 			return err
 		}
 	}
@@ -261,6 +287,7 @@ func mergeTranslations(dao *PostgresCardDao, tt []Translation, faceId int64, isN
 
 func remove(arr []string, pos int) []string {
 	arr[pos] = arr[len(arr)-1]
+
 	return arr[:len(arr)-1]
 }
 
@@ -270,11 +297,13 @@ func contains(s []string, term string) (bool, int) {
 			return true, i
 		}
 	}
+
 	return false, 0
 }
 
 func removeFace(arr []*Face, pos int) []*Face {
 	arr[pos] = arr[len(arr)-1]
+
 	return arr[:len(arr)-1]
 }
 
@@ -290,14 +319,17 @@ func containsFace(arr []*Face, searchTerm *Face) (bool, int) {
 			return true, i
 		}
 	}
+
 	return false, 0
 }
 
 func removeTranslation(arr []Translation, toRemove Translation) []Translation {
 	if ok, pos := containsTranslation(arr, toRemove); ok {
 		arr[pos] = arr[len(arr)-1]
+
 		return arr[:len(arr)-1]
 	}
+
 	return arr
 }
 
@@ -307,5 +339,6 @@ func containsTranslation(arr []Translation, t Translation) (bool, int) {
 			return true, i
 		}
 	}
+
 	return false, 0
 }

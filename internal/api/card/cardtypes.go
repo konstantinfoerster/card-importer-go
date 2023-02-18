@@ -1,18 +1,20 @@
 package card
 
 import (
+	"context"
 	"fmt"
-	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 	"strings"
+
+	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 )
 
 type TypeDao interface {
 	Create(name string) (*CharacteristicType, error)
 	Find(names ...string) ([]*CharacteristicType, error)
-	AssignToFace(faceId int64, typeId int64) error
-	FindAssignments(faceId int64) ([]*CharacteristicType, error)
-	DeleteAssignments(faceId int64, subTypeIds ...int64) error
-	DeleteAllAssignments(faceId int64) error
+	AssignToFace(faceID int64, typeID int64) error
+	FindAssignments(faceID int64) ([]*CharacteristicType, error)
+	DeleteAssignments(faceID int64, subTypeIDs ...int64) error
+	DeleteAllAssignments(faceID int64) error
 }
 
 func NewSubTypeDao(db *postgres.DBConnection) TypeDao {
@@ -32,8 +34,8 @@ type CharacteristicDao struct {
 	joinTable string
 }
 
-func newEntity(id PrimaryId, name string) *CharacteristicType {
-	return &CharacteristicType{Id: id, Name: name}
+func newEntity(id PrimaryID, name string) *CharacteristicType {
+	return &CharacteristicType{ID: id, Name: name}
 }
 
 func (d *CharacteristicDao) Create(name string) (*CharacteristicType, error) {
@@ -48,11 +50,12 @@ func (d *CharacteristicDao) Create(name string) (*CharacteristicType, error) {
 		RETURNING
 			id`, d.tableName)
 	var id int64
-	err := d.db.Conn.QueryRow(d.db.Ctx, query, name).Scan(&id)
+	err := d.db.Conn.QueryRow(context.TODO(), query, name).Scan(&id)
 	if err != nil {
 		return nil, err
 	}
-	return newEntity(NewPrimaryId(id), name), nil
+
+	return newEntity(NewPrimaryID(id), name), nil
 }
 
 func (d *CharacteristicDao) Find(names ...string) ([]*CharacteristicType, error) {
@@ -83,7 +86,7 @@ func (d *CharacteristicDao) Find(names ...string) ([]*CharacteristicType, error)
 			%s
 		ORDER BY
 		name`, d.tableName, wherePart)
-	rows, err := d.db.Conn.Query(d.db.Ctx, query, params...)
+	rows, err := d.db.Conn.Query(context.TODO(), query, params...)
 	if err != nil {
 		return []*CharacteristicType{}, err
 	}
@@ -92,7 +95,7 @@ func (d *CharacteristicDao) Find(names ...string) ([]*CharacteristicType, error)
 	var result []*CharacteristicType
 	for rows.Next() {
 		var entry CharacteristicType
-		err := rows.Scan(&entry.Id, &entry.Name)
+		err := rows.Scan(&entry.ID, &entry.Name)
 		if err != nil {
 			return []*CharacteristicType{}, err
 		}
@@ -101,23 +104,26 @@ func (d *CharacteristicDao) Find(names ...string) ([]*CharacteristicType, error)
 	if rows.Err() != nil {
 		return []*CharacteristicType{}, rows.Err()
 	}
+
 	return result, nil
 }
 
-func (d *CharacteristicDao) AssignToFace(faceId int64, typeId int64) error {
-	_, err := d.db.Conn.Exec(d.db.Ctx, "INSERT INTO "+d.joinTable+"(face_id, type_id) VALUES($1, $2)", faceId, typeId)
+func (d *CharacteristicDao) AssignToFace(faceID int64, typeID int64) error {
+	_, err := d.db.Conn.Exec(context.TODO(), "INSERT INTO "+d.joinTable+"(face_id, type_id) VALUES($1, $2)",
+		faceID, typeID)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
-func (d *CharacteristicDao) FindAssignments(faceId int64) ([]*CharacteristicType, error) {
-	rows, err := d.db.Conn.Query(d.db.Ctx, `
+func (d *CharacteristicDao) FindAssignments(faceID int64) ([]*CharacteristicType, error) {
+	rows, err := d.db.Conn.Query(context.TODO(), `
 			SELECT t.id, t.name 
 			FROM `+d.tableName+` t JOIN `+d.joinTable+` ct ON t.id = ct.type_id
 			WHERE ct.face_id = $1
-			ORDER BY t.name`, faceId)
+			ORDER BY t.name`, faceID)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +131,7 @@ func (d *CharacteristicDao) FindAssignments(faceId int64) ([]*CharacteristicType
 	var result []*CharacteristicType
 	for rows.Next() {
 		var entry CharacteristicType
-		err := rows.Scan(&entry.Id, &entry.Name)
+		err := rows.Scan(&entry.ID, &entry.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -134,19 +140,20 @@ func (d *CharacteristicDao) FindAssignments(faceId int64) ([]*CharacteristicType
 	if rows.Err() != nil {
 		return nil, rows.Err()
 	}
+
 	return result, nil
 }
 
-func (d *CharacteristicDao) DeleteAssignments(faceId int64, typeIds ...int64) error {
-	if len(typeIds) == 0 {
+func (d *CharacteristicDao) DeleteAssignments(faceID int64, typeIDs ...int64) error {
+	if len(typeIDs) == 0 {
 		return nil
 	}
 	var params []interface{}
 	// param $1 is the card id
-	params = append(params, faceId)
+	params = append(params, faceID)
 
 	var inPart strings.Builder
-	for i, id := range typeIds {
+	for i, id := range typeIDs {
 		if i > 0 {
 			inPart.WriteString(", ")
 		}
@@ -155,27 +162,30 @@ func (d *CharacteristicDao) DeleteAssignments(faceId int64, typeIds ...int64) er
 	}
 
 	inPart.WriteString(", ")
-	inPart.WriteString(fmt.Sprintf("$%d", len(typeIds)+1)) // additional one because of faceId
+	inPart.WriteString(fmt.Sprintf("$%d", len(typeIDs)+1)) // additional one because of faceId
 
 	query := "DELETE FROM " + d.joinTable + " WHERE face_id = $1 AND type_id IN (" + inPart.String() + ")"
 
-	ct, err := d.db.Conn.Exec(d.db.Ctx, query, params...)
+	ct, err := d.db.Conn.Exec(context.TODO(), query, params...)
 	if err != nil {
 		return err
 	}
 	ra := ct.RowsAffected()
-	if ra != int64(len(typeIds)) {
-		return fmt.Errorf("expected to deleted %d assigned types but deleted %d from card face with id %d, %s", len(typeIds), ra, faceId, query)
+	if ra != int64(len(typeIDs)) {
+		return fmt.Errorf("expected to deleted %d assigned types but deleted %d from card face with id %d, %s",
+			len(typeIDs), ra, faceID, query)
 	}
+
 	return nil
 }
 
-func (d *CharacteristicDao) DeleteAllAssignments(faceId int64) error {
+func (d *CharacteristicDao) DeleteAllAssignments(faceID int64) error {
 	query := "DELETE FROM " + d.joinTable + " WHERE face_id = $1"
 
-	_, err := d.db.Conn.Exec(d.db.Ctx, query, faceId)
+	_, err := d.db.Conn.Exec(context.TODO(), query, faceID)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }

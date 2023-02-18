@@ -2,16 +2,17 @@ package mtgjson_test
 
 import (
 	"database/sql"
+	"io"
+	"sort"
+	"testing"
+	"time"
+
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/cardset"
 	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 	"github.com/konstantinfoerster/card-importer-go/internal/test"
 	"github.com/stretchr/testify/assert"
-	"io"
-	"sort"
-	"testing"
-	"time"
 )
 
 var runner *postgres.DatabaseRunner
@@ -58,7 +59,7 @@ func cardSetCreateAndUpdate(t *testing.T) {
 	count, _ := csDao.Count()
 	assert.Equal(t, 1, count, "Unexpected set count.")
 	gotSet, _ := csDao.FindCardSetByCode("10E")
-	gotSet.Block.Id = sql.NullInt64{}
+	gotSet.Block.ID = sql.NullInt64{}
 	assert.Equal(t, want, gotSet)
 }
 
@@ -146,7 +147,7 @@ func cardCreateUpdate(t *testing.T) {
 					Colors:            card.NewColors([]string{"B", "W"}),
 					ConvertedManaCost: 20,
 					FlavorText:        "Flavor Text Updated",
-					MultiverseId:      123,
+					MultiverseID:      123,
 					ManaCost:          "{B}{W}",
 					Name:              "Benalish Hero",
 					HandModifier:      "+2",
@@ -256,7 +257,7 @@ func cardTranslations(t *testing.T) {
 								Name:         "Benalische Heldin",
 								Text:         "+4: Ein Spieler deiner Wahl schickt.... eine Karte aus seiner Hand ins Exil.\n−3: Schicke...",
 								TypeLine:     "Legendärer Planeswalker — Karn",
-								MultiverseId: 490006,
+								MultiverseID: 490006,
 								Lang:         "deu",
 							},
 						},
@@ -283,7 +284,7 @@ func cardTranslations(t *testing.T) {
 								Name:         "German Name Updated",
 								Text:         "German Text Updated",
 								TypeLine:     "",
-								MultiverseId: 123,
+								MultiverseID: 123,
 								Lang:         "deu",
 							},
 						},
@@ -426,6 +427,8 @@ func cardTypes(t *testing.T) {
 }
 
 func duplicatedCardTypes(t *testing.T) {
+	t.Helper()
+
 	t.Cleanup(runner.Cleanup(t))
 
 	cDao := card.NewDao(runner.Connection())
@@ -438,18 +441,20 @@ func duplicatedCardTypes(t *testing.T) {
 }
 
 func findUniqueCardWithReferences(t *testing.T, cDao *card.PostgresCardDao, setCode string, number string) *card.Card {
+	t.Helper()
+
 	c, err := cDao.FindUniqueCard(setCode, number)
 	if err != nil {
 		t.Fatalf("unexpected error during find unique card call %v", err)
 	}
 
-	faces, err := cDao.FindAssignedFaces(c.Id.Int64)
+	faces, err := cDao.FindAssignedFaces(c.ID.Int64)
 	if err != nil {
 		t.Fatalf("unexpected error during find assigned faces call %v", err)
 	}
 	for _, face := range faces {
-		faceId := face.Id.Int64
-		translations, err := cDao.FindTranslations(faceId)
+		faceID := face.ID.Int64
+		translations, err := cDao.FindTranslations(faceID)
 		if err != nil {
 			t.Fatalf("unexpected error during find translation call %v", err)
 		}
@@ -457,31 +462,32 @@ func findUniqueCardWithReferences(t *testing.T, cDao *card.PostgresCardDao, setC
 			face.Translations = append(face.Translations, *trans)
 		}
 
-		subTypes, err := cDao.FindAssignedSubTypes(faceId)
+		subTypes, err := cDao.FindAssignedSubTypes(faceID)
 		if err != nil {
 			t.Fatalf("unexpected error during find sub types call %v", err)
 		}
 		sort.Strings(subTypes)
 		face.Subtypes = subTypes
 
-		superTypes, err := cDao.FindAssignedSuperTypes(faceId)
+		superTypes, err := cDao.FindAssignedSuperTypes(faceID)
 		if err != nil {
 			t.Fatalf("unexpected error during find super types call %v", err)
 		}
 		sort.Strings(superTypes)
 		face.Supertypes = superTypes
 
-		cts, err := cDao.FindAssignedCardTypes(faceId)
+		cts, err := cDao.FindAssignedCardTypes(faceID)
 		if err != nil {
 			t.Fatalf("unexpected error during find card types call %v", err)
 		}
 		sort.Strings(cts)
 		face.Cardtypes = cts
 
-		face.Id = card.PrimaryId{}
+		face.ID = card.PrimaryID{}
 		c.Faces = append(c.Faces, face)
 	}
 
-	c.Id = card.PrimaryId{}
+	c.ID = card.PrimaryID{}
+
 	return c
 }

@@ -1,6 +1,13 @@
 package mtgjson_test
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
@@ -8,15 +15,11 @@ import (
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/konstantinfoerster/card-importer-go/internal/test"
 	"github.com/stretchr/testify/assert"
-	"io"
-	"net/http"
-	"net/http/httptest"
-	"strings"
-	"testing"
-	"time"
 )
 
-var cfg = config.Http{Timeout: 5 * time.Second}
+var client = &http.Client{
+	Timeout: 5 * time.Second,
+}
 
 type mockImporter struct {
 	content string
@@ -28,6 +31,7 @@ func (imp *mockImporter) Import(r io.Reader) (*dataset.Report, error) {
 		return nil, err
 	}
 	imp.content = string(c)
+
 	return &dataset.Report{}, nil
 }
 
@@ -60,7 +64,7 @@ func TestDownloadableImport(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeImporter := &mockImporter{}
-			imp := mtgjson.NewDownloadableDataset(fakeImporter, fetch.NewFetcher(cfg), localStorage)
+			imp := mtgjson.NewDownloadableDataset(fakeImporter, fetch.NewFetcher(client), localStorage)
 
 			_, err := imp.Import(tc.fixture)
 			if err != nil {
@@ -106,8 +110,8 @@ func TestDownloadableImportFails(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			fakeImporter := &mockImporter{}
-			validator := fetch.NewContentTypeValidator([]string{fetch.MimeTypeZip, fetch.MimeTypeJson})
-			imp := mtgjson.NewDownloadableDataset(fakeImporter, fetch.NewFetcher(cfg, validator), localStorage)
+			validator := fetch.NewContentTypeValidator([]string{fetch.MimeTypeZip, fetch.MimeTypeJSON})
+			imp := mtgjson.NewDownloadableDataset(fakeImporter, fetch.NewFetcher(client, validator), localStorage)
 
 			_, err := imp.Import(tc.fixture)
 			if err == nil {

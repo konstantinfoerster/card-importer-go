@@ -3,33 +3,31 @@ package client
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	"github.com/rs/zerolog/log"
-	"strings"
-	"time"
 )
 
-var languages = map[string]string{
-	dataset.SupportedLanguages[0]: "de",
-	dataset.SupportedLanguages[1]: "en",
-}
-
 type ScryfallCard struct {
-	Name    string         `json:"name"`
-	ImgUris ScyfallImgUris `json:"image_uris"`
-	Faces   []ScryfallCard `json:"card_faces"`
+	Name string `json:"name"`
+	// external-struct
+	ImgUris ScyfallImgURIs `json:"image_uris"`
+	// external-struct
+	Faces []ScryfallCard `json:"card_faces"`
 }
 
-type ScyfallImgUris struct {
+type ScyfallImgURIs struct {
 	Normal string `json:"normal"`
 }
 
 type MatchingFace struct {
-	Url string
-	Id  int64
+	URL string
+	ID  int64
 }
 
 func (sc *ScryfallCard) FindMatchingCardParts(c *card.Card) []*MatchingFace {
@@ -41,16 +39,18 @@ func (sc *ScryfallCard) FindMatchingCardParts(c *card.Card) []*MatchingFace {
 		sf := findMatchingPart(possibleCards, f.Name)
 		if sf == nil {
 			log.Warn().Interface("externalCard", sc).Msgf("no matching entry found for face %s in external card", f.Name)
+
 			continue
 		}
-		imageUrl := sf.ImgUris.Normal
-		if imageUrl == "" {
+		imageURL := sf.ImgUris.Normal
+		if imageURL == "" {
 			log.Warn().Interface("externalCard", sc).Msgf("matching face %s has an empty image url", f.Name)
+
 			continue
 		}
 		matches = append(matches, &MatchingFace{
-			Url: imageUrl,
-			Id:  f.Id.Int64,
+			URL: imageURL,
+			ID:  f.ID.Int64,
 		})
 	}
 
@@ -71,21 +71,28 @@ func NewClient(f fetch.Fetcher, config config.Scryfall) *Client {
 	return &Client{
 		fetcher: f,
 		config:  config,
+		languages: dataset.NewLanguageMapper(
+			map[string]string{
+				dataset.GetSupportedLanguages()[0]: "de",
+				dataset.GetSupportedLanguages()[1]: "en",
+			},
+		),
 	}
 }
 
 type Client struct {
-	fetcher fetch.Fetcher
-	config  config.Scryfall
+	fetcher   fetch.Fetcher
+	config    config.Scryfall
+	languages dataset.LanguageMapper
 }
 
 func (f *Client) GetByCardAndLang(c *card.Card, lang string) (*ScryfallCard, error) {
-	extLang, ok := languages[lang]
-	if !ok || extLang == "" {
-		return nil, fmt.Errorf("language %s not found in scryfall language mapping %v", lang, languages)
+	extLang, err := f.languages.Get(lang)
+	if err != nil {
+		return nil, fmt.Errorf("language %s not found %w", lang, err)
 	}
 
-	url := f.config.BuildJsonDownloadURL(c.CardSetCode, c.Number, extLang)
+	url := f.config.BuildJSONDownloadURL(c.CardSetCode, c.Number, extLang)
 	log.Debug().Msgf("Downloading card metadata from %s", url)
 
 	var sc ScryfallCard
@@ -94,6 +101,7 @@ func (f *Client) GetByCardAndLang(c *card.Card, lang string) (*ScryfallCard, err
 		if err != nil {
 			return fmt.Errorf("failed to decode scryfall card result %w", err)
 		}
+
 		return nil
 	}
 
@@ -109,11 +117,13 @@ func (f *Client) GetImage(url string, handleResponse func(resp *fetch.Response) 
 	if err != nil {
 		return fmt.Errorf("failed to download card image from %s %w", url, err)
 	}
+
 	return nil
 }
 
 func (f *Client) fetchDelayed(url string, handleResponse func(resp *fetch.Response) error) error {
 	err := f.fetcher.Fetch(url, handleResponse)
-	time.Sleep(time.Millisecond * 25)
+	time.Sleep(time.Millisecond * 25) // TODO make this configurable
+
 	return err
 }

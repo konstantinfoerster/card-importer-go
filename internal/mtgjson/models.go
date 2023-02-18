@@ -51,11 +51,11 @@ type foreignData struct {
 	Name         string `json:"name"`
 	Type         string `json:"type"`
 	Language     string `json:"language"`
-	MultiverseId int32  `json:"multiverseId"`
+	MultiverseID int32  `json:"multiverseId"`
 	Text         string `json:"text"`
 	FlavorText   string `json:"flavorText"`
 }
 
 type identifier struct {
-	MultiverseId string `json:"multiverseId"`
+	MultiverseID string `json:"multiverseId"`
 }

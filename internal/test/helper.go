@@ -3,10 +3,11 @@ package test
 import (
 	"bufio"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"io"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func LoadFile(t *testing.T, path string) io.Reader {
@@ -19,41 +20,28 @@ func LoadFile(t *testing.T, path string) io.Reader {
 }
 
 func FileContent(t *testing.T, path string) []byte {
+	t.Helper()
+
 	content, err := io.ReadAll(LoadFile(t, path))
 	require.NoError(t, err, fmt.Sprintf("failed to read data from %s", path))
 
 	return content
 }
 
-//func AssertDeepEqual(t *testing.T, expected interface{}, actual interface{}) {
-//	t.Helper()
-//
-//	assert.IsType(t, expected, actual, "found different types")
-//
-//	w, err := json.Marshal(expected)
-//	require.NoError(t, err, "failed to marshal 'expected' struct")
-//
-//	g, err := json.Marshal(actual)
-//	require.NoError(t, err, "failed to marshal 'actual' struct")
-//
-//	o := jsondiff.DefaultConsoleOptions()
-//
-//	d, s := jsondiff.Compare(w, g, &o)
-//
-//	if d != jsondiff.FullMatch {
-//		t.Errorf("found difference in struct, check result below:\n %v", s)
-//	}
-//}
-
 func NewTmpDirWithCleanup(t *testing.T) string {
+	t.Helper()
+
 	dir, err := os.MkdirTemp("", "downloads")
 	require.NoError(t, err, "failed to create temp dir")
 
-	t.Cleanup(cleanup(t, dir))
+	t.Cleanup(Cleanup(t, dir))
+
 	return dir
 }
 
-func cleanup(t *testing.T, path string) func() {
+func Cleanup(t *testing.T, path string) func() {
+	t.Helper()
+
 	return func() {
 		err := os.RemoveAll(path)
 		if err != nil {

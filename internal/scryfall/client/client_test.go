@@ -1,31 +1,32 @@
 package client_test
 
 import (
+	"testing"
+
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/scryfall/client"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestFindMatchingCard(t *testing.T) {
 	c := &card.Card{
-		Id:   card.NewPrimaryId(1),
+		ID:   card.NewPrimaryID(1),
 		Name: "First",
 		Faces: []*card.Face{
 			{
-				Id:   card.NewPrimaryId(2),
+				ID:   card.NewPrimaryID(2),
 				Name: "First",
 			},
 		},
 	}
 	sc := client.ScryfallCard{
-		ImgUris: client.ScyfallImgUris{Normal: "http://localhost/first"},
+		ImgUris: client.ScyfallImgURIs{Normal: "http://localhost/first"},
 		Name:    "First",
 	}
 	want := []*client.MatchingFace{
 		{
-			Url: "http://localhost/first",
-			Id:  2,
+			URL: "http://localhost/first",
+			ID:  2,
 		},
 	}
 
@@ -43,46 +44,46 @@ func TestFindMatchingFace(t *testing.T) {
 		{
 			name: "FaceMatches",
 			fixture: card.Card{
-				Id:   card.NewPrimaryId(1),
+				ID:   card.NewPrimaryID(1),
 				Name: "First",
 				Faces: []*card.Face{
 					{
-						Id:   card.NewPrimaryId(2),
+						ID:   card.NewPrimaryID(2),
 						Name: "First",
 					},
 				},
 			},
 			want: []*client.MatchingFace{
 				{
-					Url: "http://localhost/first",
-					Id:  2,
+					URL: "http://localhost/first",
+					ID:  2,
 				},
 			},
 		},
 		{
 			name: "AllFacesMatch",
 			fixture: card.Card{
-				Id:   card.NewPrimaryId(1),
+				ID:   card.NewPrimaryID(1),
 				Name: "First // Second",
 				Faces: []*card.Face{
 					{
-						Id:   card.NewPrimaryId(2),
+						ID:   card.NewPrimaryID(2),
 						Name: "First",
 					},
 					{
-						Id:   card.NewPrimaryId(3),
+						ID:   card.NewPrimaryID(3),
 						Name: "Second",
 					},
 				},
 			},
 			want: []*client.MatchingFace{
 				{
-					Url: "http://localhost/first",
-					Id:  2,
+					URL: "http://localhost/first",
+					ID:  2,
 				},
 				{
-					Url: "http://localhost/second",
-					Id:  3,
+					URL: "http://localhost/second",
+					ID:  3,
 				},
 			},
 		},
@@ -95,11 +96,11 @@ func TestFindMatchingFace(t *testing.T) {
 				Faces: []client.ScryfallCard{
 					{
 						Name:    "First",
-						ImgUris: client.ScyfallImgUris{Normal: "http://localhost/first"},
+						ImgUris: client.ScyfallImgURIs{Normal: "http://localhost/first"},
 					},
 					{
 						Name:    "Second",
-						ImgUris: client.ScyfallImgUris{Normal: "http://localhost/second"},
+						ImgUris: client.ScyfallImgURIs{Normal: "http://localhost/second"},
 					},
 				},
 			}

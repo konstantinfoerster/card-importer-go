@@ -1,11 +1,15 @@
 package card
 
 import (
+	"context"
 	"errors"
 	"fmt"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 )
+
+var ErrEntryNotFound = errors.New("entry not found")
 
 type PostgresCardDao struct {
 	db        *postgres.DBConnection
@@ -30,8 +34,8 @@ func (d *PostgresCardDao) withTransaction(f func(txDao *PostgresCardDao) error) 
 	})
 }
 
-// FindUniqueCard finds the card with the specified set code and number.
-// If no result is found a nil is returned
+// FindUniqueCard Finds the card with the specified set code and number.
+// If no result is found a nil is returned.
 func (d *PostgresCardDao) FindUniqueCard(set string, number string) (*Card, error) {
 	query := `
 		SELECT
@@ -40,27 +44,33 @@ func (d *PostgresCardDao) FindUniqueCard(set string, number string) (*Card, erro
 			card
 		WHERE 
 			card_set_code = $1 AND number = $2`
+
 	var c Card
-	err := d.db.Conn.QueryRow(d.db.Ctx, query, set, number).Scan(&c.Id, &c.Name, &c.Number, &c.Rarity, &c.Border, &c.Layout, &c.CardSetCode)
+	err := d.db.Conn.QueryRow(context.TODO(), query, set, number).Scan(&c.ID, &c.Name, &c.Number, &c.Rarity, &c.Border,
+		&c.Layout, &c.CardSetCode)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
+			return nil, ErrEntryNotFound
 		}
 
 		return nil, fmt.Errorf("failed to execute card select %w", err)
 	}
+
 	return &c, nil
 }
 
+// Paged Returns cards limited by the given size for the given page. The page parameter is one based.
 func (d *PostgresCardDao) Paged(page int, size int) ([]*Card, error) {
-	page = page - 1
+	page--
 	if page < 0 {
 		page = 0
 	}
+
 	offset := page * size
 	query := `
 		SELECT
-			c.id, c.card_set_code AS cardSetCode, c.name, c.number, c.border, c.rarity, c.layout, COALESCE(json_agg(cf), '[]') as faces
+			c.id, c.card_set_code AS cardSetCode, c.name, c.number, c.border, c.rarity, c.layout, 
+			COALESCE(json_agg(cf), '[]') as faces
 		FROM
 			card AS c
 		LEFT JOIN
@@ -73,7 +83,8 @@ func (d *PostgresCardDao) Paged(page int, size int) ([]*Card, error) {
 			cardSetCode
 		LIMIT $1
 		OFFSET $2`
-	rows, err := d.db.Conn.Query(d.db.Ctx, query, size, offset)
+
+	rows, err := d.db.Conn.Query(context.TODO(), query, size, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute paged card face select %w", err)
 	}
@@ -82,7 +93,8 @@ func (d *PostgresCardDao) Paged(page int, size int) ([]*Card, error) {
 	var result []*Card
 	for rows.Next() {
 		var entry Card
-		err := rows.Scan(&entry.Id, &entry.CardSetCode, &entry.Name, &entry.Number, &entry.Border, &entry.Rarity, &entry.Layout, &entry.Faces)
+		err := rows.Scan(&entry.ID, &entry.CardSetCode, &entry.Name, &entry.Number, &entry.Border, &entry.Rarity,
+			&entry.Layout, &entry.Faces)
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute card scan after select %w", err)
 		}
@@ -92,9 +104,11 @@ func (d *PostgresCardDao) Paged(page int, size int) ([]*Card, error) {
 	if rows.Err() != nil {
 		return nil, fmt.Errorf("failed to read card face result %w", rows.Err())
 	}
+
 	return result, nil
 }
 
+// CreateCard Creates a new card. Will return an error if the card already exists.
 func (d *PostgresCardDao) CreateCard(c *Card) error {
 	query := `
 		INSERT INTO
@@ -106,15 +120,19 @@ func (d *PostgresCardDao) CreateCard(c *Card) error {
 		)
 		RETURNING
 			id`
+
 	var id int64
-	err := d.db.Conn.QueryRow(d.db.Ctx, query, c.Name, c.Number, c.Rarity, c.Border, c.Layout, c.CardSetCode).Scan(&id)
+	err := d.db.Conn.QueryRow(context.TODO(), query, c.Name, c.Number, c.Rarity, c.Border, c.Layout, c.CardSetCode).
+		Scan(&id)
 	if err != nil {
 		return fmt.Errorf("failed to execute card insert %w", err)
 	}
-	c.Id = NewPrimaryId(id)
+	c.ID = NewPrimaryID(id)
+
 	return nil
 }
 
+// UpdateCard Updates an exist card with the given data.
 func (d *PostgresCardDao) UpdateCard(c *Card) error {
 	query := `
 		UPDATE
@@ -123,19 +141,22 @@ func (d *PostgresCardDao) UpdateCard(c *Card) error {
 			name = $1, number = $2, rarity = $3, border = $4, layout = $5
 		WHERE
 			id = $6`
-	ct, err := d.db.Conn.Exec(d.db.Ctx, query,
-		c.Name, c.Number, c.Rarity, c.Border, c.Layout, c.Id)
+
+	ct, err := d.db.Conn.Exec(context.TODO(), query,
+		c.Name, c.Number, c.Rarity, c.Border, c.Layout, c.ID)
 	if err != nil {
 		return fmt.Errorf("failed to execute card update %w", err)
 	}
 	ra := ct.RowsAffected()
 	if ra != 1 {
-		return fmt.Errorf("%d cards updated but expected to update only card with id %d", ra, c.Id.Int64)
+		return fmt.Errorf("%d cards updated but expected to update only card with id %d", ra, c.ID.Int64)
 	}
+
 	return nil
 }
 
-func (d *PostgresCardDao) FindAssignedFaces(cardId int64) ([]*Face, error) {
+// FindAssignedFaces Returns all card faces for the given card ID.
+func (d *PostgresCardDao) FindAssignedFaces(cardID int64) ([]*Face, error) {
 	query := `
 		SELECT
 			id, name, text, flavor_text, type_line, converted_mana_cost, colors, artist,
@@ -145,7 +166,8 @@ func (d *PostgresCardDao) FindAssignedFaces(cardId int64) ([]*Face, error) {
 		WHERE
 			card_id = $1
 		ORDER BY name`
-	rows, err := d.db.Conn.Query(d.db.Ctx, query, cardId)
+
+	rows, err := d.db.Conn.Query(context.TODO(), query, cardID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute card face select %w", err)
 	}
@@ -155,8 +177,9 @@ func (d *PostgresCardDao) FindAssignedFaces(cardId int64) ([]*Face, error) {
 	for rows.Next() {
 		var entry Face
 		err := rows.Scan(
-			&entry.Id, &entry.Name, &entry.Text, &entry.FlavorText, &entry.TypeLine, &entry.ConvertedManaCost, &entry.Colors, &entry.Artist,
-			&entry.HandModifier, &entry.LifeModifier, &entry.Loyalty, &entry.ManaCost, &entry.MultiverseId, &entry.Power, &entry.Toughness)
+			&entry.ID, &entry.Name, &entry.Text, &entry.FlavorText, &entry.TypeLine, &entry.ConvertedManaCost,
+			&entry.Colors, &entry.Artist, &entry.HandModifier, &entry.LifeModifier, &entry.Loyalty, &entry.ManaCost,
+			&entry.MultiverseID, &entry.Power, &entry.Toughness)
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute face scan after select %w", err)
 		}
@@ -166,10 +189,12 @@ func (d *PostgresCardDao) FindAssignedFaces(cardId int64) ([]*Face, error) {
 	if rows.Err() != nil {
 		return nil, fmt.Errorf("failed to read card face result %w", rows.Err())
 	}
+
 	return result, nil
 }
 
-func (d *PostgresCardDao) AddFace(cardId int64, f *Face) error {
+// AddFace Creates a new card face with a reference to the given card ID.
+func (d *PostgresCardDao) AddFace(cardID int64, f *Face) error {
 	query := `
 		INSERT INTO 
 			card_face (
@@ -181,17 +206,20 @@ func (d *PostgresCardDao) AddFace(cardId int64, f *Face) error {
 		)
 		RETURNING
 			id`
+
 	var id int64
-	err := d.db.Conn.QueryRow(d.db.Ctx, query,
+	err := d.db.Conn.QueryRow(context.TODO(), query,
 		f.Name, f.Text, f.FlavorText, f.TypeLine, f.ConvertedManaCost, f.Colors, f.Artist,
-		f.HandModifier, f.LifeModifier, f.Loyalty, f.ManaCost, f.MultiverseId, f.Power, f.Toughness, cardId).Scan(&id)
+		f.HandModifier, f.LifeModifier, f.Loyalty, f.ManaCost, f.MultiverseID, f.Power, f.Toughness, cardID).Scan(&id)
 	if err != nil {
 		return fmt.Errorf("failed to execute card face insert %w", err)
 	}
-	f.Id = NewPrimaryId(id)
+	f.ID = NewPrimaryID(id)
+
 	return nil
 }
 
+// UpdateFace Updates an exist card face with the given data.
 func (d *PostgresCardDao) UpdateFace(f *Face) error {
 	query := `
 		UPDATE
@@ -202,51 +230,60 @@ func (d *PostgresCardDao) UpdateFace(f *Face) error {
 			mana_cost = $11, multiverse_id = $12, power = $13, toughness = $14
 		WHERE
 			id = $15`
-	ct, err := d.db.Conn.Exec(d.db.Ctx, query,
+
+	ct, err := d.db.Conn.Exec(context.TODO(), query,
 		f.Name, f.Text, f.FlavorText, f.TypeLine, f.ConvertedManaCost,
 		f.Colors, f.Artist, f.HandModifier, f.LifeModifier, f.Loyalty,
-		f.ManaCost, f.MultiverseId, f.Power, f.Toughness,
-		f.Id)
+		f.ManaCost, f.MultiverseID, f.Power, f.Toughness,
+		f.ID)
 	if err != nil {
 		return fmt.Errorf("failed to execute card face update %w", err)
 	}
 	ra := ct.RowsAffected()
 	if ra != 1 {
-		return fmt.Errorf("%d card faces updated but expected to update card face with id %v", ra, f.Id.Int64)
+		return fmt.Errorf("%d card faces updated but expected to update card face with id %v", ra, f.ID.Int64)
 	}
+
 	return nil
 }
 
-func (d *PostgresCardDao) DeleteFace(faceId int64) error {
-	if err := d.deleteAllTranslation(faceId); err != nil {
+// DeleteFace Deletes the face with the given face ID and all references to it.
+func (d *PostgresCardDao) DeleteFace(faceID int64) error {
+	ctx := context.TODO()
+
+	if err := d.deleteAllTranslation(ctx, faceID); err != nil {
 		return err
 	}
-	if err := d.cardType.DeleteAllAssignments(faceId); err != nil {
+	if err := d.cardType.DeleteAllAssignments(faceID); err != nil {
 		return err
 	}
-	if err := d.subType.DeleteAllAssignments(faceId); err != nil {
+	if err := d.subType.DeleteAllAssignments(faceID); err != nil {
 		return err
 	}
-	if err := d.superType.DeleteAllAssignments(faceId); err != nil {
+	if err := d.superType.DeleteAllAssignments(faceID); err != nil {
 		return err
 	}
+
 	query := `
 		DELETE FROM
 			card_face
 		WHERE
 			id = $1`
-	ct, err := d.db.Conn.Exec(d.db.Ctx, query, faceId)
+
+	ct, err := d.db.Conn.Exec(ctx, query, faceID)
 	if err != nil {
-		return fmt.Errorf("failed to execute delete on card face with id %d %w", faceId, err)
+		return fmt.Errorf("failed to execute delete on card face with id %d %w", faceID, err)
 	}
 	ra := ct.RowsAffected()
 	if ra != 1 {
-		return fmt.Errorf("%d card faces deleted but expected to deleted card face with id %d", ra, faceId)
+		return fmt.Errorf("%d card faces deleted but expected to deleted card face with id %d", ra, faceID)
 	}
+
 	return nil
 }
 
-func (d *PostgresCardDao) FindTranslations(faceId int64) ([]*Translation, error) {
+// FindTranslations Returns all translations for the given face ID.
+func (d *PostgresCardDao) FindTranslations(faceID int64) ([]*Translation, error) {
 	query := `
 		SELECT
 			name, multiverse_id, text, flavor_text, type_line, lang_lang
@@ -256,7 +293,8 @@ func (d *PostgresCardDao) FindTranslations(faceId int64) ([]*Translation, error)
 			face_id = $1
 		ORDER BY
 			lang_lang, name`
-	rows, err := d.db.Conn.Query(d.db.Ctx, query, faceId)
+
+	rows, err := d.db.Conn.Query(context.TODO(), query, faceID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute card translation select %w", err)
 	}
@@ -265,7 +303,7 @@ func (d *PostgresCardDao) FindTranslations(faceId int64) ([]*Translation, error)
 	var result []*Translation
 	for rows.Next() {
 		t := &Translation{}
-		if err := rows.Scan(&t.Name, &t.MultiverseId, &t.Text, &t.FlavorText, &t.TypeLine, &t.Lang); err != nil {
+		if err := rows.Scan(&t.Name, &t.MultiverseID, &t.Text, &t.FlavorText, &t.TypeLine, &t.Lang); err != nil {
 			return nil, fmt.Errorf("failed to execute card translation scan after select %w", err)
 		}
 		result = append(result, t)
@@ -273,10 +311,12 @@ func (d *PostgresCardDao) FindTranslations(faceId int64) ([]*Translation, error)
 	if rows.Err() != nil {
 		return nil, fmt.Errorf("failed to read card translation result %w", rows.Err())
 	}
+
 	return result, nil
 }
 
-func (d *PostgresCardDao) AddTranslation(faceId int64, t *Translation) error {
+// AddTranslation Creates a new translation with a reference to the given face ID.
+func (d *PostgresCardDao) AddTranslation(faceID int64, t *Translation) error {
 	query := `
 		INSERT INTO
 			card_translation (
@@ -285,14 +325,18 @@ func (d *PostgresCardDao) AddTranslation(faceId int64, t *Translation) error {
 		VALUES (
 			$1, $2, $3, $4, $5, $6, $7
 		)`
-	_, err := d.db.Conn.Exec(d.db.Ctx, query, t.Name, t.MultiverseId, t.Text, t.FlavorText, t.TypeLine, t.Lang, faceId)
+
+	_, err := d.db.Conn.Exec(context.TODO(), query, t.Name, t.MultiverseID, t.Text, t.FlavorText, t.TypeLine, t.Lang,
+		faceID)
 	if err != nil {
 		return fmt.Errorf("failed to execute card_translation insert %w", err)
 	}
+
 	return nil
 }
 
-func (d *PostgresCardDao) UpdateTranslation(faceId int64, t *Translation) error {
+// UpdateTranslation Updates an exist face translation with the given data.
+func (d *PostgresCardDao) UpdateTranslation(faceID int64, t *Translation) error {
 	query := `
 		UPDATE
 			card_translation 
@@ -300,62 +344,73 @@ func (d *PostgresCardDao) UpdateTranslation(faceId int64, t *Translation) error 
 			name = $1, multiverse_id = $2, text = $3, flavor_text = $4, type_line = $5
 		WHERE
 			face_id = $6 AND lang_lang = $7`
-	ct, err := d.db.Conn.Exec(d.db.Ctx, query,
-		t.Name, t.MultiverseId, t.Text, t.FlavorText, t.TypeLine, faceId, t.Lang)
+
+	ct, err := d.db.Conn.Exec(context.TODO(), query,
+		t.Name, t.MultiverseID, t.Text, t.FlavorText, t.TypeLine, faceID, t.Lang)
 	if err != nil {
 		return fmt.Errorf("failed to execute face translation update %w", err)
 	}
 	ra := ct.RowsAffected()
 	if ra != 1 {
-		return fmt.Errorf("%d face translations updated but expected to update translation for face with id %d and lang %s", ra, faceId, t.Lang)
+		return fmt.Errorf("%d face translations updated but expected to update translation for face with "+
+			"id %d and lang %s", ra, faceID, t.Lang)
 	}
+
 	return nil
 }
 
-func (d *PostgresCardDao) deleteAllTranslation(faceId int64) error {
+func (d *PostgresCardDao) deleteAllTranslation(ctx context.Context, faceID int64) error {
 	query := `
 		DELETE FROM
 			card_translation
 		WHERE
 			face_id = $1`
-	_, err := d.db.Conn.Exec(d.db.Ctx, query, faceId)
+
+	_, err := d.db.Conn.Exec(ctx, query, faceID)
 	if err != nil {
-		return fmt.Errorf("failed to execute delete on face translation with id %d %w", faceId, err)
+		return fmt.Errorf("failed to execute delete on face translation with id %d %w", faceID, err)
 	}
+
 	return nil
 }
 
-func (d *PostgresCardDao) DeleteTranslation(faceId int64, lang string) error {
+// DeleteTranslation Deletes a language specific face translation.
+func (d *PostgresCardDao) DeleteTranslation(faceID int64, lang string) error {
 	query := `
 		DELETE FROM
 			card_translation
 		WHERE
 			face_id = $1 AND lang_lang = $2`
-	ct, err := d.db.Conn.Exec(d.db.Ctx, query, faceId, lang)
+	ct, err := d.db.Conn.Exec(context.TODO(), query, faceID, lang)
 	if err != nil {
-		return fmt.Errorf("failed to execute delete on face translation with id %d %w", faceId, err)
+		return fmt.Errorf("failed to execute delete on face translation with id %d %w", faceID, err)
 	}
 	ra := ct.RowsAffected()
 	if ra != 1 {
-		return fmt.Errorf("%d face translations deleted but expected to deleted translation for face with id %d and lang %s", ra, faceId, lang)
+		return fmt.Errorf("%d face translations deleted but expected to deleted translation for face with "+
+			"id %d and lang %s", ra, faceID, lang)
 	}
+
 	return nil
 }
 
-func (d *PostgresCardDao) FindAssignedSubTypes(faceId int64) ([]string, error) {
-	return findTypes(d.subType, faceId)
+// FindAssignedSubTypes Returns all subtypes that refer to the given face ID.
+func (d *PostgresCardDao) FindAssignedSubTypes(faceID int64) ([]string, error) {
+	return findTypes(d.subType, faceID)
 }
 
-func (d *PostgresCardDao) FindAssignedSuperTypes(faceId int64) ([]string, error) {
-	return findTypes(d.superType, faceId)
+// FindAssignedSuperTypes Returns all supertypes that refer to the given face ID.
+func (d *PostgresCardDao) FindAssignedSuperTypes(faceID int64) ([]string, error) {
+	return findTypes(d.superType, faceID)
 }
 
-func (d *PostgresCardDao) FindAssignedCardTypes(faceId int64) ([]string, error) {
-	return findTypes(d.cardType, faceId)
+// FindAssignedCardTypes Returns all cardtype that refer to the given face ID.
+func (d *PostgresCardDao) FindAssignedCardTypes(faceID int64) ([]string, error) {
+	return findTypes(d.cardType, faceID)
 }
 
-func findTypes(dao TypeDao, faceId int64) ([]string, error) {
-	assignments, err := dao.FindAssignments(faceId)
+func findTypes(dao TypeDao, faceID int64) ([]string, error) {
+	assignments, err := dao.FindAssignments(faceID)
 	if err != nil {
 		return nil, err
 	}
@@ -364,20 +419,23 @@ func findTypes(dao TypeDao, faceId int64) ([]string, error) {
 	for _, t := range assignments {
 		types = append(types, t.Name)
 	}
+
 	return types, nil
 }
 
+// Count Returns the amount of all cards.
 func (d *PostgresCardDao) Count() (int, error) {
-	row := d.db.Conn.QueryRow(d.db.Ctx, "SELECT count(id) FROM card")
+	row := d.db.Conn.QueryRow(context.TODO(), "SELECT count(id) FROM card")
 	var count int
 	if err := row.Scan(&count); err != nil {
 		return 0, fmt.Errorf("failed to execute card count %w", err)
 	}
+
 	return count, nil
 }
 
-// IsImagePresent checks if the card image with the specified card id and language
-func (d *PostgresCardDao) IsImagePresent(cardId int64, lang string) (bool, error) {
+// IsImagePresent Checks if the card image with the specified card id and language exist.
+func (d *PostgresCardDao) IsImagePresent(cardID int64, lang string) (bool, error) {
 	query := `
 		SELECT
 			count(*) > 0
@@ -386,7 +444,7 @@ func (d *PostgresCardDao) IsImagePresent(cardId int64, lang string) (bool, error
 		WHERE
 			lang_lang = $1 AND card_id = $2`
 	var isPresent bool
-	err := d.db.Conn.QueryRow(d.db.Ctx, query, lang, cardId).Scan(&isPresent)
+	err := d.db.Conn.QueryRow(context.TODO(), query, lang, cardID).Scan(&isPresent)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, nil
@@ -394,19 +452,23 @@ func (d *PostgresCardDao) IsImagePresent(cardId int64, lang string) (bool, error
 
 		return false, fmt.Errorf("failed to execute count on card_image %w", err)
 	}
+
 	return isPresent, nil
 }
 
+// CountImages Returns the amount of all card images.
 func (d *PostgresCardDao) CountImages() (int, error) {
-	row := d.db.Conn.QueryRow(d.db.Ctx, "SELECT count(id) FROM card_image")
+	row := d.db.Conn.QueryRow(context.TODO(), "SELECT count(id) FROM card_image")
 	var count int
 	if err := row.Scan(&count); err != nil {
 		return 0, fmt.Errorf("failed to execute card_image count %w", err)
 	}
+
 	return count, nil
 }
 
-func (d *PostgresCardDao) AddImage(img *CardImage) error {
+// AddImage Creates a new card image.
+func (d *PostgresCardDao) AddImage(img *Image) error {
 	query := `
 		INSERT INTO
 			card_image (
@@ -418,10 +480,12 @@ func (d *PostgresCardDao) AddImage(img *CardImage) error {
 		RETURNING
 			id`
 	var id int64
-	err := d.db.Conn.QueryRow(d.db.Ctx, query, img.ImagePath, img.Lang, img.CardId, img.FaceId, img.MimeType.Raw()).Scan(&id)
+	err := d.db.Conn.QueryRow(context.TODO(), query, img.ImagePath, img.Lang, img.CardID, img.FaceID,
+		img.MimeType.Raw()).Scan(&id)
 	if err != nil {
 		return fmt.Errorf("failed to execute card insert %w", err)
 	}
-	img.Id = NewPrimaryId(id)
+	img.ID = NewPrimaryID(id)
+
 	return nil
 }

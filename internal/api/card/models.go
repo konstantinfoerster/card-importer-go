@@ -4,15 +4,16 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/konstantinfoerster/card-importer-go/internal/api/diff"
 	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
-	"strings"
 )
 
 // Card A complete card including all faces (sides) and translations.
-// The number of a card is unique per set
+// The number of a card is unique per set.
 type Card struct {
-	Id          PrimaryId
+	ID          PrimaryID
 	CardSetCode string
 	Name        string
 	Number      string
@@ -63,28 +64,32 @@ func (c *Card) Diff(other *Card) *diff.Changeset {
 			To:   other.Number,
 		})
 	}
+
 	if c.Name != other.Name {
 		changes.Add("Name", diff.Changes{
 			From: c.Name,
 			To:   other.Name,
 		})
 	}
-	if c.Border != other.Border {
+
+	switch {
+	case c.Border != other.Border:
 		changes.Add("Border", diff.Changes{
 			From: c.Border,
 			To:   other.Border,
 		})
-	} else if c.Rarity != other.Rarity {
+	case c.Rarity != other.Rarity:
 		changes.Add("Rarity", diff.Changes{
 			From: c.Rarity,
 			To:   other.Rarity,
 		})
-	} else if c.CardSetCode != other.CardSetCode {
+	case c.CardSetCode != other.CardSetCode:
 		changes.Add("CardSetCode", diff.Changes{
 			From: c.CardSetCode,
 			To:   other.CardSetCode,
 		})
-	} else if c.Layout != other.Layout {
+
+	case c.Layout != other.Layout:
 		changes.Add("Layout", diff.Changes{
 			From: c.Layout,
 			To:   other.Layout,
@@ -96,12 +101,12 @@ func (c *Card) Diff(other *Card) *diff.Changeset {
 
 // Face The face data of a card.
 type Face struct {
-	Id                PrimaryId
+	ID                PrimaryID
 	Name              string
 	Text              string
 	FlavorText        string
 	TypeLine          string
-	MultiverseId      int32
+	MultiverseID      int32
 	Artist            string
 	ConvertedManaCost float64
 	Colors            Colors
@@ -117,7 +122,8 @@ type Face struct {
 	Translations      []Translation
 }
 
-// card 'Stitch in Time' from set SLD has the same name on both faces but a different flavor text
+// isSame Compares the identities of two faces.
+// Card 'Stitch in Time' from set SLD has the same name on both faces but a different flavor text.
 func (f Face) isSame(other *Face) bool {
 	return f.Name == other.Name && f.Text == other.Text && f.FlavorText == other.FlavorText
 }
@@ -126,6 +132,7 @@ func (f Face) couldBeSame(other *Face) bool {
 	return f.Name == other.Name
 }
 
+// Diff Compares the faces and returns all differences.
 func (f Face) Diff(other *Face) *diff.Changeset {
 	changes := diff.New()
 
@@ -159,7 +166,7 @@ func (f Face) Diff(other *Face) *diff.Changeset {
 			To:   other.ConvertedManaCost,
 		})
 	}
-	if !f.Colors.Equal(other.Colors) {
+	if f.Colors.String != other.Colors.String {
 		changes.Add("Colors", diff.Changes{
 			From: f.Colors,
 			To:   other.Colors,
@@ -195,10 +202,10 @@ func (f Face) Diff(other *Face) *diff.Changeset {
 			To:   other.ManaCost,
 		})
 	}
-	if f.MultiverseId != other.MultiverseId {
-		changes.Add("MultiverseId", diff.Changes{
-			From: f.MultiverseId,
-			To:   other.MultiverseId,
+	if f.MultiverseID != other.MultiverseID {
+		changes.Add("MultiverseID", diff.Changes{
+			From: f.MultiverseID,
+			To:   other.MultiverseID,
 		})
 	}
 	if f.Power != other.Power {
@@ -223,10 +230,11 @@ type Translation struct {
 	Text         string
 	FlavorText   string
 	TypeLine     string
-	MultiverseId int32
+	MultiverseID int32
 	Lang         string
 }
 
+// Diff Compares the translations and returns all differences.
 func (t Translation) Diff(other *Translation) *diff.Changeset {
 	changes := diff.New()
 
@@ -254,41 +262,42 @@ func (t Translation) Diff(other *Translation) *diff.Changeset {
 			To:   other.TypeLine,
 		})
 	}
-	if t.MultiverseId != other.MultiverseId {
+	if t.MultiverseID != other.MultiverseID {
 		changes.Add("MultiverseId", diff.Changes{
-			From: t.MultiverseId,
-			To:   other.MultiverseId,
+			From: t.MultiverseID,
+			To:   other.MultiverseID,
 		})
 	}
+
 	return changes
 }
 
-// CharacteristicType A type of card. Can be a Cardtype, Subtype or Superype
-// Cardtype: Creature, Artifact, Instant, Enchantment ...
-// Subtype: Archer, Shaman, Nomad, Nymph ...
-// Supertype: Basic, Host, Legendary, Ongoing, Snow, World
+// CharacteristicType A type of card. Can be a Cardtype, Subtype or Superype.
+// Cardtype: Creature, Artifact, Instant, Enchantment ... .
+// Subtype: Archer, Shaman, Nomad, Nymph ... .
+// Supertype: Basic, Host, Legendary, Ongoing, Snow, World.
 type CharacteristicType struct {
-	Id   PrimaryId
+	ID   PrimaryID
 	Name string
 }
 
-func NewPrimaryId(id int64) PrimaryId {
-	return PrimaryId{sql.NullInt64{Int64: id, Valid: true}}
+func NewPrimaryID(id int64) PrimaryID {
+	return PrimaryID{sql.NullInt64{Int64: id, Valid: true}}
 }
 
-type PrimaryId struct {
+type PrimaryID struct {
 	sql.NullInt64
 }
 
-func (v PrimaryId) MarshalJSON() ([]byte, error) {
+func (v *PrimaryID) MarshalJSON() ([]byte, error) {
 	if v.Valid {
 		return json.Marshal(v.Int64)
-	} else {
-		return json.Marshal(nil)
 	}
+
+	return json.Marshal(nil)
 }
 
-func (v *PrimaryId) UnmarshalJSON(data []byte) error {
+func (v *PrimaryID) UnmarshalJSON(data []byte) error {
 	// Unmarshalling into a pointer will let us detect null
 	var x *int64
 	if err := json.Unmarshal(data, &x); err != nil {
@@ -300,10 +309,11 @@ func (v *PrimaryId) UnmarshalJSON(data []byte) error {
 	} else {
 		v.Valid = false
 	}
+
 	return nil
 }
 
-func (v PrimaryId) Get() int64 {
+func (v PrimaryID) Get() int64 {
 	return v.Int64
 }
 
@@ -314,6 +324,7 @@ func NewColors(colors []string) Colors {
 	}
 	valid := len(trimmed) > 0
 	colorsRow := strings.Join(trimmed, ",")
+
 	return Colors{NullString: sql.NullString{String: colorsRow, Valid: valid}}
 }
 
@@ -321,18 +332,7 @@ type Colors struct {
 	sql.NullString
 }
 
-func (v Colors) Equal(other Colors) bool {
-	return v.String == other.String
-}
-
-func (v Colors) MarshalJSON() ([]byte, error) {
-	if v.Valid {
-		return json.Marshal(v.String)
-	} else {
-		return json.Marshal(nil)
-	}
-}
-
+// UnmarshalJSON Unmarshal string into colors struct. Required for the card page query.
 func (v *Colors) UnmarshalJSON(data []byte) error {
 	// Unmarshalling into a pointer will let us detect null
 	var x *string
@@ -345,33 +345,37 @@ func (v *Colors) UnmarshalJSON(data []byte) error {
 	} else {
 		v.Valid = false
 	}
+
 	return nil
 }
 
-type CardImage struct {
-	Id        PrimaryId
+type Image struct {
+	ID        PrimaryID
 	Lang      string
-	CardId    PrimaryId
-	FaceId    PrimaryId
+	CardID    PrimaryID
+	FaceID    PrimaryID
 	ImagePath string
 	MimeType  fetch.MimeType
 }
 
-func (img *CardImage) getFilePrefix() (string, error) {
+func (img *Image) getFilePrefix() (string, error) {
 	// check face id first since card id is always set
-	if img.FaceId.Valid {
-		return fmt.Sprintf("face-%d", img.FaceId.Get()), nil
+	if img.FaceID.Valid {
+		return fmt.Sprintf("face-%d", img.FaceID.Get()), nil
 	}
-	if img.CardId.Valid {
-		return fmt.Sprintf("card-%d", img.CardId.Get()), nil
+	if img.CardID.Valid {
+		return fmt.Sprintf("card-%d", img.CardID.Get()), nil
 	}
+
 	return "", fmt.Errorf("failed to build file prefix, no valid id provided")
 }
 
-func (img *CardImage) BuildFilename() (string, error) {
+// BuildFilename Returns file name based on the image mime type.
+func (img *Image) BuildFilename() (string, error) {
 	prefix, err := img.getFilePrefix()
 	if err != nil {
 		return "", fmt.Errorf("can't build file name reason: %w", err)
 	}
+
 	return img.MimeType.BuildFilename(prefix)
 }

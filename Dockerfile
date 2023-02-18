@@ -1,6 +1,6 @@
 ##### BUILDER #####
 
-FROM golang:1.19-alpine3.16 as builder
+FROM golang:1.20-alpine3.17 as builder
 
 ## Task: copy source files
 COPY . /src
@@ -14,15 +14,15 @@ ENV GOOS="linux"
 ENV GOARCH="amd64"
 ENV CGO_ENABLED="0"
 
-RUN go build -ldflags="-s -w" -o card-dataset-cli cmd/dataset/main.go
-RUN go build -ldflags="-s -w" -o card-images-cli cmd/images/main.go
+RUN go build -ldflags="-s -w" -o card-dataset-cli cmd/dataset/main.go && \
+    go build -ldflags="-s -w" -o card-images-cli cmd/images/main.go
 
 ## Task: set permissions
 RUN chmod 0755 /src/card-dataset-cli && chmod 0755 /src/card-images-cli
 
 ##### TARGET #####
 
-FROM alpine:3.16
+FROM alpine:3.17
 
 ARG RELEASE
 ENV IMG_VERSION="${RELEASE}"

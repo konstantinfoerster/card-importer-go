@@ -1,11 +1,12 @@
 package mtgjson_test
 
 import (
-	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFileImport(t *testing.T) {

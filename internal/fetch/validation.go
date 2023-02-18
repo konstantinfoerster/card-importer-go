@@ -28,5 +28,6 @@ func (v ContentTypeValidator) Apply(resp *http.Response) error {
 			return nil
 		}
 	}
+
 	return fmt.Errorf("unsupported content-type %s", contentType)
 }

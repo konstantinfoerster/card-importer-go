@@ -3,38 +3,43 @@ package mtgjson
 import (
 	"context"
 	"fmt"
+	"io"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/cardset"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
-	"io"
-	"strconv"
-	"strings"
-	"time"
 )
 
-var externalLangToLang = map[string]string{
-	"German":  dataset.SupportedLanguages[0],
-	"English": dataset.SupportedLanguages[1],
-}
-
-var doubleFaceCards = map[string]*card.Card{}
-
-type mtgJsonDataset struct {
+type mtgJSONDataset struct {
 	setService  cardset.Service
 	cardService card.Service
+	languages   dataset.LanguageMapper
 }
 
 func NewImporter(setService cardset.Service, cardService card.Service) dataset.Dataset {
-	return &mtgJsonDataset{
+	return &mtgJSONDataset{
 		setService:  setService,
 		cardService: cardService,
+		languages: dataset.NewLanguageMapper(
+			map[string]string{
+				dataset.GetSupportedLanguages()[0]: "German",
+				dataset.GetSupportedLanguages()[1]: "English",
+			},
+		),
 	}
 }
 
-func (imp *mtgJsonDataset) Import(r io.Reader) (*dataset.Report, error) {
+func (imp *mtgJSONDataset) Import(r io.Reader) (*dataset.Report, error) {
 	errg, ctx := errgroup.WithContext(context.Background())
+
+	fc := &faceCollector{
+		doubleFaceCards: map[string]*card.Card{},
+	}
 
 	for r := range parse(ctx, r) {
 		r := r
@@ -43,23 +48,21 @@ func (imp *mtgJsonDataset) Import(r io.Reader) (*dataset.Report, error) {
 		}
 		switch v := r.Result.(type) {
 		case *mtgjsonCardSet:
-			entry, err := mapToCardSet(v)
-			if err != nil {
-				return nil, err
-			}
+			entry := mapToCardSet(v, imp.languages)
+
 			if err := imp.setService.Import(entry); err != nil {
 				return nil, err
 			}
 			log.Info().Msgf("Finished set %s", entry.Code)
 		case *mtgjsonCard:
-			entry, err := mapToCard(v)
+			entry, err := mapToCard(v, imp.languages)
 			if err != nil {
 				return nil, err
 			}
 
 			faceCount := expectedFaceCount(v)
 			if faceCount > 1 {
-				if collectFaces(faceCount, v, entry) {
+				if fc.RequiresMoreFaces(faceCount, v, entry) {
 					continue
 				}
 			}
@@ -71,20 +74,20 @@ func (imp *mtgJsonDataset) Import(r io.Reader) (*dataset.Report, error) {
 				if log.Trace().Enabled() {
 					log.Trace().Msgf("Finished card %s from set %s", entry.Number, entry.CardSetCode)
 				}
+
 				return nil
 			})
 		default:
-			return nil, fmt.Errorf("found unknown result type %T\n", v)
+			return nil, fmt.Errorf("found unknown result type %T", v)
 		}
 	}
 
-	err := errg.Wait()
-	if err != nil {
+	if err := errg.Wait(); err != nil {
 		return nil, err
 	}
 
-	if len(doubleFaceCards) != 0 {
-		return nil, fmt.Errorf("found %d unprocessed double face cards %#v", len(doubleFaceCards), doubleFaceCards)
+	if fc.HasUncollectedEntries() {
+		return nil, fmt.Errorf("found %d unprocessed double face cards %#v", fc.CollectionSize(), fc.doubleFaceCards)
 	}
 
 	cardCount, err := imp.cardService.Count()
@@ -95,6 +98,7 @@ func (imp *mtgJsonDataset) Import(r io.Reader) (*dataset.Report, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &dataset.Report{
 		CardCount: cardCount,
 		SetCount:  setCount,
@@ -106,32 +110,51 @@ func expectedFaceCount(v *mtgjsonCard) int {
 	if strings.ToUpper(v.Layout) == "MELD" {
 		return 1
 	}
-	// card name contains all face names seperated by //
+
+	// card name contains all face names separated by //
 	return len(strings.Split(v.Name, "//"))
 }
 
-func collectFaces(faceCount int, v *mtgjsonCard, card *card.Card) bool {
+type faceCollector struct {
+	doubleFaceCards map[string]*card.Card
+}
+
+// CollectionSize Returns the amount of uncollected double faces.
+func (f *faceCollector) CollectionSize() int {
+	return len(f.doubleFaceCards)
+}
+
+// HasUncollectedEntries Checks if there are remaining double faces that needs to be collected.
+func (f *faceCollector) HasUncollectedEntries() bool {
+	return len(f.doubleFaceCards) != 0
+}
+
+// RequiresMoreFaces Collects the given amount of faces. Returns false if all faces for a card are collected.
+func (f *faceCollector) RequiresMoreFaces(faceCount int, v *mtgjsonCard, card *card.Card) bool {
 	if faceCount > 1 {
 		key := fmt.Sprintf("%s_%s", card.CardSetCode, v.Number)
-		value, ok := doubleFaceCards[key]
+		value, ok := f.doubleFaceCards[key]
 		if !ok {
-			doubleFaceCards[key] = card
+			f.doubleFaceCards[key] = card
+
 			// continue collecting faces
 			return true
 		}
 
 		card.Faces = append(card.Faces, value.Faces...)
 		if faceCount != len(card.Faces) {
-			doubleFaceCards[key] = card
+			f.doubleFaceCards[key] = card
+
 			// continue collecting faces
 			return true
 		}
-		delete(doubleFaceCards, key)
+		delete(f.doubleFaceCards, key)
 	}
+
 	return false
 }
 
-func mapToCardSet(s *mtgjsonCardSet) (*cardset.CardSet, error) {
+func mapToCardSet(s *mtgjsonCardSet, langMapper dataset.LanguageMapper) *cardset.CardSet {
 	released, err := time.Parse("2006-01-02", strings.TrimSpace(s.Released)) // ISO 8601 YYYY-MM-DD
 	if err != nil {
 		released = time.Time{}
@@ -141,7 +164,7 @@ func mapToCardSet(s *mtgjsonCardSet) (*cardset.CardSet, error) {
 	for _, t := range s.Translations {
 		translation := cardset.Translation{
 			Name: strings.TrimSpace(t.Name),
-			Lang: externalLangToLang[strings.TrimSpace(t.Language)],
+			Lang: langMapper.ByExternal(t.Language),
 		}
 		if translation.Name != "" && translation.Lang != "" {
 			translations = append(translations, translation)
@@ -157,13 +180,13 @@ func mapToCardSet(s *mtgjsonCardSet) (*cardset.CardSet, error) {
 		Translations: translations,
 	}
 
-	return set, nil
+	return set
 }
 
-func mapToCard(c *mtgjsonCard) (*card.Card, error) {
-	multiverseId, err := strToInt32(c.Identifiers.MultiverseId)
+func mapToCard(c *mtgjsonCard, langMapper dataset.LanguageMapper) (*card.Card, error) {
+	multiverseID, err := strToInt32(c.Identifiers.MultiverseID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert 'MultiverseId' value %s into an int32. %w", c.Identifiers.MultiverseId, err)
+		return nil, fmt.Errorf("failed to convert 'MultiverseID' value %s into an int32. %w", c.Identifiers.MultiverseID, err)
 	}
 
 	var cardtypes []string
@@ -181,13 +204,13 @@ func mapToCard(c *mtgjsonCard) (*card.Card, error) {
 
 	var translations []card.Translation
 	for _, fd := range c.ForeignData {
-		lang := externalLangToLang[strings.TrimSpace(fd.Language)]
+		lang := langMapper.ByExternal(fd.Language)
 		t := card.Translation{
 			Name:         strings.TrimSpace(fd.Name),
 			Text:         strings.TrimSpace(fd.Text),
 			FlavorText:   strings.TrimSpace(fd.FlavorText),
 			TypeLine:     strings.TrimSpace(fd.Type),
-			MultiverseId: fd.MultiverseId,
+			MultiverseID: fd.MultiverseID,
 			Lang:         lang,
 		}
 		if t.Name != "" && t.Lang != "" {
@@ -215,7 +238,7 @@ func mapToCard(c *mtgjsonCard) (*card.Card, error) {
 		ManaCost:          strings.TrimSpace(c.ManaCost),
 		Power:             strings.TrimSpace(c.Power),
 		Toughness:         strings.TrimSpace(c.Toughness),
-		MultiverseId:      multiverseId,
+		MultiverseID:      multiverseID,
 		TypeLine:          strings.TrimSpace(c.Type),
 		Cardtypes:         cardtypes,
 		Supertypes:        supertypes,
@@ -239,9 +262,11 @@ func strToInt32(in string) (int32, error) {
 	if len(s) == 0 {
 		return 0, nil
 	}
+
 	i, err := strconv.ParseInt(s, 10, 32)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to parse %s into int32 %w", s, err)
 	}
+
 	return int32(i), nil
 }
