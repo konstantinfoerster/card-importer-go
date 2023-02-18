@@ -2,12 +2,13 @@ package mtgjson
 
 import (
 	"context"
-	"github.com/konstantinfoerster/card-importer-go/internal/test"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/konstantinfoerster/card-importer-go/internal/test"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseEmptyContentFails(t *testing.T) {
@@ -159,20 +160,20 @@ func TestParseCards(t *testing.T) {
 					ForeignData: []foreignData{
 						{
 							Language:     "German",
-							MultiverseId: 490006,
+							MultiverseID: 490006,
 							Name:         "Karn der Befreite",
 							Text:         "+4: Ein Spieler deiner Wahl schickt.... eine Karte aus seiner Hand ins Exil.\n−3: Schicke...",
 							Type:         "Legendärer Planeswalker — Karn",
 						},
 						{
 							Language:     "French",
-							MultiverseId: 490338,
+							MultiverseID: 490338,
 							Name:         "Karn libéré",
 							Text:         "+4: Le joueur ciblé exile une carte de sa main.\n...",
 							Type:         "Planeswalker légendaire : Karn",
 						},
 					},
-					Identifiers: identifier{MultiverseId: "831"},
+					Identifiers: identifier{MultiverseID: "831"},
 					Layout:      "normal",
 					ManaCost:    "{1}{W}",
 					Name:        "Balance",

@@ -4,6 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
+	"runtime"
+	"time"
+
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/images"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
@@ -15,8 +19,6 @@ import (
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/konstantinfoerster/card-importer-go/internal/timer"
 	"github.com/rs/zerolog/log"
-	"runtime"
-	"time"
 )
 
 const usage = `Usage: card-images-cli [options...]
@@ -26,11 +28,11 @@ const usage = `Usage: card-images-cli [options...]
   -h, --help prints help information
 `
 
-var configPath string
-var pageConfig images.PageConfig
-
-func init() {
+func setup() (images.PageConfig, *config.Config) {
 	logger.SetupConsoleLogger()
+
+	var configPath string
+	var pageConfig images.PageConfig
 
 	flag.StringVar(&configPath, "c", "./configs/application.yaml", "path to the configuration file")
 	flag.StringVar(&configPath, "config", "./configs/application.yaml", "path to the configuration file")
@@ -41,11 +43,10 @@ func init() {
 	flag.Usage = func() { fmt.Print(usage) }
 	flag.Parse()
 
-	err := config.Load(configPath)
+	cfg, err := config.Load(configPath)
 	if err != nil {
 		panic(err)
 	}
-	cfg := config.Get()
 
 	err = logger.SetLogLevel(cfg.Logging.LevelOrDefault())
 	if err != nil {
@@ -55,24 +56,32 @@ func init() {
 	log.Info().Msgf("OS\t\t %s", runtime.GOOS)
 	log.Info().Msgf("ARCH\t\t %s", runtime.GOARCH)
 	log.Info().Msgf("CPUs\t\t %d", runtime.NumCPU())
+
+	return pageConfig, cfg
 }
 
 func main() {
 	defer timer.TimeTrack(time.Now(), "images")
 	defer stats.LogMemUsage()
 
-	cfg := config.Get()
+	pageConfig, cfg := setup()
 
 	store, err := storage.NewLocalStorage(cfg.Storage)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to create local storage")
+
 		return
 	}
-	fetcher := fetch.NewFetcher(cfg.Http, fetch.NewContentTypeValidator(fetch.DefaultAllowedTypes))
+	client := &http.Client{
+		Timeout: cfg.HTTP.Timeout,
+	}
+	allowedTypes := []string{fetch.MimeTypeJSON, fetch.MimeTypeJpeg, fetch.MimeTypePng}
+	fetcher := fetch.NewFetcher(client, fetch.NewContentTypeValidator(allowedTypes))
 
 	conn, err := postgres.Connect(context.Background(), cfg.Database)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to connect to the database")
+
 		return
 	}
 	defer func(toCloseFn func() error) {
@@ -87,6 +96,7 @@ func main() {
 	report, err := images.NewImporter(cardDao, store, scryfall.NewDownloader(cfg.Scryfall, fetcher)).Import(pageConfig)
 	if err != nil {
 		log.Error().Err(err).Msg("image import failed")
+
 		return
 	}
 	log.Info().Msgf("Report %#v", report)

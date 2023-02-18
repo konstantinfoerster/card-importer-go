@@ -2,9 +2,10 @@ package mtgjson_test
 
 import (
 	"fmt"
-	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
 	"os"
 	"testing"
+
+	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
 )
 
 func TestMain(m *testing.M) {

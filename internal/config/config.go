@@ -2,18 +2,19 @@ package config
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
+	"net"
 	"os"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
 	Logging  Logging  `yaml:"logging"`
 	Database Database `yaml:"database"`
-	Http     Http     `yaml:"http"`
+	HTTP     HTTP     `yaml:"http"`
 	Mtgjson  Mtgjson  `yaml:"mtgjson"`
 	Scryfall Scryfall `yaml:"scryfall"`
 	Storage  Storage  `yaml:"storage"`
@@ -28,23 +29,24 @@ type Database struct {
 	MaxConnections int    `yaml:"maxConnections"`
 }
 
-func (d Database) ConnectionUrl() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s", d.Username, d.Password, d.Host, d.Port, d.Database)
+func (d Database) ConnectionURL() string {
+	return fmt.Sprintf("postgres://%s:%s@%s/%s", d.Username, d.Password, net.JoinHostPort(d.Host, d.Port), d.Database)
 }
 
 func (d Database) MaxConnectionsOrDefault() int {
 	if d.MaxConnections == 0 {
 		return runtime.NumCPU()
 	}
+
 	return d.MaxConnections
 }
 
-type Http struct {
+type HTTP struct {
 	Timeout time.Duration `yaml:"timeout"`
 }
 
 type Mtgjson struct {
-	DownloadURL string `yaml:"downloadURL"`
+	DownloadURL string `yaml:"downloadUrl"`
 }
 
 type Logging struct {
@@ -56,15 +58,17 @@ func (l Logging) LevelOrDefault() string {
 	if level == "" {
 		level = "INFO"
 	}
+
 	return strings.ToLower(level)
 }
 
 type Scryfall struct {
-	DownloadURL string `yaml:"downloadURL"`
+	DownloadURL string `yaml:"downloadUrl"`
 }
 
-func (i Scryfall) BuildJsonDownloadURL(setCode string, cardNumber string, lang string) string {
+func (i Scryfall) BuildJSONDownloadURL(setCode string, cardNumber string, lang string) string {
 	r := strings.NewReplacer("{code}", setCode, "{number}", cardNumber, "{lang}", lang, "{format}", "json")
+
 	return strings.ToLower(r.Replace(i.DownloadURL))
 }
 
@@ -78,23 +82,12 @@ type Storage struct {
 	Mode     string `yaml:"mode"`
 }
 
-var doOnce sync.Once
-var cfg *Config
-
-func Load(path string) error {
-	var err error
-	doOnce.Do(func() {
-		cfg, err = loadConfig(path)
-	})
-
-	return err
-}
-
-func loadConfig(path string) (*Config, error) {
+func Load(path string) (*Config, error) {
 	s, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
+
 	if s.IsDir() {
 		return nil, fmt.Errorf("'%s' is a directory, not a regular file", path)
 	}
@@ -109,6 +102,7 @@ func buildConfig(path string) (*Config, error) {
 	}
 
 	config := &Config{}
+
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
 		return nil, fmt.Errorf("config unmarshal failed with: %w", err)
@@ -117,8 +111,4 @@ func buildConfig(path string) (*Config, error) {
 	// TODO validate config content
 
 	return config, nil
-}
-
-func Get() *Config {
-	return cfg
 }

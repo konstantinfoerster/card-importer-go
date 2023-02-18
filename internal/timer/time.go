@@ -1,8 +1,9 @@
 package timer
 
 import (
-	"github.com/rs/zerolog/log"
 	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 func TimeTrack(start time.Time, name string) {

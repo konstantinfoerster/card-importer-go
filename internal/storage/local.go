@@ -2,12 +2,13 @@ package storage
 
 import (
 	"fmt"
-	"github.com/konstantinfoerster/card-importer-go/internal/config"
-	"github.com/pkg/errors"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/konstantinfoerster/card-importer-go/internal/config"
+	"github.com/pkg/errors"
 )
 
 func NewLocalStorage(config config.Storage) (Storage, error) {
@@ -15,6 +16,7 @@ func NewLocalStorage(config config.Storage) (Storage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create storage dir %s %w", config.Location, err)
 	}
+
 	return &localStorage{
 		config: config,
 	}, nil
@@ -30,6 +32,7 @@ func (s *localStorage) fromBasePath(path ...string) string {
 		if strings.TrimSpace(p) == ".." {
 			continue
 		}
+
 		escapeSafe = append(escapeSafe, p)
 	}
 
@@ -75,6 +78,7 @@ func (s *localStorage) Store(r io.Reader, path ...string) (*StoredFile, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to copy file %w", err)
 	}
+
 	err = target.Sync()
 	if err != nil {
 		return nil, fmt.Errorf("failed to sync file %w", err)
@@ -89,6 +93,7 @@ func (s *localStorage) Store(r io.Reader, path ...string) (*StoredFile, error) {
 func (s *localStorage) removeBasePath(path string) string {
 	noBasePath := strings.TrimPrefix(path, s.config.Location)
 	noBasePath = strings.TrimPrefix(noBasePath, "/")
+
 	return noBasePath
 }
 

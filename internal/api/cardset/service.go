@@ -1,7 +1,10 @@
 package cardset
 
 import (
+	"errors"
 	"fmt"
+
+	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/rs/zerolog/log"
 )
 
@@ -20,12 +23,12 @@ func NewService(dao *PostgresSetDao) Service {
 	}
 }
 
-// Count counts all card sets
+// Count Counts all card sets.
 func (s *setService) Count() (int, error) {
 	return s.dao.Count()
 }
 
-// Import creates or updates the given card set
+// Import Creates or updates the given card set.
 func (s *setService) Import(set *CardSet) error {
 	if set == nil {
 		// Skip nil set
@@ -38,9 +41,10 @@ func (s *setService) Import(set *CardSet) error {
 	if set.Block.Block != "" {
 		block, err := s.dao.FindBlockByName(set.Block.Block)
 		if err != nil {
-			return err
-		}
-		if block == nil {
+			if !errors.Is(err, card.ErrEntryNotFound) {
+				return err
+			}
+
 			block, err = s.dao.CreateBlock(set.Block.Block)
 			if err != nil {
 				return err
@@ -51,16 +55,19 @@ func (s *setService) Import(set *CardSet) error {
 
 	existingSet, err := s.dao.FindCardSetByCode(set.Code)
 	if err != nil {
-		return err
-	}
-	if existingSet == nil {
+		if !errors.Is(err, card.ErrEntryNotFound) {
+			return err
+		}
+
 		if log.Trace().Enabled() {
 			log.Trace().Msgf("Create set %s %s", set.Code, set.Name)
 		}
 		if err := s.dao.CreateCardSet(set); err != nil {
 			return err
 		}
-	} else {
+	}
+
+	if existingSet != nil {
 		diff := existingSet.Diff(set)
 		if diff.HasChanges() {
 			log.Info().Msgf("Update set %s with changes %s", set.Code, diff.String())
@@ -80,11 +87,13 @@ func (s *setService) Import(set *CardSet) error {
 func mergeTranslations(dao *PostgresSetDao, tt []Translation, setCode string, isNew bool) error {
 	var toCreate []Translation
 	toCreate = append(toCreate, tt...)
+
 	if !isNew {
 		existingTranslations, err := dao.FindTranslations(setCode)
 		if err != nil {
 			return fmt.Errorf("failed to get existing translations %w", err)
 		}
+
 		for _, existing := range existingTranslations {
 			if ok, pos := containsTranslation(tt, *existing); ok {
 				toCreate = removeTranslation(toCreate, *existing)
@@ -96,7 +105,8 @@ func mergeTranslations(dao *PostgresSetDao, tt []Translation, setCode string, is
 					changed = true
 				}
 				if changed {
-					log.Info().Msgf("Update translation for set %s and language %v from %v to %v", setCode, existing.Lang, existing.Name, newT.Name)
+					log.Info().Msgf("Update translation for set %s and language %v from %v to %v",
+						setCode, existing.Lang, existing.Name, newT.Name)
 					if err := dao.UpdateTranslation(setCode, &newT); err != nil {
 						return err
 					}
@@ -110,9 +120,11 @@ func mergeTranslations(dao *PostgresSetDao, tt []Translation, setCode string, is
 	}
 
 	for _, t := range toCreate {
+		t := t
 		if err := dao.CreateTranslation(setCode, &t); err != nil {
 			return err
 		}
+
 		continue
 	}
 
@@ -122,8 +134,10 @@ func mergeTranslations(dao *PostgresSetDao, tt []Translation, setCode string, is
 func removeTranslation(arr []Translation, toRemove Translation) []Translation {
 	if ok, pos := containsTranslation(arr, toRemove); ok {
 		arr[pos] = arr[len(arr)-1]
+
 		return arr[:len(arr)-1]
 	}
+
 	return arr
 }
 
@@ -133,5 +147,6 @@ func containsTranslation(tt []Translation, t Translation) (bool, int) {
 			return true, i
 		}
 	}
+
 	return false, 0
 }

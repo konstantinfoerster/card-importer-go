@@ -3,29 +3,30 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/rs/zerolog/log"
-	"strings"
-	"time"
 )
 
 type DBConnection struct {
-	Ctx    context.Context
 	Conn   DBConn
 	pgxCon *pgxpool.Pool
 }
 
 func Connect(ctx context.Context, config config.Database) (*DBConnection, error) {
-	c, err := pgxpool.ParseConfig(config.ConnectionUrl())
+	c, err := pgxpool.ParseConfig(config.ConnectionURL())
 	if err != nil {
 		return nil, err
 	}
-	c.MaxConnLifetime = time.Second * 5
-	c.MaxConnIdleTime = time.Millisecond * 500
-	c.HealthCheckPeriod = time.Millisecond * 500
+
+	c.MaxConnLifetime = time.Second * time.Duration(5)
+	c.MaxConnIdleTime = time.Millisecond * time.Duration(500)
+	c.HealthCheckPeriod = time.Millisecond * time.Duration(500)
 	c.MaxConns = int32(config.MaxConnectionsOrDefault())
 	log.Info().Msgf("max database connection is set to  %d", c.MaxConns)
 
@@ -40,7 +41,6 @@ func Connect(ctx context.Context, config config.Database) (*DBConnection, error)
 	}
 
 	dbConn := &DBConnection{
-		Ctx:    ctx,
 		Conn:   pool,
 		pgxCon: pool,
 	}
@@ -50,6 +50,7 @@ func Connect(ctx context.Context, config config.Database) (*DBConnection, error)
 
 func (d *DBConnection) Close() error {
 	d.pgxCon.Close()
+
 	return nil
 }
 
@@ -59,12 +60,13 @@ func (d *DBConnection) WithTransaction(f func(conn *DBConnection) error) error {
 		return fmt.Errorf("already inside a transaction")
 	default:
 		opts := pgx.TxOptions{AccessMode: pgx.ReadWrite, IsoLevel: pgx.ReadCommitted}
-		return d.pgxCon.BeginTxFunc(d.Ctx, opts, func(t pgx.Tx) error {
+
+		return d.pgxCon.BeginTxFunc(context.TODO(), opts, func(t pgx.Tx) error {
 			dbCon := &DBConnection{
-				Ctx:    d.Ctx,
 				Conn:   t,
 				pgxCon: d.pgxCon,
 			}
+
 			return f(dbCon)
 		})
 	}
@@ -95,11 +97,12 @@ func (d *DBConnection) Cleanup() error {
 
 		"card_image",
 	}
-	_, err := d.Conn.Exec(d.Ctx, fmt.Sprintf("TRUNCATE %s RESTART IDENTITY", strings.Join(tables, ",")))
+	_, err := d.Conn.Exec(context.TODO(), fmt.Sprintf("TRUNCATE %s RESTART IDENTITY", strings.Join(tables, ",")))
+
 	return err
 }
 
-// DBConn implemented by pgx.Conn and pgx.Tx
+// DBConn Implemented by pgx.Conn and pgx.Tx.
 type DBConn interface {
 	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, optionsAndArgs ...interface{}) (pgx.Rows, error)

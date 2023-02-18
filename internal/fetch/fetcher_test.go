@@ -1,19 +1,23 @@
 package fetch_test
 
 import (
-	"github.com/konstantinfoerster/card-importer-go/internal/config"
-	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
-	"github.com/konstantinfoerster/card-importer-go/internal/test"
-	"github.com/stretchr/testify/assert"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
+	"github.com/konstantinfoerster/card-importer-go/internal/test"
+	"github.com/stretchr/testify/assert"
 )
 
-var cfg = config.Http{Timeout: 5 * time.Second}
+var client = &http.Client{
+	Timeout: 5 * time.Second,
+}
 
 func TestFetch(t *testing.T) {
 	ts := httptest.NewServer(http.FileServer(http.Dir("testdata")))
@@ -38,7 +42,7 @@ func TestFetch(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := fetch.NewFetcher(cfg)
+			f := fetch.NewFetcher(client)
 
 			var got []byte
 			var err error
@@ -47,6 +51,7 @@ func TestFetch(t *testing.T) {
 				if err != nil {
 					t.Fatalf("failed to read data, got: %v, wanted no error", err)
 				}
+
 				return nil
 			})
 			if err != nil {
@@ -81,7 +86,7 @@ func TestFetchFails(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := fetch.NewFetcher(cfg, fetch.NewContentTypeValidator([]string{}))
+			f := fetch.NewFetcher(client, fetch.NewContentTypeValidator([]string{}))
 
 			err := f.Fetch(tc.fixture, func(resp *fetch.Response) error {
 				return nil
@@ -91,6 +96,46 @@ func TestFetchFails(t *testing.T) {
 			}
 
 			assert.Contains(t, err.Error(), tc.wantContain)
+		})
+	}
+}
+
+func TestAPIError(t *testing.T) {
+	cases := []struct {
+		name    string
+		err     error
+		wantErr error
+		want    bool
+	}{
+		{
+			name:    "is same 404 API error",
+			err:     fetch.ExternalAPIError{StatusCode: 404},
+			wantErr: fetch.ErrNotFound,
+			want:    true,
+		},
+		{
+			name:    "is wrapped 404 API error",
+			err:     fmt.Errorf("not found %w", fetch.ExternalAPIError{StatusCode: 404}),
+			wantErr: fetch.ErrNotFound,
+			want:    true,
+		},
+		{
+			name:    "has different status code",
+			err:     fmt.Errorf("bad request %w", fetch.ExternalAPIError{StatusCode: 400}),
+			wantErr: fetch.ErrNotFound,
+			want:    false,
+		},
+		{
+			name:    "is not API error",
+			err:     fmt.Errorf("an error occurd"),
+			wantErr: fetch.ErrNotFound,
+			want:    false,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, errors.Is(tc.err, tc.wantErr))
 		})
 	}
 }

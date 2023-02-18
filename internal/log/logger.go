@@ -1,12 +1,13 @@
 package log
 
 import (
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	"github.com/rs/zerolog/pkgerrors"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog/pkgerrors"
 )
 
 func SetupConsoleLogger() {
@@ -24,5 +25,6 @@ func SetLogLevel(logLevel string) error {
 		return err
 	}
 	zerolog.SetGlobalLevel(level)
+
 	return nil
 }

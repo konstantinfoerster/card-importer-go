@@ -2,10 +2,11 @@ package mtgjson
 
 import (
 	"fmt"
-	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
-	"github.com/pkg/errors"
 	"io"
 	"os"
+
+	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
+	"github.com/pkg/errors"
 )
 
 type fileDataset struct {
@@ -14,9 +15,11 @@ type fileDataset struct {
 }
 
 func NewFileDataset(dataset dataset.Dataset) dataset.Dataset {
+	var maxFilePathLengthBytes int64 = 255
+
 	return &fileDataset{
 		dataset:   dataset,
-		readLimit: 255,
+		readLimit: maxFilePathLengthBytes,
 	}
 }
 
@@ -50,5 +53,6 @@ func (imp *fileDataset) Import(r io.Reader) (*dataset.Report, error) {
 	}(f)
 
 	report, err := imp.dataset.Import(f)
+
 	return report, err
 }

@@ -2,14 +2,15 @@ package mtgjson_test
 
 import (
 	"fmt"
+	"io"
+	"sort"
+	"testing"
+
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/cardset"
 	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
 	"github.com/konstantinfoerster/card-importer-go/internal/test"
 	"github.com/stretchr/testify/assert"
-	"io"
-	"sort"
-	"testing"
 )
 
 // TODO Revisit this tests
@@ -26,6 +27,7 @@ func (s *MockSetService) Import(set *cardset.CardSet) error {
 		}
 	}
 	s.Sets = append(s.Sets, *set)
+
 	return nil
 }
 func (s *MockSetService) Count() (int, error) {
@@ -44,6 +46,7 @@ func (s *MockCardService) Import(card *card.Card) error {
 		}
 	}
 	s.Cards = append(s.Cards, *card)
+
 	return nil
 }
 
@@ -62,6 +65,7 @@ func (s *MockCardService) CardsOrdered() []card.Card {
 			return c.Faces[i].Name < c.Faces[j].Name
 		})
 	}
+
 	return s.Cards
 }
 
@@ -72,6 +76,7 @@ func TestImportCardsWithImportError(t *testing.T) {
 			if count > 0 {
 				return fmt.Errorf("card import failed [%s]", c.Number)
 			}
+
 			return nil
 		},
 	}
@@ -93,6 +98,7 @@ func TestImportSetsWithImportError(t *testing.T) {
 			if count > 0 {
 				return fmt.Errorf("set import failed [%s]", c.Code)
 			}
+
 			return nil
 		},
 	}
@@ -151,13 +157,13 @@ func TestImportCards(t *testing.T) {
 							ManaCost:          "{1}{W}",
 							TypeLine:          "Sorcery",
 							Cardtypes:         []string{"Sorcery"},
-							MultiverseId:      831,
+							MultiverseID:      831,
 							Translations: []card.Translation{
 								{
 									Name:         "Karn der Befreite",
 									Text:         "+4: Ein Spieler deiner Wahl schickt.... eine Karte aus seiner Hand ins Exil.\n−3: Schicke...",
 									TypeLine:     "Legendärer Planeswalker — Karn",
-									MultiverseId: 490006,
+									MultiverseID: 490006,
 									Lang:         "deu",
 								},
 							},

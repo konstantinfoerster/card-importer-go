@@ -2,25 +2,26 @@ package images
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
 	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/rs/zerolog/log"
-	"io"
 )
 
 type ImageResult struct {
-	MatchingFaceId int64
+	MatchingFaceID int64
 	MimeType       fetch.MimeType
 	File           io.Reader
 }
 
-func (img *ImageResult) toCardImage(c *card.Card, lang string) *card.CardImage {
-	return &card.CardImage{
+func (img *ImageResult) toCardImage(c *card.Card, lang string) *card.Image {
+	return &card.Image{
 		Lang:     lang,
-		CardId:   c.Id,
-		FaceId:   card.NewPrimaryId(img.MatchingFaceId),
+		CardID:   c.ID,
+		FaceID:   card.NewPrimaryID(img.MatchingFaceID),
 		MimeType: img.MimeType,
 	}
 }
@@ -85,7 +86,7 @@ func (img *images) Import(pageConfig PageConfig) (*Report, error) {
 	cardsPerPage := pageConfig.Size
 	maxPages := cardCount / cardsPerPage
 	for {
-		page = page + 1
+		page++
 		cards, err := img.cardDao.Paged(page, cardsPerPage)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get card list for page %d and size %d. %w", page, cardsPerPage, err)
@@ -96,7 +97,7 @@ func (img *images) Import(pageConfig PageConfig) (*Report, error) {
 
 		log.Info().Msgf("Processing page %d/%d with %d cards", page, maxPages, len(cards))
 		for _, c := range cards {
-			for _, lang := range dataset.SupportedLanguages {
+			for _, lang := range dataset.GetSupportedLanguages() {
 				if err = img.importCard(c, lang); err != nil {
 					return nil, err
 				}
@@ -108,13 +109,14 @@ func (img *images) Import(pageConfig PageConfig) (*Report, error) {
 }
 
 func (img *images) importCard(c *card.Card, lang string) error {
-	imgExists, err := img.cardDao.IsImagePresent(c.Id.Get(), lang)
+	imgExists, err := img.cardDao.IsImagePresent(c.ID.Get(), lang)
 	if err != nil {
-		return fmt.Errorf("failed to check if card image already exists for card wtih set %s, "+
+		return fmt.Errorf("failed to check if card image already exists for card with set %s, "+
 			"name %s, number %s and language %s %w", c.CardSetCode, c.Name, c.Number, lang, err)
 	}
 	if imgExists {
-		img.imgReport.Skipped += 1
+		img.imgReport.Skipped++
+
 		return nil
 	}
 
@@ -132,9 +134,11 @@ func (img *images) importCard(c *card.Card, lang string) error {
 		cardImage.ImagePath = storedFile.Path
 
 		if err = img.cardDao.AddImage(cardImage); err != nil {
-			return fmt.Errorf("failed to add image entry for card name %s, number %s and set %s %w", c.Name, c.Number, c.CardSetCode, err)
+			return fmt.Errorf("failed to add image entry for card name %s, number %s and set %s %w",
+				c.Name, c.Number, c.CardSetCode, err)
 		}
 		log.Debug().Msgf("stored card image %s for lang %s at %s", c.Name, lang, cardImage.ImagePath)
+
 		return nil
 	}
 
@@ -145,5 +149,6 @@ func (img *images) importCard(c *card.Card, lang string) error {
 
 	img.imgReport.Missing += result.Missing
 	img.imgReport.Downloaded += result.Downloaded
+
 	return nil
 }
