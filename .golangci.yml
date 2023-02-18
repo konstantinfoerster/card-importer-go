@@ -4,6 +4,15 @@ run:
 linters:
   disable-all: true
   enable:
+    # default linter
+    - errcheck # find unchecked errors
+    - gosimple # suggest code simplifications
+    - govet # report suspicious code e.g. missing arguments in Printf
+    - ineffassign # detect unused assignments to existing variables
+    - staticcheck # static code analysis
+    - typecheck # parse and type-checks Go code
+
+    # additional linter
     - asciicheck # check if code contains non-ASCII identifiers
     - asasalint # check for pass []any as any in variadic func(...any)
     - bidichk # checks for dangerous unicode sequences (redundant with asciicheck)
@@ -15,7 +24,6 @@ linters:
     - dogsled # checks assignments with too many blank identifiers (e.g. x, , , _, := f())
     - dupl # code clone detection
     - durationcheck # check for two durations multiplied together
-    - errcheck # find unchecked errors (DEFAULT)
     - errchkjson # checks types passed to the json encoding functions. Reports unsupported types.
     - errname # checks that sentinel errors are prefixed with the Err and error types are suffixed with the Error.
     - errorlint # linter that can be used to find code that will cause problems with the error wrapping scheme introduced in Go 1.13.
@@ -37,9 +45,6 @@ linters:
     - gomoddirectives # manages the use of 'replace', 'retract', and 'excludes' directives in go.mod
     - goprintffuncname # checks that printf-like functions are named with f at the end
     - gosec # inspects source code for security problems
-    - gosimple # suggest code simplifications (DEFAULT)
-    - govet # report suspicious code e.g. missing arguments in Printf (DEFAULT)
-    - ineffassign # detect unused assignments to existing variables (DEFAULT)
     - lll # reports long lines
     - makezero # finds slice declarations with non-zero initial length
     - misspell # finds commonly misspelled English words in comments
@@ -49,7 +54,7 @@ linters:
     - nilerr # checks that there is no simultaneous return of nil error and an invalid value.
     - nilnil # checks that there is no simultaneous return of nil error and an invalid value
     - nlreturn # nlreturn checks for a new line before return and branch statements to increase code clarity
-    - noctx # noctx finds sending http request without context.Context
+    - noctx # finds sending http request without context.Context
     - nolintlint # reports ill-formed or insufficient nolint directives
     - nonamedreturns # reports all named returns
     - nosprintfhostport # checks for misuse of Sprintf to construct a host with port in a URL. (do I really need it?)
@@ -58,14 +63,12 @@ linters:
     - reassign # checks that package variables are not reassigne
     - rowserrcheck # checks whether Err of rows is checked successfully
     - sqlclosecheck # checks that sql.Rows and sql.Stmt are closed.
-    - staticcheck # static code analysis (DEFAULT)
     - stylecheck # replacement for golint (redundant with revive?)
     - tagliatelle # checks the struct tags
     - tenv # analyzer that detects using os.Setenv instead of t.Setenv since Go1.17
     - testableexamples # checks if examples are testable (have an expected output)
     - testpackage # linter that makes you use a separate _test package
     - tparallel # detects inappropriate usage of t.Parallel() method in your Go test codes
-    - typecheck # parse and type-checks Go code (DEFAULT)
     - unconvert # remove unnecessary type conversions
     - unparam # reports unused function parameters
     - unused # check for unused constants, variables, functions and types
