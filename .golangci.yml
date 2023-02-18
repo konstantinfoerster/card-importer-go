@@ -22,7 +22,7 @@ linters:
     - execinquery # warns about wrong usage of Query
     - exhaustive # checks exhaustiveness of enum switch statements
     - exportloopref # checks for pointers to enclosing loop variables
-    - # funlen # (many detects) detects long functions
+    # - funlen # (many detects) detects long functions
     - gocheckcompilerdirectives # Checks that go compiler directive comments (//go:) are valid
     - gochecknoglobals # checks that no global variables exist
     - gochecknoinits  # checks that no init functions are present in Go code
