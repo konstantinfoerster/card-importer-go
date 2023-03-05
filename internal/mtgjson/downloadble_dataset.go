@@ -136,8 +136,8 @@ func (imp *downloadableDataset) Import(r io.Reader) (*dataset.Report, error) {
 }
 
 func unzip(src string, dest string) ([]string, error) {
-	log.Info().Msgf("Unzipping %s to %s", src, dest)
-	var readByteLimit uint64 = 300 * 1024 * 1024 // 300 MB
+	var readByteLimit uint64 = 350 * 1024 * 1024 // 350 MiB
+	log.Info().Msgf("Unzipping %s to %s with a target limit of %d bytes", src, dest, readByteLimit)
 	var files []string
 
 	r, err := zip.OpenReader(src)

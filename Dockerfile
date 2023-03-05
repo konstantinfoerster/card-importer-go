@@ -3,11 +3,14 @@
 FROM golang:1.20-alpine3.17 as builder
 
 ## Task: copy source files
-COPY . /src
+COPY cmd/ /src/cmd
+COPY internal/ /src/internal
+COPY go.mod /src
+COPY go.sum /src
 WORKDIR /src
 
 ## Task: fetch project deps
-RUN go mod download
+RUN go mod download && go mod verify
 
 ## Task: build project
 ENV GOOS="linux"
@@ -34,6 +37,8 @@ COPY --from=builder /src/card-images-cli /usr/bin/
 RUN set -eux; \
     apk add --no-progress --quiet --no-cache --upgrade \
     tzdata
+
+USER 65534
 
 CMD ["/usr/bin/card-dataset-cli", "--config", "/config/application.yaml"]
 
