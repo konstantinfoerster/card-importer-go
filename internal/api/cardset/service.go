@@ -59,8 +59,8 @@ func (s *setService) Import(set *CardSet) error {
 			return err
 		}
 
-		if log.Trace().Enabled() {
-			log.Trace().Msgf("Create set %s %s", set.Code, set.Name)
+		if e := log.Trace(); e.Enabled() {
+			e.Msgf("Create set %s %s", set.Code, set.Name)
 		}
 		if err := s.dao.CreateCardSet(set); err != nil {
 			return err
@@ -77,11 +77,7 @@ func (s *setService) Import(set *CardSet) error {
 		}
 	}
 
-	if err := mergeTranslations(s.dao, set.Translations, set.Code, existingSet == nil); err != nil {
-		return err
-	}
-
-	return nil
+	return mergeTranslations(s.dao, set.Translations, set.Code, existingSet == nil)
 }
 
 func mergeTranslations(dao *PostgresSetDao, tt []Translation, setCode string, isNew bool) error {

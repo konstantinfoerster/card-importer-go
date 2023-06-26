@@ -190,11 +190,7 @@ func parseSet(ctx context.Context, dec *json.Decoder, c chan<- *result) error {
 		Translations: translations,
 	}, Err: nil}
 
-	if err := expectNext(json.Delim('}'), dec); err != nil {
-		return err
-	}
-
-	return nil
+	return expectNext(json.Delim('}'), dec)
 }
 
 func parseCard(ctx context.Context, c chan<- *result, dec *json.Decoder) error {
@@ -217,11 +213,7 @@ func parseCard(ctx context.Context, c chan<- *result, dec *json.Decoder) error {
 		c <- &result{Result: card, Err: nil}
 	}
 
-	if err := expectNext(json.Delim(']'), dec); err != nil {
-		return err
-	}
-
-	return nil
+	return expectNext(json.Delim(']'), dec)
 }
 
 func parseTranslations(dec *json.Decoder, et *errToken) ([]translation, error) {

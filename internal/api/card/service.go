@@ -87,8 +87,8 @@ func mergeCard(txDao *PostgresCardDao, c *Card) (*Card, bool, error) {
 
 			return nil, false, err
 		}
-		if log.Trace().Enabled() {
-			log.Trace().Msgf("Created card %s from set %s", c.Number, c.CardSetCode)
+		if e := log.Trace(); e.Enabled() {
+			e.Msgf("Created card %s from set %s", c.Number, c.CardSetCode)
 		}
 
 		return c, true, nil
