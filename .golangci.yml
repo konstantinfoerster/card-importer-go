@@ -47,8 +47,9 @@ linters:
     - gosec # inspects source code for security problems
     - lll # reports long lines
     - makezero # finds slice declarations with non-zero initial length
+    - mirror # reports wrong mirror patterns of bytes/strings usage
     - misspell # finds commonly misspelled English words in comments
-    - musttag # enforce field tags in (un)marshaled structs
+    #- musttag # enforce field tags in (un)marshaled structs
     - nakedret # finds naked returns in functions greater than a specified function length
     # - nestif # (many detects) reports deeply nested if statements
     - nilerr # checks that there is no simultaneous return of nil error and an invalid value.
@@ -64,6 +65,7 @@ linters:
     - rowserrcheck # checks whether Err of rows is checked successfully
     - sqlclosecheck # checks that sql.Rows and sql.Stmt are closed.
     - stylecheck # replacement for golint (redundant with revive?)
+    - tagalign # check that struct tags are well aligned
     - tagliatelle # checks the struct tags
     - tenv # analyzer that detects using os.Setenv instead of t.Setenv since Go1.17
     - testableexamples # checks if examples are testable (have an expected output)
@@ -75,6 +77,7 @@ linters:
     - usestdlibvars # detects the possibility to use variables/constants from the Go standard library
     - wastedassign # finds wasted assignment statements.
     - whitespace # detection of leading and trailing whitespace
+    - zerologlint # detects the wrong usage of zerolog
 
     # disabled
     # - deadcode # (deprecated, replaced by unused) find unused code

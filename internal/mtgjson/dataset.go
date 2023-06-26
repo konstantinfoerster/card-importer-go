@@ -71,8 +71,8 @@ func (imp *mtgJSONDataset) Import(r io.Reader) (*dataset.Report, error) {
 				if err := imp.cardService.Import(entry); err != nil {
 					return err
 				}
-				if log.Trace().Enabled() {
-					log.Trace().Msgf("Finished card %s from set %s", entry.Number, entry.CardSetCode)
+				if e := log.Trace(); e.Enabled() {
+					e.Msgf("Finished card %s from set %s", entry.Number, entry.CardSetCode)
 				}
 
 				return nil

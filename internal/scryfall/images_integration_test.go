@@ -29,10 +29,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	exitVal := 0
-	exitVal = m.Run()
-
-	os.Exit(exitVal)
+	os.Exit(m.Run())
 }
 
 type MockFetcher struct {

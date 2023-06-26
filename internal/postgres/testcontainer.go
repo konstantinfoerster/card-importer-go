@@ -123,7 +123,7 @@ func (r *DatabaseRunner) runPostgresContainer(ctx context.Context, f func(c conf
 		}
 	}(postgresC)
 
-	if log.Debug().Enabled() {
+	if e := log.Debug(); e.Enabled() {
 		logs, err := postgresC.Logs(ctx)
 		if err != nil {
 			return err
@@ -135,7 +135,7 @@ func (r *DatabaseRunner) runPostgresContainer(ctx context.Context, f func(c conf
 			return err
 		}
 
-		log.Debug().Msg(string(b))
+		e.Msg(string(b))
 	}
 
 	ip, err := postgresC.Host(ctx)
