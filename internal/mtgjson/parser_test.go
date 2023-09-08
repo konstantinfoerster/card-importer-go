@@ -119,7 +119,8 @@ func TestParseSet(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for i := range cases {
+		tc := cases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			var actual []mtgjsonCardSet
 			for r := range parse(ctx, tc.fixture) {
@@ -221,7 +222,8 @@ func TestParseCards(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for i := range cases {
+		tc := cases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			var actualCards []mtgjsonCard
 			var actualSets []string

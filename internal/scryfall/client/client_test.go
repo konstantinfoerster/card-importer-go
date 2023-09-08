@@ -89,7 +89,8 @@ func TestFindMatchingFace(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for i := range cases {
+		tc := cases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			sc := client.ScryfallCard{
 				Name: "First // Second",

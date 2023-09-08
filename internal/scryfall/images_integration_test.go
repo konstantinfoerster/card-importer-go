@@ -244,7 +244,8 @@ func importNextLanguageOnMissingCard(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for i := range cases {
+		tc := cases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			t.Cleanup(runner.Cleanup(t))
 			dir := tmpDirWithCleanup(t)
@@ -330,7 +331,8 @@ func importMultiFaces(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for i := range cases {
+		tc := cases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			t.Cleanup(runner.Cleanup(t))
 			dir := tmpDirWithCleanup(t)
@@ -461,7 +463,8 @@ func testErrorCases(t *testing.T) {
 		},
 	}
 
-	for _, tc := range cases {
+	for i := range cases {
+		tc := cases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			t.Cleanup(runner.Cleanup(t))
 			createCard(t, &tc.fixture)
