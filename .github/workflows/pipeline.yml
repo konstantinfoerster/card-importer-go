@@ -82,5 +82,5 @@ jobs:
         with:
           context: .
           push: ${{ github.ref_type == 'tag' }}
-          tags: ${{ github.ref_name }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
           build-args: RELEASE=${{ github.ref_name }}
