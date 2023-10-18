@@ -1,6 +1,6 @@
 ##### BUILDER #####
 
-FROM golang:1.20-alpine3.17 as builder
+FROM golang:1.21-alpine3.17 as builder
 
 ## Task: copy source files
 COPY cmd/ /src/cmd

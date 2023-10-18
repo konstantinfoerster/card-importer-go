@@ -13,7 +13,7 @@ env:
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
-  GO_VERSION: '1.20'
+  GO_VERSION: '1.21'
 
 permissions:
   contents: read
@@ -57,11 +57,11 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v3
 
       # https://github.com/docker/setup-buildx-action
-      - name: Setup Docker buildx
+      - name: Set up Docker buildx
         uses: docker/setup-buildx-action@v2
 
       # Login against a Docker registry (only on tags)
@@ -82,5 +82,5 @@ jobs:
         with:
           context: .
           push: ${{ github.ref_type == 'tag' }}
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
           build-args: RELEASE=${{ github.ref_name }}
