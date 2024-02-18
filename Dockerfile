@@ -1,6 +1,6 @@
 ##### BUILDER #####
 
-FROM golang:1.21-alpine3.17 as builder
+FROM golang:1.22-alpine3.19 as builder
 
 ## Task: copy source files
 COPY cmd/ /src/cmd
@@ -25,7 +25,7 @@ RUN chmod 0755 /src/card-dataset-cli && chmod 0755 /src/card-images-cli
 
 ##### TARGET #####
 
-FROM alpine:3.17
+FROM alpine:3.19
 
 ARG RELEASE
 ENV IMG_VERSION="${RELEASE}"
@@ -38,7 +38,7 @@ RUN set -eux; \
     apk add --no-progress --quiet --no-cache --upgrade \
     tzdata
 
-USER 65534
+USER nobody
 
 CMD ["/usr/bin/card-dataset-cli", "--config", "/config/application.yaml"]
 

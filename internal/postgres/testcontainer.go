@@ -85,13 +85,23 @@ func (r *DatabaseRunner) runPostgresContainer(ctx context.Context, f func(c conf
 	password := "tester"
 	database := "cardmanager"
 
+	var initScriptDirPermissions int64 = 0755
 	// TODO read env variables from config
 	req := testcontainers.ContainerRequest{
 		Image:        "postgres:14-alpine",
 		ExposedPorts: []string{"5432/tcp"},
-		Mounts: testcontainers.Mounts(
-			testcontainers.BindMount(dbDir, "/docker-entrypoint-initdb.d"),
-		),
+		Files: []testcontainers.ContainerFile{
+			{
+				HostFilePath:      filepath.Join(dbDir, "01-init.sh"),
+				ContainerFilePath: "/docker-entrypoint-initdb.d/01-init.sh",
+				FileMode:          initScriptDirPermissions,
+			},
+			{
+				HostFilePath:      filepath.Join(dbDir, "sql", "create-tables.sql"),
+				ContainerFilePath: "/docker-entrypoint-initdb.d/02-create-tables.sql",
+				FileMode:          initScriptDirPermissions,
+			},
+		},
 		Env: map[string]string{
 			"POSTGRES_DB":       "postgres",
 			"POSTGRES_PASSWORD": "test",

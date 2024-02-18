@@ -88,7 +88,7 @@ func TestFetchFails(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := fetch.NewFetcher(client, fetch.NewContentTypeValidator([]string{}))
 
-			err := f.Fetch(tc.fixture, func(resp *fetch.Response) error {
+			err := f.Fetch(tc.fixture, func(_ *fetch.Response) error {
 				return nil
 			})
 			if err == nil {
