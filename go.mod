@@ -1,6 +1,6 @@
 module github.com/konstantinfoerster/card-importer-go
 
-go 1.22
+go 1.22.0
 
 require (
 	github.com/jackc/pgconn v1.14.1
