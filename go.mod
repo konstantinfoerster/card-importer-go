@@ -1,6 +1,6 @@
 module github.com/konstantinfoerster/card-importer-go
 
-go 1.22.0
+go 1.22.1
 
 require (
 	github.com/anthonynsimon/bild v0.13.0
