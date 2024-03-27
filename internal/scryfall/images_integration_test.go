@@ -209,6 +209,7 @@ func hasPHashes(t *testing.T) {
 
     assert.Greater(t, img.PHash, uint64(0))
     assert.Greater(t, img.PHashRotated, uint64(0))
+    assert.NotEqual(t, img.PHash, img.PHashRotated)
 }
 
 func ignoresCardNamesCases(t *testing.T) {
