@@ -42,7 +42,8 @@ CREATE TYPE public.card_set_type AS ENUM (
     'TREASURE_CHEST',
     'SPELLBOOK',
     'ARSENAL',
-    'ALCHEMY'
+    'ALCHEMY',
+    'MINIGAME'
     );
 
 -- Layout --
@@ -67,7 +68,10 @@ CREATE TYPE public.layout AS ENUM (
     'HOST',
     'AUGMENT',
     'CLASS',
-    'REVERSIBLE_CARD'
+    'REVERSIBLE_CARD',
+    'PROTOTYPE',
+    'MUTATE',
+    'CASE'
     );
 
 -- Rarity --
@@ -245,6 +249,8 @@ CREATE TABLE public.card_image
     card_id    INTEGER      NOT NULL CHECK (card_id >= 0),
     face_id    INTEGER,
     mime_type  VARCHAR(100) NOT NULL CHECK ( mime_type <> '' ),
+    phash      NUMERIC,
+    phash_rotated NUMERIC,
     lang_lang  CHAR(3) REFERENCES public.lang (lang),
     UNIQUE (image_path)
 );

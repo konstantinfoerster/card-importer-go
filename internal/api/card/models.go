@@ -350,12 +350,14 @@ func (v *Colors) UnmarshalJSON(data []byte) error {
 }
 
 type Image struct {
-	ID        PrimaryID
-	Lang      string
-	CardID    PrimaryID
-	FaceID    PrimaryID
-	ImagePath string
-	MimeType  fetch.MimeType
+	ID           PrimaryID
+	Lang         string
+	CardID       PrimaryID
+	FaceID       PrimaryID
+	ImagePath    string
+	MimeType     string
+	PHash        uint64
+	PHashRotated uint64
 }
 
 func (img *Image) getFilePrefix() (string, error) {
@@ -377,5 +379,5 @@ func (img *Image) BuildFilename() (string, error) {
 		return "", fmt.Errorf("can't build file name reason: %w", err)
 	}
 
-	return img.MimeType.BuildFilename(prefix)
+	return fetch.NewMimeType(img.MimeType).BuildFilename(prefix)
 }

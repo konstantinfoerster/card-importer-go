@@ -18,18 +18,18 @@ const (
 )
 
 func NewMimeType(mimeType string) MimeType {
-	return MimeType{string: strings.TrimSpace(strings.ToLower(mimeType))}
+	return MimeType{Value: strings.TrimSpace(strings.ToLower(mimeType))}
 }
 
 type MimeType struct {
-	string
+	Value string
 }
 
 func (m MimeType) BuildFilename(prefix string) (string, error) {
 	if strings.TrimSpace(prefix) == "" {
 		return "", fmt.Errorf("can't build file name without prefix")
 	}
-	switch m.string {
+	switch m.Value {
 	case MimeTypeJSON:
 		return prefix + ".json", nil
 	case MimeTypeZip:
@@ -39,21 +39,21 @@ func (m MimeType) BuildFilename(prefix string) (string, error) {
 	case MimeTypePng:
 		return prefix + ".png", nil
 	default:
-		return "", fmt.Errorf("unsupported mime type %s", m.string)
+		return "", fmt.Errorf("unsupported mime type %s", m.Value)
 	}
 }
 
 func (m MimeType) IsZip() bool {
-	return m.string == MimeTypeZip
+	return m.Value == MimeTypeZip
 }
 
 func (m MimeType) Raw() string {
-	return m.string
+	return m.Value
 }
 
 type Response struct {
-	ContentType string
 	Body        io.Reader
+	ContentType string
 }
 
 func (r *Response) MimeType() MimeType {
@@ -121,8 +121,8 @@ func (f *fetcher) Fetch(url string, handleResponse func(resp *Response) error) e
 }
 
 type ExternalAPIError struct {
-	StatusCode int
 	Message    string
+	StatusCode int
 }
 
 func (e ExternalAPIError) Error() string {

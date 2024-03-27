@@ -18,7 +18,6 @@ import (
 	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
 	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
-	"github.com/konstantinfoerster/card-importer-go/internal/stats"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/konstantinfoerster/card-importer-go/internal/timer"
 	"github.com/rs/zerolog/log"
@@ -88,7 +87,6 @@ func setup() (*url.URL, *config.Config) {
 
 func main() {
 	defer timer.TimeTrack(time.Now(), "import")
-	defer stats.LogMemUsage()
 
 	datasetSource, cfg := setup()
 

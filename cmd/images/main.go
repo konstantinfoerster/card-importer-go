@@ -15,7 +15,6 @@ import (
 	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 	"github.com/konstantinfoerster/card-importer-go/internal/scryfall"
-	"github.com/konstantinfoerster/card-importer-go/internal/stats"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/konstantinfoerster/card-importer-go/internal/timer"
 	"github.com/rs/zerolog/log"
@@ -62,7 +61,6 @@ func setup() (images.PageConfig, *config.Config) {
 
 func main() {
 	defer timer.TimeTrack(time.Now(), "images")
-	defer stats.LogMemUsage()
 
 	pageConfig, cfg := setup()
 

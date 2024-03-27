@@ -456,6 +456,26 @@ func (d *PostgresCardDao) IsImagePresent(cardID int64, lang string) (bool, error
 	return isPresent, nil
 }
 
+// GetImage Checks if the card image with the specified card id and language exist.
+func (d *PostgresCardDao) GetImage(cardID int64, lang string) (*Image, error) {
+	query := `
+		SELECT
+			id, image_path, card_id, face_id, mime_type, phash, phash_rotated,
+            lang_lang
+		FROM
+			card_image
+        WHERE
+			lang_lang = $1 AND card_id = $2`
+	var img Image
+	err := d.db.Conn.QueryRow(context.TODO(), query, lang, cardID).Scan(&img.ID, &img.ImagePath, &img.CardID,
+		&img.FaceID, &img.MimeType, &img.PHash, &img.PHashRotated, &img.Lang)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute select on card_image %w", err)
+	}
+
+	return &img, nil
+}
+
 // CountImages Returns the amount of all card images.
 func (d *PostgresCardDao) CountImages() (int, error) {
 	row := d.db.Conn.QueryRow(context.TODO(), "SELECT count(id) FROM card_image")
@@ -472,16 +492,16 @@ func (d *PostgresCardDao) AddImage(img *Image) error {
 	query := `
 		INSERT INTO
 			card_image (
-				image_path, lang_lang, card_id, face_id, mime_type
+				image_path, lang_lang, card_id, face_id, mime_type, phash, phash_rotated
 			) 
 		VALUES (
-			$1, $2, $3, $4, $5
+			$1, $2, $3, $4, $5, $6, $7
 		)
 		RETURNING
 			id`
 	var id int64
 	err := d.db.Conn.QueryRow(context.TODO(), query, img.ImagePath, img.Lang, img.CardID, img.FaceID,
-		img.MimeType.Raw()).Scan(&id)
+		img.MimeType, img.PHash, img.PHashRotated).Scan(&id)
 	if err != nil {
 		return fmt.Errorf("failed to execute card insert %w", err)
 	}
