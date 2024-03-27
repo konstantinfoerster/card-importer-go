@@ -60,6 +60,7 @@ func TestImageIntegration(t *testing.T) {
 		cardDao = card.NewDao(runner.Connection())
 		t.Run("import images for different sets", importDifferentSets)
 		t.Run("import image multiple times", importSameImageMultipleTimes)
+		t.Run("import image with phashes", hasPHashes)
 		t.Run("ignores card name cases", ignoresCardNamesCases)
 		t.Run("no card is matching", noCardMatches)
 		t.Run("skips missing languages", importNextLanguageOnMissingCard)
@@ -172,6 +173,42 @@ func importDifferentSets(t *testing.T) {
 	assertFileCount(t, filepath.Join(dir, "eng", "10E"), 2)
 	assertFileCount(t, filepath.Join(dir, "eng", "9E"), 1)
 	assertFileCount(t, filepath.Join(dir, "deu", "9E"), 1)
+}
+
+func hasPHashes(t *testing.T) {
+	t.Cleanup(runner.Cleanup(t))
+	dir := tmpDirWithCleanup(t)
+	localStorage, err := storage.NewLocalStorage(config.Storage{Location: dir})
+	if err != nil {
+		t.Fatalf("failed to create local storage %v", err)
+	}
+    c := &card.Card{
+		CardSetCode: "10E",
+		Number:      "1",
+		Name:        "First",
+		Faces: []*card.Face{
+			{
+				Name:   "First",
+			},
+		},
+	}
+	createCard(t, c)
+
+	importer := images.NewImporter(cardDao, localStorage, scryfall.NewDownloader(cfg, fetcher))
+	_, err = importer.Import(limitFirstPage20Entries)
+	if err != nil {
+		t.Fatalf("import failed %v", err)
+	}
+	if err != nil {
+		t.Fatalf("import failed %v", err)
+	}
+    img, err := cardDao.GetImage(c.ID.Int64, "eng")
+	if err != nil {
+		t.Fatalf("find card failed %v", err)
+	}
+
+    assert.Greater(t, img.PHash, uint64(0))
+    assert.Greater(t, img.PHashRotated, uint64(0))
 }
 
 func ignoresCardNamesCases(t *testing.T) {

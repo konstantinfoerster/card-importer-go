@@ -61,6 +61,13 @@ func (d *downloader) Download(c *card.Card, lang string,
 				continue
 			}
 
+			if errors.Is(err, images.ErrBrokenImage) {
+				log.Warn().Interface("url", m.URL).Msg("broken image")
+
+				missingImages++
+                continue
+			}
+
 			return nil, err
 		}
 	}

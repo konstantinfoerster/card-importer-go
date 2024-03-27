@@ -53,8 +53,9 @@ func (d downloadedFile) Get() (string, error) {
 				} else {
 					err = errors.Wrap(err, rErr.Error())
 				}
+			} else {
+				log.Info().Msgf("Delete zip file %s", name)
 			}
-			log.Info().Msgf("Delete zip file %s", name)
 		}(d.filepath)
 
 		dest := filepath.Dir(d.filepath)
@@ -136,7 +137,7 @@ func (imp *downloadableDataset) Import(r io.Reader) (*dataset.Report, error) {
 }
 
 func unzip(src string, dest string) ([]string, error) {
-	var readByteLimit uint64 = 350 * 1024 * 1024 // 350 MiB
+	var readByteLimit uint64 = 512 * 1024 * 1024 // 512 MiB
 	log.Info().Msgf("Unzipping %s to %s with a target limit of %d bytes", src, dest, readByteLimit)
 	var files []string
 
