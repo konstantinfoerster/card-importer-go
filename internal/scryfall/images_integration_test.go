@@ -182,13 +182,13 @@ func hasPHashes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create local storage %v", err)
 	}
-    c := &card.Card{
+	c := &card.Card{
 		CardSetCode: "10E",
 		Number:      "1",
 		Name:        "First",
 		Faces: []*card.Face{
 			{
-				Name:   "First",
+				Name: "First",
 			},
 		},
 	}
@@ -202,14 +202,14 @@ func hasPHashes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("import failed %v", err)
 	}
-    img, err := cardDao.GetImage(c.ID.Int64, "eng")
+	img, err := cardDao.GetImage(c.ID.Int64, "eng")
 	if err != nil {
 		t.Fatalf("find card failed %v", err)
 	}
 
-    assert.Greater(t, img.PHash, uint64(0))
-    assert.Greater(t, img.PHashRotated, uint64(0))
-    assert.NotEqual(t, img.PHash, img.PHashRotated)
+	assert.Greater(t, img.PHash, uint64(0))
+	assert.Greater(t, img.PHashRotated, uint64(0))
+	assert.NotEqual(t, img.PHash, img.PHashRotated)
 }
 
 func ignoresCardNamesCases(t *testing.T) {

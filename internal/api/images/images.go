@@ -71,7 +71,7 @@ func NewImporter(cardDao *card.PostgresCardDao, storage storage.Storage, downloa
 	}
 }
 
-func (img *images) Import(pageConfig PageConfig) (*Report, error) {
+func (i *images) Import(pageConfig PageConfig) (*Report, error) {
 	page := pageConfig.Page - 1
 	if page < 0 {
 		page = 0
@@ -80,20 +80,20 @@ func (img *images) Import(pageConfig PageConfig) (*Report, error) {
 		pageConfig.Size = 0
 	}
 
-	img.imgReport = &Report{}
+	i.imgReport = &Report{}
 
-	cardCount, err := img.cardDao.Count()
+	cardCount, err := i.cardDao.Count()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get card count %w", err)
 	}
 
-	img.imgReport.TotalCards = cardCount
+	i.imgReport.TotalCards = cardCount
 
 	cardsPerPage := pageConfig.Size
 	maxPages := cardCount / cardsPerPage
 	for {
 		page++
-		cards, err := img.cardDao.Paged(page, cardsPerPage)
+		cards, err := i.cardDao.Paged(page, cardsPerPage)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get card list for page %d and size %d. %w", page, cardsPerPage, err)
 		}
@@ -104,14 +104,14 @@ func (img *images) Import(pageConfig PageConfig) (*Report, error) {
 		log.Info().Msgf("Processing page %d/%d with %d cards", page, maxPages, len(cards))
 		for _, c := range cards {
 			for _, lang := range dataset.GetSupportedLanguages() {
-				if err = img.importCard(c, lang); err != nil {
+				if err = i.importCard(c, lang); err != nil {
 					return nil, err
 				}
 			}
 		}
 	}
 
-	return img.imgReport, nil
+	return i.imgReport, nil
 }
 
 func (i *images) importCard(c *card.Card, lang string) error {
@@ -155,7 +155,8 @@ func (i *images) importCard(c *card.Card, lang string) error {
 		}
 		cardImage.PHash = imgHash.GetHash()
 
-		rotated := transform.Rotate(img, 180, nil)
+		upsideDown := 180
+		rotated := transform.Rotate(img, float64(upsideDown), nil)
 		rotatedImgHash, err := goimagehash.PerceptionHash(rotated)
 		if err != nil {
 			return fmt.Errorf("failed to create rotated phash from %s, %w", storedFile.AbsolutePath, err)
