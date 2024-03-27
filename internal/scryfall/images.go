@@ -65,7 +65,7 @@ func (d *downloader) Download(c *card.Card, lang string,
 				log.Warn().Interface("url", m.URL).Msg("broken image")
 
 				missingImages++
-                continue
+				continue
 			}
 
 			return nil, err
