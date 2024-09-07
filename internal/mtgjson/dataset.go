@@ -184,7 +184,7 @@ func mapToCardSet(s *mtgjsonCardSet, langMapper dataset.LanguageMapper) *cardset
 }
 
 func mapToCard(c *mtgjsonCard, langMapper dataset.LanguageMapper) (*card.Card, error) {
-	multiverseID, err := strToInt32(c.Identifiers.MultiverseID)
+	multiverseID, err := strToInt(c.Identifiers.MultiverseID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert 'MultiverseID' value %s into an int32. %w", c.Identifiers.MultiverseID, err)
 	}
@@ -257,16 +257,16 @@ func mapToCard(c *mtgjsonCard, langMapper dataset.LanguageMapper) (*card.Card, e
 	}, nil
 }
 
-func strToInt32(in string) (int32, error) {
+func strToInt(in string) (int, error) {
 	s := strings.TrimSpace(in)
 	if len(s) == 0 {
 		return 0, nil
 	}
 
-	i, err := strconv.ParseInt(s, 10, 32)
+	i, err := strconv.Atoi(s)
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse %s into int32 %w", s, err)
+		return 0, fmt.Errorf("failed to parse %s into int %w", s, err)
 	}
 
-	return int32(i), nil
+	return i, nil
 }

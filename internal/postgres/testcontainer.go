@@ -97,7 +97,7 @@ func (r *DatabaseRunner) runPostgresContainer(ctx context.Context, f func(c conf
 				FileMode:          initScriptDirPermissions,
 			},
 			{
-				HostFilePath:      filepath.Join(dbDir, "sql", "create-tables.sql"),
+				HostFilePath:      filepath.Join(dbDir, "02-create-tables.sql"),
 				ContainerFilePath: "/docker-entrypoint-initdb.d/02-create-tables.sql",
 				FileMode:          initScriptDirPermissions,
 			},

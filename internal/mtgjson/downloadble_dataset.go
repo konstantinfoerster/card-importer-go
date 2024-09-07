@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -137,7 +138,7 @@ func (imp *downloadableDataset) Import(r io.Reader) (*dataset.Report, error) {
 }
 
 func unzip(src string, dest string) ([]string, error) {
-	var readByteLimit uint64 = 512 * 1024 * 1024 // 512 MiB
+	var readByteLimit int64 = 512 * 1024 * 1024 // 512 MiB
 	log.Info().Msgf("Unzipping %s to %s with a target limit of %d bytes", src, dest, readByteLimit)
 	var files []string
 
@@ -157,20 +158,30 @@ func unzip(src string, dest string) ([]string, error) {
 		}
 	}(r)
 
-	if err := os.MkdirAll(dest, 0755); err != nil {
+	if err := os.MkdirAll(dest, 0750); err != nil {
 		return nil, err
 	}
 
-	var readBytes uint64
+	var oneKiB int64 = 1024
+	var readBytes int64
 	for _, f := range r.File {
+		unsafeZipUncompressedSize := f.UncompressedSize64
+		if unsafeZipUncompressedSize <= 0 || unsafeZipUncompressedSize > math.MaxInt64 {
+			return nil, fmt.Errorf("cannot write file, unrcompressed size is > maxInt64 or <= 0")
+		}
+		// #nosec G115 false positiv. This bug is fixed in latest gosec but not in golangci
+		zipUncompressedSize := int64(unsafeZipUncompressedSize)
+		if zipUncompressedSize > readByteLimit {
+			return nil, fmt.Errorf("cannot write next file, reached limit of %dMiB", readByteLimit/oneKiB/oneKiB)
+		}
+
 		path, err := sanitizeArchivePath(dest, f.Name)
 		if err != nil {
 			return nil, err
 		}
 
 		if f.FileInfo().IsDir() {
-			err := os.MkdirAll(path, f.Mode())
-			if err != nil {
+			if err := os.MkdirAll(path, f.Mode()); err != nil {
 				return nil, err
 			}
 
@@ -178,12 +189,12 @@ func unzip(src string, dest string) ([]string, error) {
 		}
 
 		// prevent zip bombs
-		readBytes += f.UncompressedSize64
-		var oneKiB uint64 = 1024
+		readBytes += zipUncompressedSize
 		if readBytes > readByteLimit {
 			return nil, fmt.Errorf("cannot write next file, reached limit of %dMiB", readByteLimit/oneKiB/oneKiB)
 		}
-		d, err := writeFile(f, path, readByteLimit)
+
+		d, err := writeFile(f, path, zipUncompressedSize)
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +206,7 @@ func unzip(src string, dest string) ([]string, error) {
 	return files, err
 }
 
-func writeFile(zippedFile *zip.File, destFile string, readByteLimit uint64) (string, error) {
+func writeFile(zippedFile *zip.File, destFile string, readBytesN int64) (string, error) {
 	if err := os.MkdirAll(filepath.Dir(filepath.Dir(destFile)), zippedFile.Mode()); err != nil {
 		return "", err
 	}
@@ -232,17 +243,8 @@ func writeFile(zippedFile *zip.File, destFile string, readByteLimit uint64) (str
 		}
 	}(rc)
 
-	wb, err := io.CopyN(f, rc, int64(readByteLimit))
-	if err != nil {
-		if !errors.Is(err, io.EOF) {
-			return "", err
-		}
-		// EOF is ok
-		err = nil
-	}
-	if uint64(wb) != zippedFile.UncompressedSize64 {
-		return "", fmt.Errorf("written file (%s) size does not match uncompressed size in zip header, want %d got %d",
-			destFile, zippedFile.UncompressedSize64, wb)
+	if _, err := io.CopyN(f, rc, readBytesN); err != nil {
+		return "", err
 	}
 
 	if err := f.Sync(); err != nil {
@@ -257,6 +259,7 @@ func sanitizeArchivePath(dest, filename string) (string, error) {
 	if strings.HasPrefix(path, filepath.Clean(dest)) {
 		return path, nil
 	}
+
 	// Zip slip
 	return "", fmt.Errorf("illegal file path %s", path)
 }

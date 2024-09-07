@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"os"
 	"runtime"
@@ -12,12 +13,12 @@ import (
 )
 
 type Config struct {
+	Storage  Storage  `yaml:"storage"`
 	Logging  Logging  `yaml:"logging"`
-	Database Database `yaml:"database"`
-	HTTP     HTTP     `yaml:"http"`
 	Mtgjson  Mtgjson  `yaml:"mtgjson"`
 	Scryfall Scryfall `yaml:"scryfall"`
-	Storage  Storage  `yaml:"storage"`
+	Database Database `yaml:"database"`
+	HTTP     HTTP     `yaml:"http"`
 }
 
 type Database struct {
@@ -26,16 +27,27 @@ type Database struct {
 	Database       string `yaml:"database"`
 	Username       string `yaml:"username"`
 	Password       string `yaml:"password"`
-	MaxConnections int    `yaml:"maxConnections"`
+	MaxConnections int32  `yaml:"maxConnections"`
 }
 
 func (d Database) ConnectionURL() string {
 	return fmt.Sprintf("postgres://%s:%s@%s/%s", d.Username, d.Password, net.JoinHostPort(d.Host, d.Port), d.Database)
 }
 
-func (d Database) MaxConnectionsOrDefault() int {
+func (d Database) MaxConnectionsOrDefault() int32 {
 	if d.MaxConnections == 0 {
-		return runtime.NumCPU()
+		defaultSize := int32(4)
+		numCPU := runtime.NumCPU()
+		if numCPU <= 0 || numCPU > math.MaxInt32 {
+			panic("unsupported cpu count > maxInt32 or cpu count <= 0")
+		}
+		// #nosec G115 false positiv. This bug is fixed in latest gosec but not in golangci
+		nCPU := int32(numCPU)
+		if nCPU > defaultSize {
+			return nCPU
+		}
+
+		return defaultSize
 	}
 
 	return d.MaxConnections

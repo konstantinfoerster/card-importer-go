@@ -106,7 +106,7 @@ type Face struct {
 	Text              string
 	FlavorText        string
 	TypeLine          string
-	MultiverseID      int32
+	MultiverseID      int
 	Artist            string
 	ConvertedManaCost float64
 	Colors            Colors
@@ -230,7 +230,7 @@ type Translation struct {
 	Text         string
 	FlavorText   string
 	TypeLine     string
-	MultiverseID int32
+	MultiverseID int
 	Lang         string
 }
 
@@ -350,14 +350,16 @@ func (v *Colors) UnmarshalJSON(data []byte) error {
 }
 
 type Image struct {
-	ID           PrimaryID
-	Lang         string
-	CardID       PrimaryID
-	FaceID       PrimaryID
-	ImagePath    string
-	MimeType     string
-	PHash        uint64
-	PHashRotated uint64
+	ID        PrimaryID
+	Lang      string
+	CardID    PrimaryID
+	FaceID    PrimaryID
+	ImagePath string
+	MimeType  string
+	PHash1    uint64
+	PHash2    uint64
+	PHash3    uint64
+	PHash4    uint64
 }
 
 func (img *Image) getFilePrefix() (string, error) {

@@ -207,9 +207,10 @@ func hasPHashes(t *testing.T) {
 		t.Fatalf("find card failed %v", err)
 	}
 
-	assert.Greater(t, img.PHash, uint64(0))
-	assert.Greater(t, img.PHashRotated, uint64(0))
-	assert.NotEqual(t, img.PHash, img.PHashRotated)
+	assert.Greater(t, img.PHash1, uint64(0))
+	assert.Greater(t, img.PHash2, uint64(0))
+	assert.Greater(t, img.PHash3, uint64(0))
+	assert.Greater(t, img.PHash4, uint64(0))
 }
 
 func ignoresCardNamesCases(t *testing.T) {

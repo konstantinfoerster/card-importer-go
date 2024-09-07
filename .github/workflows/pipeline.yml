@@ -32,7 +32,7 @@ jobs:
           go mod tidy
           git diff --exit-code go.mod
       - name: Go Lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v6
         with:
           version: latest
           skip-cache: true
