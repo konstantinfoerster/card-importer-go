@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/anthonynsimon/bild/transform"
 	"github.com/corona10/goimagehash"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
 	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
@@ -127,8 +126,8 @@ func (i *images) importCard(c *card.Card, lang string) error {
 	}
 
 	afterDownload := func(result *ImageResult) error {
-		cardImage := result.toCardImage(c, lang)
-		fileName, err := cardImage.BuildFilename()
+		cardImg := result.toCardImage(c, lang)
+		fileName, err := cardImg.BuildFilename()
 		if err != nil {
 			return fmt.Errorf("failed to build filename %w", err)
 		}
@@ -137,7 +136,7 @@ func (i *images) importCard(c *card.Card, lang string) error {
 		if err != nil {
 			return fmt.Errorf("failed to store card with number %s and set %s %w", c.Number, c.CardSetCode, err)
 		}
-		cardImage.ImagePath = storedFile.Path
+		cardImg.ImagePath = storedFile.Path
 
 		f, err := os.Open(storedFile.AbsolutePath)
 		if err != nil {
@@ -149,25 +148,22 @@ func (i *images) importCard(c *card.Card, lang string) error {
 			return fmt.Errorf("%w, failed to decode image %s, %w", ErrBrokenImage, storedFile.AbsolutePath, err)
 		}
 
-		imgHash, err := goimagehash.PerceptionHash(img)
+		imgWidth := 16
+		imgHeight := imgWidth
+		imgPHash, err := goimagehash.ExtPerceptionHash(img, imgWidth, imgHeight)
 		if err != nil {
-			return fmt.Errorf("failed to create phash from %s, %w", storedFile.AbsolutePath, err)
+			return fmt.Errorf("failed to create phash from %s, %w", cardImg.ImagePath, err)
 		}
-		cardImage.PHash = imgHash.GetHash()
+		cardImg.PHash1 = imgPHash.GetHash()[0]
+		cardImg.PHash2 = imgPHash.GetHash()[1]
+		cardImg.PHash3 = imgPHash.GetHash()[2]
+		cardImg.PHash4 = imgPHash.GetHash()[3]
 
-		upsideDown := 180
-		rotated := transform.Rotate(img, float64(upsideDown), nil)
-		rotatedImgHash, err := goimagehash.PerceptionHash(rotated)
-		if err != nil {
-			return fmt.Errorf("failed to create rotated phash from %s, %w", storedFile.AbsolutePath, err)
-		}
-		cardImage.PHashRotated = rotatedImgHash.GetHash()
-
-		if err = i.cardDao.AddImage(cardImage); err != nil {
+		if err = i.cardDao.AddImage(cardImg); err != nil {
 			return fmt.Errorf("failed to add image entry for card name %s, number %s and set %s %w",
 				c.Name, c.Number, c.CardSetCode, err)
 		}
-		log.Debug().Msgf("stored card image %s for lang %s at %s", c.Name, lang, cardImage.ImagePath)
+		log.Debug().Msgf("stored card image %s for lang %s at %s", c.Name, lang, cardImg.ImagePath)
 
 		return nil
 	}

@@ -28,9 +28,8 @@ linters:
     - errchkjson # checks types passed to the json encoding functions. Reports unsupported types.
     - errname # checks that sentinel errors are prefixed with the Err and error types are suffixed with the Error.
     - errorlint # linter that can be used to find code that will cause problems with the error wrapping scheme introduced in Go 1.13.
-    - execinquery # warns about wrong usage of Query
+    # - execinquery # warns about wrong usage of Query # archived
     - exhaustive # checks exhaustiveness of enum switch statements
-    - exportloopref # checks for pointers to enclosing loop variables
     # - funlen # (many detects) detects long functions
     - gocheckcompilerdirectives # Checks that go compiler directive comments (//go:) are valid
     - gochecknoglobals # checks that no global variables exist
@@ -42,7 +41,7 @@ linters:
     - godot # checks if comments end in a period
     - gofmt # checks whether code was gofmt-ed
     - goimports # in addition to fixing imports, goimports also formats your code in the same style as gofmt.
-    - gomnd # an analyzer to detect magic numbers
+    #    - mnd # an analyzer to detect magic numbers # to many reports
     - gomoddirectives # manages the use of 'replace', 'retract', and 'excludes' directives in go.mod
     - goprintffuncname # checks that printf-like functions are named with f at the end
     - gosec # inspects source code for security problems
@@ -124,7 +123,7 @@ linters-settings:
     # If lower than 0, disable the check.
     # Default: 40
     statements: 50
-  gomnd:
+  mnd:
     # List of function patterns to exclude from analysis.
     # Values always ignored: `time.Date`,
     # `strconv.FormatInt`, `strconv.FormatUint`, `strconv.FormatFloat`,

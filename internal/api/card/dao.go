@@ -2,9 +2,12 @@ package card
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"strconv"
 
+	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 )
@@ -460,18 +463,26 @@ func (d *PostgresCardDao) IsImagePresent(cardID int64, lang string) (bool, error
 func (d *PostgresCardDao) GetImage(cardID int64, lang string) (*Image, error) {
 	query := `
 		SELECT
-			id, image_path, card_id, face_id, mime_type, phash, phash_rotated,
-            lang_lang
+			id, image_path, card_id, face_id, mime_type, phash1, phash2,
+            phash3, phash4, lang_lang
 		FROM
 			card_image
         WHERE
 			lang_lang = $1 AND card_id = $2`
 	var img Image
+	var phash1 pgtype.Varbit
+	var phash2 pgtype.Varbit
+	var phash3 pgtype.Varbit
+	var phash4 pgtype.Varbit
 	err := d.db.Conn.QueryRow(context.TODO(), query, lang, cardID).Scan(&img.ID, &img.ImagePath, &img.CardID,
-		&img.FaceID, &img.MimeType, &img.PHash, &img.PHashRotated, &img.Lang)
+		&img.FaceID, &img.MimeType, &phash1, &phash2, &phash3, &phash4, &img.Lang)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute select on card_image %w", err)
 	}
+	img.PHash1 = binary.BigEndian.Uint64(phash1.Bytes)
+	img.PHash2 = binary.BigEndian.Uint64(phash2.Bytes)
+	img.PHash3 = binary.BigEndian.Uint64(phash3.Bytes)
+	img.PHash4 = binary.BigEndian.Uint64(phash4.Bytes)
 
 	return &img, nil
 }
@@ -492,20 +503,103 @@ func (d *PostgresCardDao) AddImage(img *Image) error {
 	query := `
 		INSERT INTO
 			card_image (
-				image_path, lang_lang, card_id, face_id, mime_type, phash, phash_rotated
+				image_path, lang_lang, card_id, face_id, mime_type, 
+                phash1, phash2, phash3, phash4
 			) 
 		VALUES (
-			$1, $2, $3, $4, $5, $6, $7
+			$1, $2, $3, $4, $5, $6, $7, $8, $9
 		)
 		RETURNING
 			id`
 	var id int64
-	err := d.db.Conn.QueryRow(context.TODO(), query, img.ImagePath, img.Lang, img.CardID, img.FaceID,
-		img.MimeType, img.PHash, img.PHashRotated).Scan(&id)
+	err := d.db.Conn.QueryRow(context.TODO(),
+		query, img.ImagePath, img.Lang, img.CardID, img.FaceID, img.MimeType,
+		strconv.FormatUint(img.PHash1, 2),
+		strconv.FormatUint(img.PHash2, 2),
+		strconv.FormatUint(img.PHash3, 2),
+		strconv.FormatUint(img.PHash4, 2),
+	).Scan(&id)
 	if err != nil {
 		return fmt.Errorf("failed to execute card insert %w", err)
 	}
 	img.ID = NewPrimaryID(id)
+
+	return nil
+}
+
+func (d *PostgresCardDao) GetImages() ([]*Image, error) {
+	query := `
+		SELECT
+			id, image_path, card_id, face_id, mime_type, lang_lang
+		FROM
+			card_image
+        `
+	rows, err := d.db.Conn.Query(context.TODO(), query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute select on card_image %w", err)
+	}
+	defer rows.Close()
+
+	var result []*Image
+	for rows.Next() {
+		img := &Image{}
+		rErr := rows.Scan(&img.ID, &img.ImagePath, &img.CardID,
+			&img.FaceID, &img.MimeType, &img.Lang)
+		if rErr != nil {
+			return nil, fmt.Errorf("failed to execute select on card_image %w", rErr)
+		}
+
+		result = append(result, img)
+	}
+
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("failed to read card image result %w", rows.Err())
+	}
+
+	return result, nil
+}
+
+func (d *PostgresCardDao) UpdateHashes(
+	id int64, phash1 uint64, phash2 uint64, phash3 uint64, phash4 uint64) error {
+	nPhash1 := fmt.Sprintf("%064b", phash1)
+	maxLength := 64
+	if len(nPhash1) != maxLength {
+		return fmt.Errorf("phash1 %s must have a length of 64, but got %d", nPhash1, len(nPhash1))
+	}
+	nPhash2 := fmt.Sprintf("%064b", phash2)
+	if len(nPhash2) != maxLength {
+		return fmt.Errorf("phash2 %s must have a length of 64, but got %d", nPhash2, len(nPhash2))
+	}
+	nPhash3 := fmt.Sprintf("%064b", phash3)
+	if len(nPhash3) != maxLength {
+		return fmt.Errorf("phash3 %s must have a length of 64, but got %d", nPhash3, len(nPhash3))
+	}
+	nPhash4 := fmt.Sprintf("%064b", phash4)
+	if len(nPhash4) != maxLength {
+		return fmt.Errorf("phash4 %s must have a length of 64, but got %d", nPhash4, len(nPhash4))
+	}
+
+	query := `
+		UPDATE
+			card_image 
+		SET
+			phash1=$2,
+			phash2=$3,
+			phash3=$4,
+			phash4=$5
+        WHERE
+			id = $1`
+
+	ct, err := d.db.Conn.Exec(context.TODO(), query, id,
+		nPhash1, nPhash2, nPhash3, nPhash4)
+	if err != nil {
+		return fmt.Errorf("failed to execute card image update %w", err)
+	}
+	ra := ct.RowsAffected()
+	if ra != 1 {
+		return fmt.Errorf("%d card image updated but expected to update card image with "+
+			"id %d", ra, id)
+	}
 
 	return nil
 }

@@ -12,7 +12,7 @@ import (
 )
 
 func NewLocalStorage(config config.Storage) (Storage, error) {
-	err := os.MkdirAll(config.Location, 0755)
+	err := os.MkdirAll(config.Location, 0750)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create storage dir %s %w", config.Location, err)
 	}
@@ -26,26 +26,26 @@ type localStorage struct {
 	config config.Storage
 }
 
-func (s *localStorage) fromBasePath(path ...string) string {
-	var escapeSafe []string
-	for _, p := range path {
-		if strings.TrimSpace(p) == ".." {
-			continue
-		}
+func (s *localStorage) fromBasePath(path ...string) (string, error) {
+	baseDir := s.config.Location
+	targetDir := filepath.Join(baseDir, filepath.Join(path...))
+	targetDir = filepath.Clean(targetDir)
 
-		escapeSafe = append(escapeSafe, p)
+	if !strings.HasPrefix(targetDir, baseDir) {
+		return "", fmt.Errorf("path is not within base path, %s", baseDir)
 	}
 
-	file := filepath.Join(s.config.Location, filepath.Join(escapeSafe...))
-	file = filepath.Clean(file)
-
-	return file
+	return targetDir, nil
 }
 
 func (s *localStorage) Store(r io.Reader, path ...string) (*StoredFile, error) {
-	filePath := s.fromBasePath(path...)
+	filePath, err := s.fromBasePath(path...)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(path) > 1 {
-		err := os.MkdirAll(filepath.Dir(filePath), 0755)
+		err := os.MkdirAll(filepath.Dir(filePath), 0750)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create sub dirs for %s %w", filePath, err)
 		}
@@ -58,7 +58,7 @@ func (s *localStorage) Store(r io.Reader, path ...string) (*StoredFile, error) {
 		flags |= os.O_EXCL // file must not exist
 	}
 
-	target, err := os.OpenFile(filePath, flags, 0666)
+	target, err := os.OpenFile(filePath, flags, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create empty file %s with mode %s %w", filePath, s.config.Mode, err)
 	}
@@ -98,7 +98,10 @@ func (s *localStorage) removeBasePath(path string) string {
 }
 
 func (s *localStorage) Load(path ...string) (io.ReadCloser, error) {
-	filePath := s.fromBasePath(path...)
+	filePath, err := s.fromBasePath(path...)
+	if err != nil {
+		return nil, err
+	}
 
 	info, err := os.Stat(filePath)
 	if err != nil {

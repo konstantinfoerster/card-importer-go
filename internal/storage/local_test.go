@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestStoredFileIsAlwaysInsideBasePath(t *testing.T) {
+func TestStoreFailsIfFileIsOutsideBasePath(t *testing.T) {
 	dir := tmpDirWithCleanup(t)
 	store, err := storage.NewLocalStorage(config.Storage{
 		Location: dir,
@@ -36,10 +36,8 @@ func TestStoredFileIsAlwaysInsideBasePath(t *testing.T) {
 	require.NoError(t, err)
 	path := []string{"..", "dir", "..", "test.txt"}
 
-	f, err := store.Store(strings.NewReader("content"), path...)
-	assert.NoError(t, err, "failed to store file")
-
-	assert.Equal(t, filepath.Join(dir, "dir", "test.txt"), f.AbsolutePath)
+	_, err = store.Store(strings.NewReader("content"), path...)
+	require.Error(t, err, "expected store to failed for path outside base dir")
 }
 
 func TestStoreWithSubDirs(t *testing.T) {
@@ -52,7 +50,7 @@ func TestStoreWithSubDirs(t *testing.T) {
 	path := []string{"dir", "sub", "sub2", "sub3", "test.txt"}
 
 	f, err := store.Store(strings.NewReader("content"), path...)
-	assert.NoError(t, err, "failed to store file")
+	require.NoError(t, err, "failed to store file")
 
 	assert.FileExists(t, f.AbsolutePath)
 }
@@ -152,53 +150,44 @@ func TestLoadWithoutAnyPath(t *testing.T) {
 	assert.Contains(t, err.Error(), "not supported")
 }
 
-func TestLoadFile(t *testing.T) {
+func TestLoadOutSideBasePath(t *testing.T) {
 	dir := tmpDirWithCleanup(t)
 	store, err := storage.NewLocalStorage(config.Storage{
 		Location: dir,
 		Mode:     config.CREATE,
 	})
 	require.NoError(t, err)
-
 	fileName := "test.txt"
-	expected := "content"
+	_, err = store.Store(strings.NewReader("doNotCare"), fileName)
+	require.NoErrorf(t, err, "failed to store file %s at %s", fileName, dir)
 
-	_, err = store.Store(strings.NewReader(expected), fileName)
-	assert.NoError(t, err, "failed to store file")
+	_, err = store.Load("..", "..", fileName)
+	assert.Errorf(t, err, "load outside base path should fail")
+}
 
-	cases := []struct {
-		name string
-		path []string
-		want string
-	}{
-		{
-			name: "LoadFile",
-			path: []string{"test.txt"},
-			want: "content",
-		},
-		{
-			name: "LoadFileOutsideBasePathFallbackToBathPath",
-			path: []string{"..", "..", "test.txt"},
-			want: "content",
-		},
-	}
+func TestLoad(t *testing.T) {
+	dir := tmpDirWithCleanup(t)
+	store, err := storage.NewLocalStorage(config.Storage{
+		Location: dir,
+		Mode:     config.CREATE,
+	})
+	require.NoError(t, err)
+	fileName := "test.txt"
+	_, err = store.Store(strings.NewReader("content"), fileName)
+	require.NoErrorf(t, err, "failed to store file %s at %s", fileName, dir)
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			actual, err := store.Load(tc.path...)
-			assert.NoError(t, err, "failed to store file")
-			defer actual.Close()
+	actual, err := store.Load(fileName)
+	require.NoError(t, err)
+	defer actual.Close()
 
-			assertContentEquals(t, tc.want, actual)
-		})
-	}
+	assertContentEquals(t, "content", actual)
 }
 
 func assertContentEquals(t *testing.T, expected string, r io.Reader) {
 	t.Helper()
 
 	actual, err := io.ReadAll(r)
-	assert.NoError(t, err, "failed to read file")
+	require.NoError(t, err, "failed to read file")
 
 	assert.Equal(t, expected, string(actual))
 }

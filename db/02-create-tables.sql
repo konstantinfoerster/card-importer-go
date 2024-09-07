@@ -245,12 +245,14 @@ CREATE TABLE public.face_card_type
 CREATE TABLE public.card_image
 (
     id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    image_path VARCHAR(255) NOT NULL CHECK ( image_path <> '' ),
+    image_path VARCHAR(255) NOT NULL CHECK (image_path <> ''),
     card_id    INTEGER      NOT NULL CHECK (card_id >= 0),
     face_id    INTEGER,
-    mime_type  VARCHAR(100) NOT NULL CHECK ( mime_type <> '' ),
-    phash      NUMERIC,
-    phash_rotated NUMERIC,
+    mime_type  VARCHAR(100) NOT NULL CHECK (mime_type <> ''),
+    phash1     BIT(64),
+    phash2     BIT(64),
+    phash3     BIT(64),
+    phash4     BIT(64),
     lang_lang  CHAR(3) REFERENCES public.lang (lang),
     UNIQUE (image_path)
 );

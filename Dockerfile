@@ -1,37 +1,31 @@
-##### BUILDER #####
+FROM golang:1.22-alpine3.20 AS builder
 
-FROM golang:1.22-alpine3.19 as builder
+WORKDIR /app
 
-## Task: copy source files
-COPY cmd/ /src/cmd
-COPY internal/ /src/internal
-COPY go.mod /src
-COPY go.sum /src
-WORKDIR /src
-
-## Task: fetch project deps
+# download go modules
+COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
-## Task: build project
+# copy source files
+COPY cmd /app/cmd
+COPY internal /app/internal
+
 ENV GOOS="linux"
 ENV GOARCH="amd64"
 ENV CGO_ENABLED="0"
 
 RUN go build -ldflags="-s -w" -o card-dataset-cli cmd/dataset/main.go && \
-    go build -ldflags="-s -w" -o card-images-cli cmd/images/main.go
+    chmod 0755 /app/card-dataset-cli && \
+    go build -ldflags="-s -w" -o card-images-cli cmd/images/main.go && \
+    chmod 0755 /app/card-images-cli
 
-## Task: set permissions
-RUN chmod 0755 /src/card-dataset-cli && chmod 0755 /src/card-images-cli
-
-##### TARGET #####
-
-FROM alpine:3.19
+FROM alpine:3.20
 
 ARG RELEASE
 ENV IMG_VERSION="${RELEASE}"
 
-COPY --from=builder /src/card-dataset-cli /usr/bin/
-COPY --from=builder /src/card-images-cli /usr/bin/
+COPY --from=builder /app/card-dataset-cli /usr/bin/
+COPY --from=builder /app/card-images-cli /usr/bin/
 
 # hadolint ignore=DL3018
 RUN set -eux; \
@@ -48,5 +42,4 @@ LABEL org.opencontainers.image.title="Card Importer CLI" \
       org.opencontainers.image.source="https://github.com/konstantinfoerster/card-importer-go.git" \
       org.opencontainers.image.vendor="Konstantin Förster" \
       org.opencontainers.image.authors="Konstantin Förster"
-
 
