@@ -1,4 +1,4 @@
-[![Pipeline](https://github.com/konstantinfoerster/card-importer-go/actions/workflows/pipeline.yml/badge.svg?branch=main)](https://github.com/konstantinfoerster/card-importer-go/actions/workflows/pipeline.yml)
+[![CI](https://github.com/konstantinfoerster/card-importer-go/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/konstantinfoerster/card-importer-go/actions/workflows/ci.yml)
 
 # CLI Card Importer
 
@@ -87,8 +87,6 @@ dir of the project to start the linting process.
 
 ## TODOS
 
-* Provide a make file
-    * https://earthly.dev/blog/golang-makefile/
 * Make import more reliable
   * Retry on database connection loss
   * Retry if external API returns an error
