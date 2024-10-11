@@ -1,7 +1,20 @@
-version: '3'
 services:
+  srv:
+    image: card-service:local
+    links:
+      - "db:database"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./configs:/config
+  img:
+    image: nginx:1.23
+    volumes:
+      - ./images_2:/usr/share/nginx/html
+    ports:
+      - "8080:80"
   db:
-    image: postgres:14-alpine
+    image: postgres:16-alpine
     healthcheck:
       test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "postgres" ]
       timeout: 45s

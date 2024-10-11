@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"path/filepath"
 	"runtime"
@@ -73,7 +72,7 @@ func (r *DatabaseRunner) Cleanup(t *testing.T) func() {
 func (r *DatabaseRunner) runPostgresContainer(ctx context.Context, f func(c config.Database) error) error {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
-		return fmt.Errorf("failed to get caller")
+		panic("failed to get current dir")
 	}
 
 	dbDir, err := filepath.EvalSymlinks(filepath.Join(filepath.Dir(file), "testdata", "db"))
@@ -86,9 +85,9 @@ func (r *DatabaseRunner) runPostgresContainer(ctx context.Context, f func(c conf
 	database := "cardmanager"
 
 	var initScriptDirPermissions int64 = 0755
-	// TODO read env variables from config
+	// TODO: read env variables from config
 	req := testcontainers.ContainerRequest{
-		Image:        "postgres:14-alpine",
+		Image:        "postgres:16-alpine",
 		ExposedPorts: []string{"5432/tcp"},
 		Files: []testcontainers.ContainerFile{
 			{
@@ -110,7 +109,6 @@ func (r *DatabaseRunner) runPostgresContainer(ctx context.Context, f func(c conf
 			"APP_DB_NAME":       database,
 		},
 		AlwaysPullImage: true,
-		SkipReaper:      false,
 		WaitingFor:      wait.ForLog("[1] LOG:  database system is ready to accept connections"),
 	}
 

@@ -2,41 +2,76 @@ name: "Pipeline"
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     # Publish semver tags as releases.
-    tags: [ 'v*.*.*' ]
+    tags: ["v*.*.*"]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
-  GO_VERSION: '1.22'
+  GO_VERSION: "1.23.x"
+  GO_LINT_VERSION: "v1.61"
 
 permissions:
   contents: read
 
 jobs:
-  go-lint:
+  go-mod:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Go
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go version
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-      - name: Check go mod
+
+      - name: Verify go.mod
         run: |
           go mod tidy
           git diff --exit-code go.mod
-      - name: Go Lint
-        uses: golangci/golangci-lint-action@v6
+  go-sec:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    env:
+      GO111MODULE: on
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Gosec
+        uses: securego/gosec@master
         with:
-          version: latest
+          # we let the report trigger content trigger a failure using the GitHub Security features.
+          args: "-no-fail -fmt sarif -out results.sarif ./..."
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          # Path to SARIF file relative to the root of the repository
+          sarif_file: results.sarif
+  go-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go version
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: ${{ env.GO_LINT_VERSION }}
           skip-cache: true
-  go-test-build:
+  go-build-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,13 +79,15 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
+
       - name: Go Build
-        run: go build -v ./...
+        run: go build ./...
+
       - name: Go all tests
-        run: go test --count=1 ./...
+        run: go test -race --count=1 ./...
 
   build-docker:
-    needs: ["go-lint", "go-test-build"]
+    needs: ["go-lint", "go-build-test"]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -81,6 +118,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: ${{ github.ref_type == 'tag' }}
+          # disabled for now, has no use at the moment
+          # push: ${{ github.ref_type == 'tag' }}
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
           build-args: RELEASE=${{ github.ref_name }}

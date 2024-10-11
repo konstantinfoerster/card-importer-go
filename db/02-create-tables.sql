@@ -207,6 +207,8 @@ CREATE TABLE public.card_face
     card_id             INTEGER REFERENCES public.card (id) ON DELETE CASCADE
 );
 
+CREATE INDEX idx_card_face_name_card_id on card_face(card_id, name);
+
 CREATE TABLE public.card_translation
 (
     id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -257,12 +259,13 @@ CREATE TABLE public.card_image
     UNIQUE (image_path)
 );
 
+CREATE INDEX idx_card_image_hashes on card_image(phash1, phash2, phash3, phash4);
 
---- Updates
--- ALTER TABLE public.card_image ADD mime_type VARCHAR(100);
--- UPDATE public.card_image SET mime_type = 'image/jpeg';
--- ALTER TABLE public.card_image ALTER COLUMN mime_type SET NOT NULL;
--- ALTER TABLE public.card_image ADD CHECK ( mime_type <> '' );
---
--- ALTER TABLE public.card_image ALTER COLUMN card_id SET NOT NULL;
--- ALTER TABLE public.card_image ADD CHECK (card_id >= 0);
+CREATE TABLE card_collection
+(
+    id      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    card_id INTEGER      NOT NULL CHECK (card_id >= 0),
+    user_id VARCHAR(100) NOT NULL CHECK (user_id <> ''),
+    amount  INTEGER      NOT NULL DEFAULT 0 CHECK (amount >= 0 AND amount < 1000),
+    UNIQUE (card_id, user_id)
+);
