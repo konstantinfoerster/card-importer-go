@@ -1,6 +1,8 @@
 services:
   srv:
     image: card-service:local
+    depends_on:
+      - db
     links:
       - "db:database"
     ports:
@@ -8,13 +10,13 @@ services:
     volumes:
       - ./configs:/config
   img:
-    image: nginx:1.23
+    image: nginx:1.27-alpine
     volumes:
-      - ./images_2:/usr/share/nginx/html
+      - ./images:/usr/share/nginx/html
     ports:
       - "8080:80"
   db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine3.20
     healthcheck:
       test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "postgres" ]
       timeout: 45s
@@ -28,6 +30,7 @@ services:
       APP_DB_PASS: tester
       APP_DB_NAME: cardmanager
     volumes:
-      - ./db:/docker-entrypoint-initdb.d
+      - ./internal/postgres/testdata/db:/docker-entrypoint-initdb.d
+      - ./dbdata:/var/lib/postgresql
     ports:
       - "15432:5432"

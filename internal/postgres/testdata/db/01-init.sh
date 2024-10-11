@@ -11,4 +11,3 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
 EOSQL
 
 psql --username "$APP_DB_USER" --dbname "$APP_DB_NAME" -f  /docker-entrypoint-initdb.d/02-create-tables.sql
-
