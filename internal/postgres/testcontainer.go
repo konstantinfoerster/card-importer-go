@@ -87,7 +87,7 @@ func (r *DatabaseRunner) runPostgresContainer(ctx context.Context, f func(c conf
 	var initScriptDirPermissions int64 = 0755
 	// TODO: read env variables from config
 	req := testcontainers.ContainerRequest{
-		Image:        "postgres:16-alpine",
+		Image:        "postgres:17-alpine3.20",
 		ExposedPorts: []string{"5432/tcp"},
 		Files: []testcontainers.ContainerFile{
 			{
