@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine3.20 AS builder
+FROM golang:1.23-alpine3.20 AS builder
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ RUN go build -ldflags="-s -w" -o card-dataset-cli cmd/dataset/main.go && \
     go build -ldflags="-s -w" -o card-images-cli cmd/images/main.go && \
     chmod 0755 /app/card-images-cli
 
-FROM alpine:3.20
+FROM alpine:3.20 AS dev
 
 ARG RELEASE
 ENV IMG_VERSION="${RELEASE}"
@@ -43,3 +43,21 @@ LABEL org.opencontainers.image.title="Card Importer CLI" \
       org.opencontainers.image.vendor="Konstantin Förster" \
       org.opencontainers.image.authors="Konstantin Förster"
 
+FROM scratch AS prod
+
+ARG RELEASE
+ENV IMG_VERSION="${RELEASE}"
+
+COPY --from=dev /usr/bin/card-dataset-cli /usr/bin/card-dataset-cli
+COPY --from=dev /usr/bin/card-images-cli /usr/bin/card-images-cli
+
+USER nobody
+
+CMD ["/usr/bin/card-dataset-cli", "--config", "/config/application.yaml"]
+
+LABEL org.opencontainers.image.title="Card Importer CLI" \
+      org.opencontainers.image.description="CLI tool to import card datasets into a database" \
+      org.opencontainers.image.version="$IMG_VERSION" \
+      org.opencontainers.image.source="https://github.com/konstantinfoerster/card-importer-go.git" \
+      org.opencontainers.image.vendor="Konstantin Förster" \
+      org.opencontainers.image.authors="Konstantin Förster"

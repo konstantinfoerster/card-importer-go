@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"sync"
 	"testing"
 
 	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
@@ -35,16 +36,22 @@ func (s *MockSetService) Count() (int, error) {
 }
 
 type MockCardService struct {
+	mu         sync.Mutex
 	Cards      []card.Card
 	FakeImport func(count int, set *card.Card) error
 }
 
 func (s *MockCardService) Import(card *card.Card) error {
+	// will be called concurrently from the importer
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if s.FakeImport != nil {
 		if err := s.FakeImport(len(s.Cards), card); err != nil {
 			return err
 		}
 	}
+
 	s.Cards = append(s.Cards, *card)
 
 	return nil

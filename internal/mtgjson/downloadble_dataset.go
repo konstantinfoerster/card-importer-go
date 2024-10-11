@@ -43,36 +43,35 @@ type downloadedFile struct {
 // Get Returns the file path to the downloaded file. If the file is a zip, it will be extracted and
 // expected to contain exactly one file. In that case the path to the extracted file will be returned.
 func (d downloadedFile) Get() (string, error) {
-	if d.mimeType.IsZip() {
-		var err error
-		defer func(name string) {
-			rErr := os.Remove(name)
-			if rErr != nil {
-				// report remove errors
-				if err == nil {
-					err = rErr
-				} else {
-					err = errors.Wrap(err, rErr.Error())
-				}
+	if !d.mimeType.IsZip() {
+		return d.filepath, nil
+	}
+	var err error
+	defer func(name string) {
+		rErr := os.Remove(name)
+		if rErr != nil {
+			// report remove errors
+			if err == nil {
+				err = rErr
 			} else {
-				log.Info().Msgf("Delete zip file %s", name)
+				err = errors.Wrap(err, rErr.Error())
 			}
-		}(d.filepath)
-
-		dest := filepath.Dir(d.filepath)
-		files, err := unzip(d.filepath, dest)
-		if err != nil {
-			return "", err
+		} else {
+			log.Info().Msgf("Delete zip file %s", name)
 		}
+	}(d.filepath)
 
-		if len(files) != 1 {
-			return "", fmt.Errorf("unexpected file count inside zip file, expected 1 but found %d", len(files))
-		}
-
-		return files[0], err
+	dest := filepath.Dir(d.filepath)
+	files, err := unzip(d.filepath, dest)
+	if err != nil {
+		return "", err
 	}
 
-	return d.filepath, nil
+	if len(files) != 1 {
+		return "", fmt.Errorf("unexpected file count inside zip file, expected 1 but found %d", len(files))
+	}
+
+	return files[0], err
 }
 
 func (imp *downloadableDataset) Import(r io.Reader) (*dataset.Report, error) {
@@ -116,6 +115,7 @@ func (imp *downloadableDataset) Import(r io.Reader) (*dataset.Report, error) {
 		return nil, err
 	}
 
+	fileToImport = filepath.Clean(fileToImport)
 	f, err := os.Open(fileToImport)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file %s %w", fileToImport, err)
@@ -207,6 +207,8 @@ func unzip(src string, dest string) ([]string, error) {
 }
 
 func writeFile(zippedFile *zip.File, destFile string, readBytesN int64) (string, error) {
+	destFile = filepath.Clean(destFile)
+
 	if err := os.MkdirAll(filepath.Dir(filepath.Dir(destFile)), zippedFile.Mode()); err != nil {
 		return "", err
 	}

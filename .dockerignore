@@ -3,5 +3,5 @@
 .github/
 configs/
 images/
-db/
+dbdata/
 out

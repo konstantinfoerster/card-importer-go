@@ -5,6 +5,7 @@ import (
 	"math"
 	"net"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -95,20 +96,9 @@ type Storage struct {
 }
 
 func Load(path string) (*Config, error) {
-	s, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
+	p := filepath.Clean(path)
 
-	if s.IsDir() {
-		return nil, fmt.Errorf("'%s' is a directory, not a regular file", path)
-	}
-
-	return buildConfig(path)
-}
-
-func buildConfig(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(p)
 	if err != nil {
 		return nil, fmt.Errorf("can't read config file: %w", err)
 	}

@@ -17,9 +17,9 @@ import (
 var ErrBrokenImage = fmt.Errorf("broken image")
 
 type ImageResult struct {
-	MatchingFaceID int64
-	MimeType       fetch.MimeType
 	File           io.Reader
+	MimeType       fetch.MimeType
+	MatchingFaceID int64
 }
 
 func (img *ImageResult) toCardImage(c *card.Card, lang string) *card.Image {
@@ -142,6 +142,7 @@ func (i *images) importCard(c *card.Card, lang string) error {
 		if err != nil {
 			return fmt.Errorf("failed to open file %s, %w", storedFile.AbsolutePath, err)
 		}
+		defer f.Close()
 
 		img, err := jpeg.Decode(f)
 		if err != nil {

@@ -58,6 +58,7 @@ func (s *localStorage) Store(r io.Reader, path ...string) (*StoredFile, error) {
 		flags |= os.O_EXCL // file must not exist
 	}
 
+	// #nosec G304 fromBasePath does already a path cleanup
 	target, err := os.OpenFile(filePath, flags, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create empty file %s with mode %s %w", filePath, s.config.Mode, err)
@@ -112,6 +113,7 @@ func (s *localStorage) Load(path ...string) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("loading a directory is not supported")
 	}
 
+	// #nosec G304 fromBasePath does already a path cleanup
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file %s %w", filePath, err)

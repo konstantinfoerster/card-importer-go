@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
@@ -514,10 +513,10 @@ func (d *PostgresCardDao) AddImage(img *Image) error {
 	var id int64
 	err := d.db.Conn.QueryRow(context.TODO(),
 		query, img.ImagePath, img.Lang, img.CardID, img.FaceID, img.MimeType,
-		strconv.FormatUint(img.PHash1, 2),
-		strconv.FormatUint(img.PHash2, 2),
-		strconv.FormatUint(img.PHash3, 2),
-		strconv.FormatUint(img.PHash4, 2),
+		fmt.Sprintf("%064b", img.PHash1),
+		fmt.Sprintf("%064b", img.PHash2),
+		fmt.Sprintf("%064b", img.PHash3),
+		fmt.Sprintf("%064b", img.PHash4),
 	).Scan(&id)
 	if err != nil {
 		return fmt.Errorf("failed to execute card insert %w", err)

@@ -1,15 +1,17 @@
-CREATE TABLE public.lang
+CREATE TABLE lang
 (
     lang CHAR(3) PRIMARY KEY NOT NULL CHECK (lang = lower(lang) AND lang <> '') -- <> == not equal
 );
 
-INSERT INTO public.lang
+INSERT INTO lang
 VALUES ('deu');
-INSERT INTO public.lang
+INSERT INTO lang
 VALUES ('eng');
+INSERT INTO lang
+VALUES ('fra');
 
 -- Border --
-CREATE TYPE public.border AS ENUM (
+CREATE TYPE border AS ENUM (
     'WHITE',
     'BLACK',
     'SILVER',
@@ -18,7 +20,7 @@ CREATE TYPE public.border AS ENUM (
     );
 
 -- Card set type --
-CREATE TYPE public.card_set_type AS ENUM (
+CREATE TYPE card_set_type AS ENUM (
     'CORE',
     'EXPANSION',
     'REPRINT',
@@ -42,12 +44,11 @@ CREATE TYPE public.card_set_type AS ENUM (
     'TREASURE_CHEST',
     'SPELLBOOK',
     'ARSENAL',
-    'ALCHEMY',
-    'MINIGAME'
+    'ALCHEMY'
     );
 
 -- Layout --
-CREATE TYPE public.layout AS ENUM (
+CREATE TYPE layout AS ENUM (
     'NORMAL',
     'SPLIT',
     'FLIP',
@@ -68,14 +69,11 @@ CREATE TYPE public.layout AS ENUM (
     'HOST',
     'AUGMENT',
     'CLASS',
-    'REVERSIBLE_CARD',
-    'PROTOTYPE',
-    'MUTATE',
-    'CASE'
+    'REVERSIBLE_CARD'
     );
 
 -- Rarity --
-CREATE TYPE public.rarity AS ENUM (
+CREATE TYPE rarity AS ENUM (
     'COMMON',
     'UNCOMMON',
     'RARE',
@@ -86,95 +84,95 @@ CREATE TYPE public.rarity AS ENUM (
     );
 
 -- Sub Type --
-CREATE TABLE public.sub_type
+CREATE TABLE sub_type
 (
     id   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name VARCHAR(100) NOT NULL CHECK ( name <> '' ),
     UNIQUE (name)
 );
 
-CREATE TABLE public.sub_type_translation
+CREATE TABLE sub_type_translation
 (
     id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name        VARCHAR(100) NOT NULL CHECK ( name <> '' ),
-    lang_lang   CHAR(3) REFERENCES public.lang (lang),
-    sub_type_id INTEGER REFERENCES public.sub_type (id) ON DELETE CASCADE,
+    lang_lang   CHAR(3) REFERENCES lang (lang),
+    sub_type_id INTEGER REFERENCES sub_type (id) ON DELETE CASCADE,
     UNIQUE (lang_lang, sub_type_id)
 );
 
 -- Super Type --
-CREATE TABLE public.super_type
+CREATE TABLE super_type
 (
     id   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name VARCHAR(100) NOT NULL CHECK ( name <> '' ),
     UNIQUE (name)
 );
 
-CREATE TABLE public.super_type_translation
+CREATE TABLE super_type_translation
 (
     id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name          VARCHAR(100) NOT NULL CHECK ( name <> '' ),
-    lang_lang     CHAR(3) REFERENCES public.lang (lang),
-    super_type_id INTEGER REFERENCES public.super_type (id) ON DELETE CASCADE,
+    lang_lang     CHAR(3) REFERENCES lang (lang),
+    super_type_id INTEGER REFERENCES super_type (id) ON DELETE CASCADE,
     UNIQUE (lang_lang, super_type_id)
 );
 
 -- Card Type --
-CREATE TABLE public.card_type
+CREATE TABLE card_type
 (
     id   INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name VARCHAR(100) NOT NULL CHECK ( name <> '' ),
     UNIQUE (name)
 );
 
-CREATE TABLE public.card_type_translation
+CREATE TABLE card_type_translation
 (
     id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name         VARCHAR(100) NOT NULL CHECK ( name <> '' ),
-    lang_lang    CHAR(3) REFERENCES public.lang (lang),
-    card_type_id INTEGER REFERENCES public.card_type (id) ON DELETE CASCADE,
+    lang_lang    CHAR(3) REFERENCES lang (lang),
+    card_type_id INTEGER REFERENCES card_type (id) ON DELETE CASCADE,
     UNIQUE (lang_lang, card_type_id)
 );
 
 -- Card Block --
-CREATE TABLE public.card_block
+CREATE TABLE card_block
 (
     id    INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     block VARCHAR(255) NOT NULL UNIQUE CHECK ( block <> '' )
 );
 
-CREATE TABLE public.card_block_translation
+CREATE TABLE card_block_translation
 (
     id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     block         VARCHAR(255) NOT NULL CHECK ( block <> '' ),
-    lang_lang     CHAR(3) REFERENCES public.lang (lang),
-    card_block_id INTEGER REFERENCES public.card_block (id) ON DELETE CASCADE,
+    lang_lang     CHAR(3) REFERENCES lang (lang),
+    card_block_id INTEGER REFERENCES card_block (id) ON DELETE CASCADE,
     UNIQUE (lang_lang, card_block_id)
 );
 
 -- Card Set --
-CREATE TABLE public.card_set
+CREATE TABLE card_set
 (
     code          VARCHAR(10) PRIMARY KEY NOT NULL CHECK ( code <> '' AND code = upper(code)),
     name          VARCHAR(255)            NOT NULL CHECK ( name <> '' ),
     type          card_set_type           NOT NULL, -- Enum
-    released      DATE, -- TODO check if not null is possible
+    released      DATE,                             -- TODO check if not null is possible
     total_count   INTEGER                 NOT NULL CHECK ( total_count >= 0 ),
-    card_block_id INTEGER REFERENCES public.card_block (id),
+    card_block_id INTEGER REFERENCES card_block (id),
     UNIQUE (code, card_block_id)
 );
 
-CREATE TABLE public.card_set_translation
+CREATE TABLE card_set_translation
 (
     id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name          VARCHAR(255) NOT NULL CHECK ( name <> '' ),
-    lang_lang     CHAR(3) REFERENCES public.lang (lang),
-    card_set_code VARCHAR(10) REFERENCES public.card_set (code) ON DELETE CASCADE,
+    lang_lang     CHAR(3) REFERENCES lang (lang),
+    card_set_code VARCHAR(10) REFERENCES card_set (code) ON DELETE CASCADE,
     UNIQUE (lang_lang, card_set_code)
 );
 
 -- Card --
-CREATE TABLE public.card
+CREATE TABLE card
 (
     id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name          VARCHAR(255) NOT NULL CHECK ( name <> '' ),
@@ -187,7 +185,7 @@ CREATE TABLE public.card
 );
 
 
-CREATE TABLE public.card_face
+CREATE TABLE card_face
 (
     id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name                VARCHAR(255)   NOT NULL CHECK ( name <> '' ),
@@ -204,10 +202,12 @@ CREATE TABLE public.card_face
     multiverse_id       INTEGER CHECK (multiverse_id >= 0 OR multiverse_id IS NULL), -- id from gatherer.wizards.com, id per lang
     power               VARCHAR(255),
     toughness           VARCHAR(255),
-    card_id             INTEGER REFERENCES public.card (id) ON DELETE CASCADE
+    card_id             INTEGER REFERENCES card (id) ON DELETE CASCADE
 );
 
-CREATE TABLE public.card_translation
+CREATE INDEX idx_card_face_name_card_id on card_face(card_id, name);
+
+CREATE TABLE card_translation
 (
     id            INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name          VARCHAR(255) NOT NULL CHECK ( name <> '' ),
@@ -215,37 +215,37 @@ CREATE TABLE public.card_translation
     text          VARCHAR(800),
     flavor_text   VARCHAR(500),
     type_line     VARCHAR(255),
-    lang_lang     CHAR(3) REFERENCES public.lang (lang),
-    face_id       INTEGER REFERENCES public.card_face (id) ON DELETE CASCADE,
+    lang_lang     CHAR(3) REFERENCES lang (lang),
+    face_id       INTEGER REFERENCES card_face (id) ON DELETE CASCADE,
     UNIQUE (lang_lang, face_id)
 );
 
-CREATE TABLE public.face_super_type
+CREATE TABLE face_super_type
 (
-    face_id INTEGER REFERENCES public.card_face (id),
-    type_id INTEGER REFERENCES public.super_type (id),
+    face_id INTEGER REFERENCES card_face (id),
+    type_id INTEGER REFERENCES super_type (id),
     UNIQUE (face_id, type_id)
 );
 
-CREATE TABLE public.face_sub_type
+CREATE TABLE face_sub_type
 (
-    face_id INTEGER REFERENCES public.card_face (id),
-    type_id INTEGER REFERENCES public.sub_type (id),
+    face_id INTEGER REFERENCES card_face (id),
+    type_id INTEGER REFERENCES sub_type (id),
     UNIQUE (face_id, type_id)
 );
 
-CREATE TABLE public.face_card_type
+CREATE TABLE face_card_type
 (
-    face_id INTEGER REFERENCES public.card_face (id),
-    type_id INTEGER REFERENCES public.card_type (id),
+    face_id INTEGER REFERENCES card_face (id),
+    type_id INTEGER REFERENCES card_type (id),
     UNIQUE (face_id, type_id)
 );
 
 
-CREATE TABLE public.card_image
+CREATE TABLE card_image
 (
     id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    image_path VARCHAR(255) NOT NULL CHECK (image_path <> ''),
+    image_path VARCHAR(255) NOT NULL CHECK ( image_path <> '' ),
     card_id    INTEGER      NOT NULL CHECK (card_id >= 0),
     face_id    INTEGER,
     mime_type  VARCHAR(100) NOT NULL CHECK (mime_type <> ''),
@@ -253,16 +253,24 @@ CREATE TABLE public.card_image
     phash2     BIT(64),
     phash3     BIT(64),
     phash4     BIT(64),
-    lang_lang  CHAR(3) REFERENCES public.lang (lang),
+    lang_lang  CHAR(3) REFERENCES lang (lang),
     UNIQUE (image_path)
 );
 
+CREATE INDEX idx_card_image_hashes on card_image(phash1, phash2, phash3, phash4);
 
---- Updates
--- ALTER TABLE public.card_image ADD mime_type VARCHAR(100);
--- UPDATE public.card_image SET mime_type = 'image/jpeg';
--- ALTER TABLE public.card_image ALTER COLUMN mime_type SET NOT NULL;
--- ALTER TABLE public.card_image ADD CHECK ( mime_type <> '' );
---
--- ALTER TABLE public.card_image ALTER COLUMN card_id SET NOT NULL;
--- ALTER TABLE public.card_image ADD CHECK (card_id >= 0);
+CREATE TABLE card_collection
+(
+    id      INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    card_id INTEGER      NOT NULL CHECK (card_id >= 0),
+    user_id VARCHAR(100) NOT NULL CHECK (user_id <> ''),
+    amount  INTEGER      NOT NULL DEFAULT 0 CHECK (amount >= 0 AND amount < 1000),
+    UNIQUE (card_id, user_id)
+);
+
+-- Updates
+ALTER TYPE layout ADD VALUE 'PROTOTYPE';
+ALTER TYPE layout ADD VALUE 'MUTATE';
+ALTER TYPE layout ADD VALUE 'CASE';
+ALTER TYPE card_set_type ADD VALUE 'MINIGAME';
+
