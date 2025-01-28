@@ -94,6 +94,9 @@ dir of the project to start the linting process.
   * Faces could be deleted
   * Maybe just the name?
 * Use attribute side to identify card face?  
+* store hash of image 
+  * can be used to find card face by hash
+* store fallback image
 
 First idea how to serve the images:
 
