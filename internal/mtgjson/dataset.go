@@ -47,14 +47,14 @@ func (imp *mtgJSONDataset) Import(r io.Reader) (*dataset.Report, error) {
 			return nil, r.Err
 		}
 		switch v := r.Result.(type) {
-		case *mtgjsonCardSet:
+		case mtgjsonCardSet:
 			entry := mapToCardSet(v, imp.languages)
 
 			if err := imp.setService.Import(entry); err != nil {
 				return nil, err
 			}
 			log.Info().Msgf("Finished set %s", entry.Code)
-		case *mtgjsonCard:
+		case mtgjsonCard:
 			entry, err := mapToCard(v, imp.languages)
 			if err != nil {
 				return nil, err
@@ -105,7 +105,7 @@ func (imp *mtgJSONDataset) Import(r io.Reader) (*dataset.Report, error) {
 	}, nil
 }
 
-func expectedFaceCount(v *mtgjsonCard) int {
+func expectedFaceCount(v mtgjsonCard) int {
 	// meld cards have two sides but the back is only the first half of a card, so it does not count as a face
 	if strings.ToUpper(v.Layout) == "MELD" {
 		return 1
@@ -130,7 +130,7 @@ func (f *faceCollector) HasUncollectedEntries() bool {
 }
 
 // RequiresMoreFaces Collects the given amount of faces. Returns false if all faces for a card are collected.
-func (f *faceCollector) RequiresMoreFaces(faceCount int, v *mtgjsonCard, card *card.Card) bool {
+func (f *faceCollector) RequiresMoreFaces(faceCount int, v mtgjsonCard, card *card.Card) bool {
 	if faceCount > 1 {
 		key := fmt.Sprintf("%s_%s", card.CardSetCode, v.Number)
 		value, ok := f.doubleFaceCards[key]
@@ -154,7 +154,7 @@ func (f *faceCollector) RequiresMoreFaces(faceCount int, v *mtgjsonCard, card *c
 	return false
 }
 
-func mapToCardSet(s *mtgjsonCardSet, langMapper dataset.LanguageMapper) *cardset.CardSet {
+func mapToCardSet(s mtgjsonCardSet, langMapper dataset.LanguageMapper) *cardset.CardSet {
 	released, err := time.Parse("2006-01-02", strings.TrimSpace(s.Released)) // ISO 8601 YYYY-MM-DD
 	if err != nil {
 		released = time.Time{}
@@ -183,7 +183,7 @@ func mapToCardSet(s *mtgjsonCardSet, langMapper dataset.LanguageMapper) *cardset
 	return set
 }
 
-func mapToCard(c *mtgjsonCard, langMapper dataset.LanguageMapper) (*card.Card, error) {
+func mapToCard(c mtgjsonCard, langMapper dataset.LanguageMapper) (*card.Card, error) {
 	multiverseID, err := strToInt(c.Identifiers.MultiverseID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert 'MultiverseID' value %s into an int32. %w", c.Identifiers.MultiverseID, err)

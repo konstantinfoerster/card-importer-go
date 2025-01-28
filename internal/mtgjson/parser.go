@@ -15,8 +15,8 @@ type result struct {
 	Err    error
 }
 
-func parse(ctx context.Context, r io.Reader) <-chan *result {
-	c := make(chan *result)
+func parse(ctx context.Context, r io.Reader) <-chan result {
+	c := make(chan result)
 
 	go func() {
 		defer close(c)
@@ -24,7 +24,7 @@ func parse(ctx context.Context, r io.Reader) <-chan *result {
 		dec := json.NewDecoder(r)
 
 		if err := expectNext(json.Delim('{'), dec); err != nil {
-			c <- &result{Result: nil, Err: err}
+			c <- result{Result: nil, Err: err}
 
 			return
 		}
@@ -34,14 +34,14 @@ func parse(ctx context.Context, r io.Reader) <-chan *result {
 		for dec.More() {
 			t, err := dec.Token()
 			if err != nil {
-				c <- &result{Result: nil, Err: err}
+				c <- result{Result: nil, Err: err}
 
 				return
 			}
 
 			if t != "data" {
 				if err := skip(dec); err != nil {
-					c <- &result{Result: nil, Err: err}
+					c <- result{Result: nil, Err: err}
 
 					return
 				}
@@ -50,7 +50,7 @@ func parse(ctx context.Context, r io.Reader) <-chan *result {
 			}
 
 			if err := expectNext(json.Delim('{'), dec); err != nil {
-				c <- &result{Result: nil, Err: err}
+				c <- result{Result: nil, Err: err}
 
 				return
 			}
@@ -58,13 +58,13 @@ func parse(ctx context.Context, r io.Reader) <-chan *result {
 			for dec.More() {
 				t, err := dec.Token() // 10E
 				if err != nil {
-					c <- &result{Result: nil, Err: err}
+					c <- result{Result: nil, Err: err}
 
 					return
 				}
 				if !isSetCodeFn(t) {
 					if err := skip(dec); err != nil {
-						c <- &result{Result: nil, Err: err}
+						c <- result{Result: nil, Err: err}
 					}
 
 					continue
@@ -74,7 +74,7 @@ func parse(ctx context.Context, r io.Reader) <-chan *result {
 					if ctx.Err() != nil {
 						return
 					}
-					c <- &result{Result: nil, Err: err}
+					c <- result{Result: nil, Err: err}
 
 					return
 				}
@@ -85,7 +85,7 @@ func parse(ctx context.Context, r io.Reader) <-chan *result {
 	return c
 }
 
-func parseSet(ctx context.Context, dec *json.Decoder, c chan<- *result) error {
+func parseSet(ctx context.Context, dec *json.Decoder, c chan<- result) error {
 	if err := expectNext(json.Delim('{'), dec); err != nil {
 		return err
 	}
@@ -180,7 +180,7 @@ func parseSet(ctx context.Context, dec *json.Decoder, c chan<- *result) error {
 		return nil
 	}
 
-	c <- &result{Result: &mtgjsonCardSet{
+	c <- result{Result: mtgjsonCardSet{
 		Code:         code,
 		Name:         name,
 		Block:        block,
@@ -193,7 +193,7 @@ func parseSet(ctx context.Context, dec *json.Decoder, c chan<- *result) error {
 	return expectNext(json.Delim('}'), dec)
 }
 
-func parseCard(ctx context.Context, c chan<- *result, dec *json.Decoder) error {
+func parseCard(ctx context.Context, c chan<- result, dec *json.Decoder) error {
 	if err := expectNext(json.Delim('['), dec); err != nil {
 		return err
 	}
@@ -205,12 +205,12 @@ func parseCard(ctx context.Context, c chan<- *result, dec *json.Decoder) error {
 		default:
 		}
 
-		var card *mtgjsonCard
+		var card mtgjsonCard
 		err := dec.Decode(&card)
 		if err != nil {
 			return err
 		}
-		c <- &result{Result: card, Err: nil}
+		c <- result{Result: card, Err: nil}
 	}
 
 	return expectNext(json.Delim(']'), dec)

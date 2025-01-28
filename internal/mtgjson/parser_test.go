@@ -131,7 +131,9 @@ func TestParseSet(t *testing.T) {
 					t.Errorf("unexpected parse result, got: %v, wanted to have no result", actual)
 				}
 
-				actual = append(actual, *r.Result.(*mtgjsonCardSet))
+				r, ok := r.Result.(mtgjsonCardSet)
+				assert.True(t, ok)
+				actual = append(actual, r)
 			}
 
 			assert.Equal(t, &tc.want, &actual)
@@ -236,10 +238,10 @@ func TestParseCards(t *testing.T) {
 				}
 
 				switch v := r.Result.(type) {
-				case *mtgjsonCardSet:
+				case mtgjsonCardSet:
 					actualSets = append(actualSets, v.Code)
-				case *mtgjsonCard:
-					actualCards = append(actualCards, *v)
+				case mtgjsonCard:
+					actualCards = append(actualCards, v)
 				default:
 					t.Errorf("unknown type in parse result %v", v)
 				}
@@ -254,7 +256,7 @@ func TestParseCards(t *testing.T) {
 	}
 }
 
-func assertChannelClosed(t *testing.T, c <-chan *result) {
+func assertChannelClosed(t *testing.T, c <-chan result) {
 	t.Helper()
 
 	if _, ok := <-c; ok {
