@@ -25,7 +25,7 @@ type DatabaseRunner struct {
 func (r *DatabaseRunner) Run(t *testing.T, runTests func(t *testing.T)) {
 	t.Helper()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	err := r.runPostgresContainer(ctx, func(cfg config.Database) error {
 		conn, err := Connect(ctx, cfg)
 		if err != nil {

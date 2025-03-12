@@ -1,14 +1,14 @@
 services:
-  srv:
-    image: card-service:local
-    depends_on:
-      - db
-    links:
-      - "db:database"
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./configs:/config
+  # srv:
+  #   image: card-service:local
+  #   depends_on:
+  #     - db
+  #   links:
+  #     - "db:database"
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+ #     - ./configs:/config
   img:
     image: nginx:1.27-alpine
     volumes:
@@ -18,7 +18,7 @@ services:
   db:
     image: postgres:17-alpine3.20
     healthcheck:
-      test: [ "CMD", "pg_isready", "-q", "-d", "postgres", "-U", "postgres" ]
+      test: ["CMD", "pg_isready", "-q", "-d", "postgres", "-U", "postgres"]
       timeout: 45s
       interval: 10s
       retries: 10

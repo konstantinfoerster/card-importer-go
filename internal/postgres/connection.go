@@ -28,6 +28,7 @@ func Connect(ctx context.Context, config config.Database) (*DBConnection, error)
 	c.MaxConnIdleTime = time.Millisecond * time.Duration(500)
 	c.HealthCheckPeriod = time.Millisecond * time.Duration(500)
 	c.MaxConns = config.MaxConnectionsOrDefault()
+
 	log.Info().Msgf("max database connection is set to %d", c.MaxConns)
 
 	pool, err := pgxpool.ConnectConfig(ctx, c)

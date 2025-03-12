@@ -7,19 +7,16 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
-	"strings"
 	"time"
 
-	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
-	"github.com/konstantinfoerster/card-importer-go/internal/api/cardset"
-	"github.com/konstantinfoerster/card-importer-go/internal/api/dataset"
+	"github.com/konstantinfoerster/card-importer-go/internal/cards"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
-	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
 	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/konstantinfoerster/card-importer-go/internal/timer"
+	"github.com/konstantinfoerster/card-importer-go/internal/web"
 	"github.com/rs/zerolog/log"
 )
 
@@ -59,7 +56,7 @@ func setup() (*url.URL, *config.Config) {
 	}
 
 	if downloadURL == "" {
-		downloadURL = cfg.Mtgjson.DownloadURL
+		downloadURL = cfg.Mtgjson.DatasetURL
 	}
 
 	log.Info().Msgf("OS\t\t %s", runtime.GOOS)
@@ -103,31 +100,23 @@ func main() {
 		}
 	}(conn.Close)
 
-	csService := cardset.NewService(cardset.NewDao(conn))
-	cService := card.NewService(card.NewDao(conn))
+	csService := cards.NewSetService(cards.NewSetDao(conn))
+	cService := cards.NewCardService(cards.NewCardDao(conn))
 	imp := mtgjson.NewImporter(csService, cService)
 
-	var report *dataset.Report
-	var iErr error
+	store, err := storage.NewLocalStorage(cfg.Storage)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to create local storage")
 
-	if datasetSource.Scheme == "" {
-		report, iErr = mtgjson.NewFileDataset(imp).Import(strings.NewReader(datasetSource.String()))
-	} else {
-		store, err := storage.NewLocalStorage(cfg.Storage)
-		if err != nil {
-			log.Error().Err(err).Msg("failed to create local storage")
-
-			return
-		}
-
-		allowedTypes := []string{fetch.MimeTypeZip, fetch.MimeTypeJSON}
-		client := &http.Client{
-			Timeout: cfg.HTTP.Timeout,
-		}
-		fetcher := fetch.NewFetcher(client, fetch.NewContentTypeValidator(allowedTypes))
-		report, iErr = mtgjson.NewDownloadableDataset(imp, fetcher, store).
-			Import(strings.NewReader(datasetSource.String()))
+		return
 	}
+
+	c := &http.Client{
+		Timeout: cfg.Mtgjson.Client.Timeout,
+	}
+	client := web.NewClient(cfg.Mtgjson.Client, c)
+	loader := mtgjson.NewLoader(imp, cfg.Mtgjson, client, store)
+	report, iErr := loader.Load(datasetSource)
 	if iErr != nil {
 		log.Error().Err(iErr).Msg("dataset import failed")
 

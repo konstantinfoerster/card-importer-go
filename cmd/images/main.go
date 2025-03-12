@@ -5,18 +5,19 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 
-	"github.com/konstantinfoerster/card-importer-go/internal/api/card"
-	"github.com/konstantinfoerster/card-importer-go/internal/api/images"
+	"github.com/konstantinfoerster/card-importer-go/internal/cards"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
-	"github.com/konstantinfoerster/card-importer-go/internal/fetch"
 	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 	"github.com/konstantinfoerster/card-importer-go/internal/scryfall"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/konstantinfoerster/card-importer-go/internal/timer"
+	"github.com/konstantinfoerster/card-importer-go/internal/web"
 	"github.com/rs/zerolog/log"
 )
 
@@ -27,11 +28,11 @@ const usage = `Usage: card-images-cli [options...]
   -h, --help prints help information
 `
 
-func setup() (images.PageConfig, *config.Config) {
+func setup() (cards.PageConfig, *config.Config) {
 	logger.SetupConsoleLogger()
 
 	var configPath string
-	var pageConfig images.PageConfig
+	var pageConfig cards.PageConfig
 
 	flag.StringVar(&configPath, "c", "./configs/application.yaml", "path to the configuration file")
 	flag.StringVar(&configPath, "config", "./configs/application.yaml", "path to the configuration file")
@@ -60,7 +61,7 @@ func setup() (images.PageConfig, *config.Config) {
 }
 
 func main() {
-	defer timer.TimeTrack(time.Now(), "images")
+	defer timer.TimeTrack(time.Now(), "images import")
 
 	pageConfig, cfg := setup()
 
@@ -70,11 +71,6 @@ func main() {
 
 		return
 	}
-	client := &http.Client{
-		Timeout: cfg.HTTP.Timeout,
-	}
-	allowedTypes := []string{fetch.MimeTypeJSON, fetch.MimeTypeJpeg, fetch.MimeTypePng}
-	fetcher := fetch.NewFetcher(client, fetch.NewContentTypeValidator(allowedTypes))
 
 	conn, err := postgres.Connect(context.Background(), cfg.Database)
 	if err != nil {
@@ -86,16 +82,48 @@ func main() {
 		cErr := toCloseFn()
 		if cErr != nil {
 			log.Error().Err(cErr).Msgf("Failed to close database connection")
+
+			return
 		}
+
+		log.Info().Msg("closed database connection")
 	}(conn.Close)
 
-	cardDao := card.NewDao(conn)
+	cardDao := cards.NewCardDao(conn)
 
-	report, err := images.NewImporter(cardDao, store, scryfall.NewDownloader(cfg.Scryfall, fetcher)).Import(pageConfig)
-	if err != nil {
-		log.Error().Err(err).Msg("image import failed")
-
-		return
+	client := &http.Client{
+		Timeout: cfg.Scryfall.Client.Timeout,
 	}
-	log.Info().Msgf("Report %#v", report)
+	wclient := web.NewClient(cfg.Scryfall.Client, client)
+	sclient := scryfall.NewClient(cfg.Scryfall, wclient, scryfall.DefaultLanguages)
+	importer := cards.NewImageImporter(cardDao, store, sclient)
+
+	ctx := context.Background()
+	done := make(chan bool, 1)
+	nCtx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		<-nCtx.Done()
+
+		log.Info().Msgf("image import exit with %v ...", nCtx.Err())
+
+		done <- true
+	}()
+
+	go func() {
+		defer func() {
+			done <- true
+		}()
+
+		report, err := importer.Import(pageConfig)
+		if err != nil {
+			log.Error().Err(err).Msg("image import failed")
+
+			return
+		}
+		log.Info().Msgf("Report %#v", report)
+	}()
+
+	<-done
 }

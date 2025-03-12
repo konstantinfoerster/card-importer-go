@@ -18,9 +18,9 @@ linters:
     - asasalint # check for pass []any as any in variadic func(...any)
     - bidichk # checks for dangerous unicode sequences (redundant with asciicheck)
     - bodyclose # checks for unclosed response body
-    - containedctx # checks if context.Context is used as struct field
+    # - containedctx # checks if context.Context is used as struct field, not really active
     - contextcheck # check the function whether use a non-inherited context
-    - cyclop # checks function and package cyclomatic complexity (redundant with gocognit)
+    # - cyclop # checks function and package cyclomatic complexity (redundant with gocognit)
     - decorder # check declaration order and count of types, constants, variables and functions
     - dogsled # checks assignments with too many blank identifiers (e.g. x, , , _, := f())
     - dupl # code clone detection
@@ -32,15 +32,16 @@ linters:
     - exhaustive # checks exhaustiveness of enum switch statements
     # - funlen # (many detects) detects long functions
     - gocheckcompilerdirectives # Checks that go compiler directive comments (//go:) are valid
-    - gochecknoglobals # checks that no global variables exist
-    - gochecknoinits  # checks that no init functions are present in Go code
+    # - gochecknoglobals # checks that no global variables exist. Some global variables are ok.
+    - gochecknoinits # checks that no init functions are present in Go code
     - gocognit # computes and checks the cognitive complexity of functions
     - goconst # finds repeated strings that could be replaced by a constant
     - gocritic # checks for bugs, performance and style issues
     - gocyclo # computes and checks the cyclomatic complexity of functions
     - godot # checks if comments end in a period
-    - gofmt # checks whether code was gofmt-ed
+    # - gofmt # checks whether code was gofmt-ed
     - goimports # in addition to fixing imports, goimports also formats your code in the same style as gofmt.
+    # - goci # Gci controls Go package import order and makes it always deterministic.
     #    - mnd # an analyzer to detect magic numbers # to many reports
     - gomoddirectives # manages the use of 'replace', 'retract', and 'excludes' directives in go.mod
     - goprintffuncname # checks that printf-like functions are named with f at the end
@@ -67,7 +68,8 @@ linters:
     - stylecheck # replacement for golint (redundant with revive?)
     - tagalign # check that struct tags are well aligned
     - tagliatelle # checks the struct tags
-    - tenv # analyzer that detects using os.Setenv instead of t.Setenv since Go1.17
+    # - tenv # analyzer that detects using os.Setenv instead of t.Setenv since Go1.17. deprecated
+    - usetesting # Reports uses of functions with replacement inside the testing package
     - testableexamples # checks if examples are testable (have an expected output)
     - testpackage # linter that makes you use a separate _test package
     - tparallel # detects inappropriate usage of t.Parallel() method in your Go test codes
@@ -139,9 +141,9 @@ linters-settings:
       - time.Sleep
       - time.Duration
     ignored-numbers:
-      - '500'
-      - '404'
-      - '400'
+      - "500"
+      - "404"
+      - "400"
   tenv:
     # The option `all` will run against whole test files (`_test.go`) regardless of method/function signatures.
     # Otherwise, only methods that take `*testing.T`, `*testing.B`, and `testing.TB` as arguments are checked.
@@ -149,13 +151,19 @@ linters-settings:
     all: true
 
 issues:
-  max-same-issues: 0 # 0 = disabled, default is 3
-  fix: false
+  max-issues-per-linter: 0 # = disabled, defailt = 50
+  max-same-issues: 0 # 0 = disabled, default = 3
+  exclude-dirs:
+    - .github
+    - build
+    - configs
   exclude-rules:
+    - path: web/client.go
+      linters:
+        - bodyclose
     - path: _test\.go
       linters:
         - forcetypeassert
-        - gochecknoglobals
         - lll
         - goconst
         - funlen
