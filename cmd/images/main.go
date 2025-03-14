@@ -106,7 +106,7 @@ func main() {
 	go func() {
 		<-nCtx.Done()
 
-		log.Info().Msgf("image import exit with %v ...", nCtx.Err())
+		log.Info().Msgf("image import exit ...")
 
 		done <- true
 	}()
