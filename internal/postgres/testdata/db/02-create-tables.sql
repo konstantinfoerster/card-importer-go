@@ -16,7 +16,8 @@ CREATE TYPE border AS ENUM (
     'BLACK',
     'SILVER',
     'GOLD',
-    'BORDERLESS'
+    'BORDERLESS',
+    'YELLOW'
     );
 
 -- Card set type --

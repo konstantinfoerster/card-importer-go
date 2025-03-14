@@ -21,7 +21,7 @@ on:
     - cron: "36 19 * * 2"
 
 env:
-  GO_VERSION: "1.23.x"
+  GO_VERSION: "1.24.x"
 
 permissions:
   contents: read

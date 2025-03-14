@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine3.20 AS builder
+FROM golang:1.24-alpine3.21 AS builder
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ RUN go build -ldflags="-s -w" -o card-dataset-cli cmd/dataset/main.go && \
     go build -ldflags="-s -w" -o card-images-cli cmd/images/main.go && \
     chmod 0755 /app/card-images-cli
 
-FROM alpine:3.20 AS dev
+FROM alpine:3.21 AS dev
 
 ARG RELEASE
 ENV IMG_VERSION="${RELEASE}"

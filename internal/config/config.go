@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
+	"github.com/konstantinfoerster/card-importer-go/internal/web"
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,7 +20,6 @@ type Config struct {
 	Mtgjson  Mtgjson  `yaml:"mtgjson"`
 	Scryfall Scryfall `yaml:"scryfall"`
 	Database Database `yaml:"database"`
-	HTTP     HTTP     `yaml:"http"`
 }
 
 type Database struct {
@@ -54,12 +54,29 @@ func (d Database) MaxConnectionsOrDefault() int32 {
 	return d.MaxConnections
 }
 
-type HTTP struct {
-	Timeout time.Duration `yaml:"timeout"`
+type Scryfall struct {
+	BaseURL string     `yaml:"baseUrl"`
+	Client  web.Config `yaml:"client"`
+}
+
+func (s Scryfall) EnsureBaseURL(urlPath string) (string, error) {
+	imgURL, err := url.Parse(urlPath)
+	if err != nil {
+		return "", fmt.Errorf("invalid url %s, %w", imgURL, err)
+	}
+
+	if strings.TrimSpace(imgURL.Scheme) == "" {
+		u := strings.TrimSuffix(s.BaseURL, "/") + "/" + strings.TrimPrefix(urlPath, "/")
+
+		return u, nil
+	}
+
+	return imgURL.String(), nil
 }
 
 type Mtgjson struct {
-	DownloadURL string `yaml:"downloadUrl"`
+	DatasetURL string     `yaml:"datasetUrl"`
+	Client     web.Config `yaml:"client"`
 }
 
 type Logging struct {
@@ -73,16 +90,6 @@ func (l Logging) LevelOrDefault() string {
 	}
 
 	return strings.ToLower(level)
-}
-
-type Scryfall struct {
-	DownloadURL string `yaml:"downloadUrl"`
-}
-
-func (i Scryfall) BuildJSONDownloadURL(setCode string, cardNumber string, lang string) string {
-	r := strings.NewReplacer("{code}", setCode, "{number}", cardNumber, "{lang}", lang, "{format}", "json")
-
-	return strings.ToLower(r.Replace(i.DownloadURL))
 }
 
 const (

@@ -1,0 +1,10 @@
+{
+  "card_faces": [
+    {
+      "name": "ImageNotFound",
+      "image_uris": {
+        "normal": "images/notFound.jpg"
+      }
+    }
+  ]
+}

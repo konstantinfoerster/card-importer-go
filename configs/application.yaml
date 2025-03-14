@@ -8,14 +8,20 @@ database:
   username: tester
   password: tester
 
-http:
-  timeout: 60s
-
 mtgjson:
-  downloadUrl: https://mtgjson.com/api/v5/AllPrintings.json.zip
+  datasetUrl: https://mtgjson.com/api/v5/AllPrintings.json.zip
+  client:
+    timeout: 60s
 
 scryfall:
-  downloadUrl: https://api.scryfall.com/cards/{code}/{number}/{lang}?format={format}&version=normal
+  baseUrl: https://api.scryfall.com
+  client:
+    timeout: 60s
+    retries: 3
+    retrieables:
+      - 502
+      - 520
+    delay: 50ms
 
 storage:
   location: /tmp/images
