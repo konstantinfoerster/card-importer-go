@@ -458,34 +458,6 @@ func (d *PostgresCardDao) IsImagePresent(ctx context.Context, faceID int64, lang
 	return isPresent, nil
 }
 
-// GetImage Checks if the card image with the specified card id and language exist.
-func (d *PostgresCardDao) GetImage(cardID int64, lang string) (*Image, error) {
-	query := `
-		SELECT
-			id, image_path, card_id, face_id, mime_type, phash1, phash2,
-            phash3, phash4, lang_lang
-		FROM
-			card_image
-        WHERE
-			lang_lang = $1 AND card_id = $2`
-	var img Image
-	var phash1 pgtype.Varbit
-	var phash2 pgtype.Varbit
-	var phash3 pgtype.Varbit
-	var phash4 pgtype.Varbit
-	err := d.db.Conn.QueryRow(context.TODO(), query, lang, cardID).Scan(&img.ID, &img.ImagePath, &img.CardID,
-		&img.FaceID, &img.MimeType, &phash1, &phash2, &phash3, &phash4, &img.Lang)
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute select on card_image %w", err)
-	}
-	img.PHash1 = binary.BigEndian.Uint64(phash1.Bytes)
-	img.PHash2 = binary.BigEndian.Uint64(phash2.Bytes)
-	img.PHash3 = binary.BigEndian.Uint64(phash3.Bytes)
-	img.PHash4 = binary.BigEndian.Uint64(phash4.Bytes)
-
-	return &img, nil
-}
-
 // CountImages Returns the amount of all card images.
 func (d *PostgresCardDao) CountImages() (int, error) {
 	row := d.db.Conn.QueryRow(context.TODO(), "SELECT count(id) FROM card_image")
@@ -529,7 +501,8 @@ func (d *PostgresCardDao) AddImage(ctx context.Context, img *Image) error {
 func (d *PostgresCardDao) GetImages() ([]*Image, error) {
 	query := `
 		SELECT
-			id, image_path, card_id, face_id, mime_type, lang_lang
+			id, image_path, card_id, face_id, mime_type, phash1, phash2,
+            phash3, phash4, lang_lang
 		FROM
 			card_image
         `
@@ -541,14 +514,23 @@ func (d *PostgresCardDao) GetImages() ([]*Image, error) {
 
 	var result []*Image
 	for rows.Next() {
-		img := &Image{}
+		var img Image
+		var phash1 pgtype.Varbit
+		var phash2 pgtype.Varbit
+		var phash3 pgtype.Varbit
+		var phash4 pgtype.Varbit
 		rErr := rows.Scan(&img.ID, &img.ImagePath, &img.CardID,
-			&img.FaceID, &img.MimeType, &img.Lang)
+			&img.FaceID, &img.MimeType, &phash1, &phash2, &phash3, &phash4, &img.Lang)
 		if rErr != nil {
 			return nil, fmt.Errorf("failed to execute select on card_image %w", rErr)
 		}
 
-		result = append(result, img)
+		img.PHash1 = binary.BigEndian.Uint64(phash1.Bytes)
+		img.PHash2 = binary.BigEndian.Uint64(phash2.Bytes)
+		img.PHash3 = binary.BigEndian.Uint64(phash3.Bytes)
+		img.PHash4 = binary.BigEndian.Uint64(phash4.Bytes)
+
+		result = append(result, &img)
 	}
 
 	if rows.Err() != nil {

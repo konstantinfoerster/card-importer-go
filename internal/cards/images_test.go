@@ -1,9 +1,9 @@
 package cards_test
 
 import (
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -38,18 +38,13 @@ func TestImageIntegration(t *testing.T) {
 	runner = postgres.NewRunner()
 	runner.Run(t, func(t *testing.T) {
 		cardDao = cards.NewCardDao(runner.Connection())
-		t.Run("import images for different sets", importDifferentSets)
-		t.Run("import image multiple times", importSameImageMultipleTimes)
+		t.Run("import image multiple times", skipAlreadyImportedImages)
 		t.Run("import image with phashes", hasPHashes)
-		t.Run("import even when face name does not match", importWithoutFaceMatch)
-		t.Run("no card is matching", noCardMatches)
-		t.Run("skips missing languages", importNextLanguageOnMissingCard)
-		t.Run("skips missing faces", importMultiFaces)
-		t.Run("error cases", testErrorCases)
+		t.Run("import images", importImages)
 	})
 }
 
-func createCard(t *testing.T, c *cards.Card) {
+func createCard(t *testing.T, cc ...cards.Card) {
 	t.Helper()
 
 	withDefaults := func(c *cards.Card) *cards.Card {
@@ -61,99 +56,17 @@ func createCard(t *testing.T, c *cards.Card) {
 	}
 
 	cardService := cards.NewCardService(cardDao)
-	err := cardService.Import(withDefaults(c))
-
-	require.NoError(t, err, "failed to create card")
-}
-
-func noCardMatches(t *testing.T) {
-	t.Cleanup(runner.Cleanup(t))
-	localStorage, err := storage.NewLocalStorage(config.Storage{Location: t.TempDir()})
-	require.NoError(t, err)
-
-	createCard(t, &cards.Card{
-		CardSetCode: "20E",
-		Number:      "1",
-		Name:        "First",
-		Faces: []*cards.Face{
-			{
-				Name: "First",
-			},
-		},
-	})
-
-	importer := cards.NewImageImporter(cardDao, localStorage, sclient)
-	report, err := importer.Import(limitFirstPage20Entries)
-	require.NoError(t, err)
-
-	imgCount, err := cardDao.CountImages()
-	require.NoError(t, err)
-
-	assert.Equal(t, 0, report.Downloaded)
-	assert.Equal(t, 0, imgCount)
-}
-
-func importDifferentSets(t *testing.T) {
-	t.Cleanup(runner.Cleanup(t))
-	dir := t.TempDir()
-	localStorage, err := storage.NewLocalStorage(config.Storage{Location: dir})
-	require.NoError(t, err)
-
-	createCard(t, &cards.Card{
-		CardSetCode: "10E",
-		Number:      "1",
-		Name:        "First",
-		Faces: []*cards.Face{
-			{
-				Name:   "First",
-				Colors: cards.NewColors([]string{"W", "B", "R"}),
-			},
-		},
-	})
-	createCard(t, &cards.Card{
-		CardSetCode: "10E",
-		Number:      "2",
-		Name:        "Second",
-		Faces: []*cards.Face{
-			{
-				Name:   "Second",
-				Colors: cards.NewColors([]string{"W"}),
-			},
-		},
-	})
-	createCard(t, &cards.Card{
-		CardSetCode: "9E",
-		Number:      "3",
-		Name:        "Third",
-		Faces: []*cards.Face{
-			{
-				Name: "Third",
-			},
-		},
-	})
-
-	importer := cards.NewImageImporter(cardDao, localStorage, sclient)
-	report, err := importer.Import(limitFirstPage20Entries)
-	require.NoError(t, err)
-
-	imgCount, err := cardDao.CountImages()
-	require.NoError(t, err)
-
-	assert.Equal(t, 6, report.Downloaded)
-	assert.Equal(t, 6, imgCount)
-	assertFileCount(t, filepath.Join(dir, "deu", "10E"), 2)
-	assertFileCount(t, filepath.Join(dir, "eng", "10E"), 2)
-	assertFileCount(t, filepath.Join(dir, "eng", "9E"), 1)
-	assertFileCount(t, filepath.Join(dir, "deu", "9E"), 1)
+	for _, c := range cc {
+		err := cardService.Import(withDefaults(&c))
+		require.NoError(t, err, "failed to create card")
+	}
 }
 
 func hasPHashes(t *testing.T) {
 	t.Cleanup(runner.Cleanup(t))
 	localStorage, err := storage.NewLocalStorage(config.Storage{Location: t.TempDir()})
-	if err != nil {
-		t.Fatalf("failed to create local storage %v", err)
-	}
-	c := &cards.Card{
+	require.NoError(t, err)
+	c := cards.Card{
 		CardSetCode: "10E",
 		Number:      "1",
 		Name:        "First",
@@ -167,181 +80,272 @@ func hasPHashes(t *testing.T) {
 
 	importer := cards.NewImageImporter(cardDao, localStorage, sclient)
 	_, err = importer.Import(limitFirstPage20Entries)
-	if err != nil {
-		t.Fatalf("import failed %v", err)
-	}
-	if err != nil {
-		t.Fatalf("import failed %v", err)
-	}
-	img, err := cardDao.GetImage(c.ID.Int64, "eng")
-	if err != nil {
-		t.Fatalf("find card failed %v", err)
-	}
+	require.NoError(t, err)
 
-	assert.Greater(t, img.PHash1, uint64(0))
-	assert.Greater(t, img.PHash2, uint64(0))
-	assert.Greater(t, img.PHash3, uint64(0))
-	assert.Greater(t, img.PHash4, uint64(0))
+	imgs, err := cardDao.GetImages()
+	require.NoError(t, err)
+
+	require.NotZero(t, imgs)
+	for _, img := range imgs {
+		assert.Greater(t, img.PHash1, uint64(0))
+		assert.Greater(t, img.PHash2, uint64(0))
+		assert.Greater(t, img.PHash3, uint64(0))
+		assert.Greater(t, img.PHash4, uint64(0))
+	}
 }
 
-func importWithoutFaceMatch(t *testing.T) {
-	t.Cleanup(runner.Cleanup(t))
-	dir := t.TempDir()
-	localStorage, err := storage.NewLocalStorage(config.Storage{Location: dir})
-	if err != nil {
-		t.Fatalf("failed to create local storage %v", err)
-	}
-	createCard(t, &cards.Card{
-		CardSetCode: "10E",
-		Number:      "1",
-		Name:        "DoesNotMatch",
-		Faces: []*cards.Face{
-			{
-				Name: "DoesNotMatch",
-			},
-		},
-	})
-
-	importer := cards.NewImageImporter(cardDao, localStorage, sclient)
-	report, err := importer.Import(limitFirstPage20Entries)
-	if err != nil {
-		t.Fatalf("import failed %v", err)
-	}
-	imgCount, err := cardDao.CountImages()
-	if err != nil {
-		t.Fatalf("image count failed %v", err)
-	}
-
-	assert.Equal(t, 2, report.Downloaded)
-	assert.Equal(t, 2, imgCount)
-	assertFileCount(t, filepath.Join(dir, "deu", "10E"), 1)
-	assertFileCount(t, filepath.Join(dir, "eng", "10E"), 1)
-}
-
-func importNextLanguageOnMissingCard(t *testing.T) {
+func importImages(t *testing.T) {
 	cases := []struct {
-		name             string
-		cards            cards.Card
-		lang             string
-		expectedImgCount int
-		expectedFiles    int
+		name     string
+		cards    []cards.Card
+		expected cards.ImageReport
 	}{
 		{
-			name: "card exists only with language deu",
-			cards: cards.Card{
-				CardSetCode: "10E",
-				Number:      "onlydeu",
-				Name:        "OnlyDeu",
-				Faces: []*cards.Face{
-					{
-						Name: "OnlyDeu",
+			name: "import second face image",
+			cards: []cards.Card{
+				{
+					CardSetCode: "10E",
+					Number:      "multiFace",
+					Name:        "FirstFace // SecondFace",
+					Faces: []*cards.Face{
+						{
+							Name: "InvalidName",
+						},
+						{
+							Name: "SecondFace",
+						},
 					},
 				},
 			},
-			lang:             "deu",
-			expectedImgCount: 1,
-			expectedFiles:    1,
+			expected: cards.ImageReport{
+				TotalCards: 1,
+				Imported:   2,
+				Missing:    2,
+			},
+		},
+		{
+			name: "import first face image",
+			cards: []cards.Card{
+				{
+					CardSetCode: "10E",
+					Number:      "multiFace",
+					Name:        "FirstFace // SecondFace",
+					Faces: []*cards.Face{
+						{
+							Name: "FirstFace",
+						},
+						{
+							Name: "InvalidName",
+						},
+					},
+				},
+			},
+			expected: cards.ImageReport{
+				TotalCards: 1,
+				Imported:   2,
+				Missing:    2,
+			},
+		},
+		{
+			name: "import all faces images",
+			cards: []cards.Card{
+				{
+					CardSetCode: "10E",
+					Number:      "multiFace",
+					Name:        "FirstFace // SecondFace",
+					Faces: []*cards.Face{
+						{
+							Name: "FirstFace",
+						},
+						{
+							Name: "SecondFace",
+						},
+					},
+				},
+			},
+			expected: cards.ImageReport{
+				TotalCards: 1,
+				Imported:   4,
+			},
+		},
+		{
+			name: "no name matches fallback to top card image",
+			cards: []cards.Card{
+				{
+
+					CardSetCode: "10E",
+					Number:      "1",
+					Name:        "InvalidName",
+					Faces: []*cards.Face{
+						{
+							Name: "InvalidName",
+						},
+					},
+				},
+			},
+			expected: cards.ImageReport{
+				TotalCards: 1,
+				Imported:   2,
+			},
+		},
+		{
+			name: "import different card sets",
+			cards: []cards.Card{
+				{
+
+					CardSetCode: "10E",
+					Number:      "1",
+					Name:        "First",
+					Faces: []*cards.Face{
+						{
+							Name: "First",
+						},
+					},
+				},
+				{
+					CardSetCode: "10E",
+					Number:      "2",
+					Name:        "Second",
+					Faces: []*cards.Face{
+						{
+							Name: "Second",
+						},
+					},
+				},
+				{
+					CardSetCode: "9E",
+					Number:      "3",
+					Name:        "Third",
+					Faces: []*cards.Face{
+						{
+							Name: "Third",
+						},
+					},
+				},
+			},
+			expected: cards.ImageReport{
+				TotalCards: 3,
+				Imported:   6,
+			},
+		},
+		{
+			name: "card exists only with language deu",
+			cards: []cards.Card{
+				{
+					CardSetCode: "10E",
+					Number:      "onlydeu",
+					Name:        "OnlyDeu",
+					Faces: []*cards.Face{
+						{
+							Name: "OnlyDeu",
+						},
+					},
+				},
+			},
+			expected: cards.ImageReport{
+				TotalCards: 1,
+				Imported:   1,
+				Missing:    1,
+			},
 		},
 		{
 			name: "card exist only with language eng",
-			cards: cards.Card{
-				CardSetCode: "10E",
-				Number:      "onlyeng",
-				Name:        "OnlyEng",
-				Faces: []*cards.Face{
-					{
-						Name: "OnlyEng",
+			cards: []cards.Card{
+				{
+					CardSetCode: "10E",
+					Number:      "onlyeng",
+					Name:        "OnlyEng",
+					Faces: []*cards.Face{
+						{
+							Name: "OnlyEng",
+						},
 					},
 				},
 			},
-			lang: "eng",
-			// deu will fallback to eng and import successfully
-			expectedImgCount: 2,
-			// but image will only be one
-			expectedFiles: 1,
-		},
-	}
-
-	for i := range cases {
-		tc := cases[i]
-		t.Run(tc.name, func(t *testing.T) {
-			t.Cleanup(runner.Cleanup(t))
-			dir := t.TempDir()
-			localStorage, err := storage.NewLocalStorage(config.Storage{Location: dir, Mode: config.CREATE})
-			require.NoError(t, err)
-			createCard(t, &tc.cards)
-
-			importer := cards.NewImageImporter(cardDao, localStorage, sclient)
-			report, err := importer.Import(limitFirstPage20Entries)
-			require.NoError(t, err)
-
-			imgCount, err := cardDao.CountImages()
-			require.NoError(t, err)
-
-			assert.Equal(t, tc.expectedImgCount, report.Downloaded)
-			assert.Equal(t, tc.expectedImgCount, imgCount)
-			p := filepath.Join(dir, tc.lang, tc.cards.CardSetCode)
-			assertFileCount(t, p, tc.expectedFiles)
-		})
-	}
-}
-
-func importMultiFaces(t *testing.T) {
-	cases := []struct {
-		name    string
-		fixture cards.Card
-		want    int
-	}{
-		{
-			name: "FirstFaceDoesNotMatch",
-			fixture: cards.Card{
-				CardSetCode: "10E",
-				Number:      "multiFace",
-				Name:        "DoesNotMatch // First",
-				Faces: []*cards.Face{
-					{
-						Name: "DoesNotMatch",
-					},
-					{
-						Name: "SecondFace",
-					},
-				},
+			expected: cards.ImageReport{
+				TotalCards: 1,
+				Imported:   2,
 			},
-			want: 1,
 		},
 		{
-			name: "SecondFaceDoesNotMatch",
-			fixture: cards.Card{
-				CardSetCode: "10E",
-				Number:      "multiFace",
-				Name:        "First // DoesNotMatch",
-				Faces: []*cards.Face{
-					{
-						Name: "FirstFace",
-					},
-					{
-						Name: "DoesNotMatch",
+			name: "card set does not exists",
+			cards: []cards.Card{
+				{
+					CardSetCode: "20E",
+					Number:      "1",
+					Name:        "First",
+					Faces: []*cards.Face{
+						{
+							Name: "First",
+						},
 					},
 				},
 			},
-			want: 1,
+			expected: cards.ImageReport{
+				TotalCards: 1,
+				Imported:   0,
+				Missing:    2,
+			},
 		},
 		{
-			name: "BothFacesMatch",
-			fixture: cards.Card{
-				CardSetCode: "10E",
-				Number:      "multiFace",
-				Name:        "FirstFace // SecondFace",
-				Faces: []*cards.Face{
-					{
-						Name: "FirstFace",
-					},
-					{
-						Name: "SecondFace",
+			name: "card not found",
+			cards: []cards.Card{
+				{
+					CardSetCode: "10E",
+					Number:      "99",
+					Name:        "First",
+					Faces: []*cards.Face{
+						{
+							Name: "First",
+						},
 					},
 				},
 			},
-			want: 2,
+			expected: cards.ImageReport{
+				TotalCards: 1,
+				Imported:   0,
+				Missing:    2,
+			},
+		},
+		{
+			name: "image not found",
+			cards: []cards.Card{
+				{
+					CardSetCode: "10E",
+					Number:      "imageNotFound",
+					Name:        "ImageNotFound",
+					Faces: []*cards.Face{
+						{
+							Name: "ImageNotFound",
+						},
+					},
+				},
+			},
+			expected: cards.ImageReport{
+				TotalCards: 1,
+				Imported:   0,
+				Missing:    2,
+			},
+		},
+		{
+			name: "missing image url",
+			cards: []cards.Card{
+				{
+					CardSetCode: "10E",
+					Number:      "noImageUrl",
+					Name:        "NoImageUrl",
+					Faces: []*cards.Face{
+						{
+							Name: "NoImageUrl",
+						},
+					},
+				},
+			},
+			expected: cards.ImageReport{
+				TotalCards: 1,
+				Imported:   0,
+				Missing:    2,
+			},
 		},
 	}
 
@@ -351,37 +355,28 @@ func importMultiFaces(t *testing.T) {
 			t.Cleanup(runner.Cleanup(t))
 			dir := t.TempDir()
 			localStorage, err := storage.NewLocalStorage(config.Storage{Location: dir})
-			if err != nil {
-				t.Fatalf("failed to create local storage %v", err)
-			}
-			createCard(t, &tc.fixture)
-
+			require.NoError(t, err)
+			createCard(t, tc.cards...)
 			importer := cards.NewImageImporter(cardDao, localStorage, sclient)
-			report, err := importer.Import(limitFirstPage20Entries)
-			if err != nil {
-				t.Fatalf("import failed %v", err)
-			}
-			imgCount, err := cardDao.CountImages()
-			if err != nil {
-				t.Fatalf("image count failed %v", err)
-			}
 
-			assert.Equal(t, tc.want*2, report.Downloaded)
-			assert.Equal(t, tc.want*2, imgCount)
-			assertFileCount(t, filepath.Join(dir, "deu", "10E"), tc.want)
-			assertFileCount(t, filepath.Join(dir, "eng", "10E"), tc.want)
+			report, err := importer.Import(limitFirstPage20Entries)
+			require.NoError(t, err)
+			imgCount, err := cardDao.CountImages()
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.expected, report)
+			assert.Equal(t, tc.expected.Imported, fileCount(t, dir))
+			assert.Equal(t, tc.expected.Imported, imgCount)
 		})
 	}
 }
 
-func importSameImageMultipleTimes(t *testing.T) {
+func skipAlreadyImportedImages(t *testing.T) {
 	t.Cleanup(runner.Cleanup(t))
 	dir := t.TempDir()
 	localStorage, err := storage.NewLocalStorage(config.Storage{Location: dir})
-	if err != nil {
-		t.Fatalf("failed to create local storage %v", err)
-	}
-	createCard(t, &cards.Card{
+	require.NoError(t, err)
+	createCard(t, cards.Card{
 		CardSetCode: "10E",
 		Number:      "1",
 		Name:        "First",
@@ -392,103 +387,42 @@ func importSameImageMultipleTimes(t *testing.T) {
 		},
 	})
 	importer := cards.NewImageImporter(cardDao, localStorage, sclient)
-
 	_, err = importer.Import(limitFirstPage20Entries)
-	if err != nil {
-		t.Fatalf("import failed %v", err)
-	}
+	require.NoError(t, err)
+
 	report, err := importer.Import(limitFirstPage20Entries)
-	if err != nil {
-		t.Fatalf("import failed %v", err)
-	}
+	require.NoError(t, err)
 	imgCount, err := cardDao.CountImages()
-	if err != nil {
-		t.Fatalf("image count failed %v", err)
-	}
+	require.NoError(t, err)
 
 	assert.Equal(t, 2, report.Skipped)
 	assert.Equal(t, 2, imgCount)
-	assertFileCount(t, filepath.Join(dir, "deu", "10E"), 1)
-	assertFileCount(t, filepath.Join(dir, "eng", "10E"), 1)
+	assert.Equal(t, 2, fileCount(t, dir))
 }
 
-func testErrorCases(t *testing.T) {
-	dir := t.TempDir()
-	localStorage, err := storage.NewLocalStorage(config.Storage{Location: dir})
-	if err != nil {
-		t.Fatalf("failed to create local storage %v", err)
-	}
-
-	cases := []struct {
-		name string
-		card cards.Card
-	}{
-		{
-			name: "ExternalCardNotFound",
-			card: cards.Card{
-				CardSetCode: "10E",
-				Number:      "99",
-				Name:        "First",
-				Faces: []*cards.Face{
-					{
-						Name: "First",
-					},
-				},
-			},
-		},
-		{
-			name: "NoImageFound",
-			card: cards.Card{
-				CardSetCode: "10E",
-				Number:      "imageNotFound",
-				Name:        "ImageNotFound",
-				Faces: []*cards.Face{
-					{
-						Name: "ImageNotFound",
-					},
-				},
-			},
-		},
-		{
-			name: "NoImageUrlAttributeSet",
-			card: cards.Card{
-				CardSetCode: "10E",
-				Number:      "noImageUrl",
-				Name:        "NoImageUrl",
-				Faces: []*cards.Face{
-					{
-						Name: "NoImageUrl",
-					},
-				},
-			},
-		},
-	}
-
-	for i := range cases {
-		tc := cases[i]
-		t.Run(tc.name, func(t *testing.T) {
-			t.Cleanup(runner.Cleanup(t))
-			createCard(t, &tc.card)
-
-			importer := cards.NewImageImporter(cardDao, localStorage, sclient)
-
-			report, err := importer.Import(limitFirstPage20Entries)
-			require.NoError(t, err)
-
-			imgCount, err := cardDao.CountImages()
-			require.NoError(t, err)
-
-			assert.Equal(t, 0, report.Downloaded)
-			assert.Equal(t, 0, imgCount)
-			assertFileCount(t, dir, 0)
-		})
-	}
-}
-
-func assertFileCount(t *testing.T, path string, expectedCount int) {
+func fileCount(t *testing.T, path string) int {
 	t.Helper()
 
-	files, err := os.ReadDir(path)
+	if len(path) == 0 {
+		return 0
+	}
+
+	sum := 0
+	err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// ignore directories
+		if d.IsDir() {
+			return nil
+		}
+
+		sum += 1
+
+		return nil
+	})
 	require.NoErrorf(t, err, "failed to read dir %s", path)
-	assert.Equal(t, expectedCount, len(files))
+
+	return sum
 }
