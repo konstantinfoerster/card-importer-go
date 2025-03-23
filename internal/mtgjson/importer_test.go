@@ -119,13 +119,13 @@ func TestImportSetsWithImportError(t *testing.T) {
 func TestImportCards(t *testing.T) {
 	cases := []struct {
 		name     string
-		fixture  io.Reader
+		source   io.Reader
 		wantSets int
 		want     []cards.Card
 	}{
 		{
 			name:     "ImportMultipleCards",
-			fixture:  test.LoadFile(t, "testdata/twoSetsSetMultipleCards.json"),
+			source:   test.LoadFile(t, "testdata/twoSetsSetMultipleCards.json"),
 			wantSets: 2,
 			want: []cards.Card{
 				{
@@ -207,7 +207,7 @@ func TestImportCards(t *testing.T) {
 			cardService := MockCardService{}
 			importer := mtgjson.NewImporter(&setService, &cardService)
 
-			_, err := importer.Import(tc.fixture)
+			_, err := importer.Import(tc.source)
 
 			require.NoError(t, err)
 			require.Len(t, setService.Sets, tc.wantSets, "unexpected set count")
@@ -219,13 +219,13 @@ func TestImportCards(t *testing.T) {
 
 func TestImportCardWithMultipleFaces(t *testing.T) {
 	cases := []struct {
-		name    string
-		fixture io.Reader
-		want    []cards.Card
+		name   string
+		source io.Reader
+		want   []cards.Card
 	}{
 		{
-			name:    "ImportMultipleCardsWithMultipleFaces",
-			fixture: test.LoadFile(t, "testdata/card/multiple_cards_multiple_faces.json"),
+			name:   "ImportMultipleCardsWithMultipleFaces",
+			source: test.LoadFile(t, "testdata/card/multiple_cards_multiple_faces.json"),
 			want: []cards.Card{
 				{
 					CardSetCode: "2ED",
@@ -295,7 +295,7 @@ func TestImportCardWithMultipleFaces(t *testing.T) {
 			cardService := MockCardService{}
 			importer := mtgjson.NewImporter(&setService, &cardService)
 
-			_, err := importer.Import(tc.fixture)
+			_, err := importer.Import(tc.source)
 
 			require.NoError(t, err)
 			require.Len(t, cardService.Cards, len(tc.want), "unexpected card count")
@@ -307,12 +307,12 @@ func TestImportCardWithMultipleFaces(t *testing.T) {
 func TestImportCardWithInvalidFaces(t *testing.T) {
 	cases := []struct {
 		name        string
-		fixture     io.Reader
+		source      io.Reader
 		wantContain string
 	}{
 		{
 			name:        "ImportCardsWithInvalidFaces",
-			fixture:     test.LoadFile(t, "testdata/card/cards_invalid_faces.json"),
+			source:      test.LoadFile(t, "testdata/card/cards_invalid_faces.json"),
 			wantContain: "unprocessed double face cards",
 		},
 	}
@@ -323,7 +323,7 @@ func TestImportCardWithInvalidFaces(t *testing.T) {
 			cardService := MockCardService{}
 			importer := mtgjson.NewImporter(&setService, &cardService)
 
-			_, err := importer.Import(tc.fixture)
+			_, err := importer.Import(tc.source)
 
 			require.Error(t, err)
 			require.Zero(t, len(cardService.Cards), "unexpected card count")

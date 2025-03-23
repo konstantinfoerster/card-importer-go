@@ -57,12 +57,43 @@ func TestGet_ApiError(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, apiErr.StatusCode)
 }
 
-// func TestGet_Retry(t *testing.T) {
-// 	ctx := context.Background()
-// 	client := web.NewClient(web.Config{}, http.DefaultClient)
-//
-// 	_, err := client.Get(ctx, ts.URL+"/notFound.unknown", web.NewGetOpts())
-// }
+func TestGet_Retry(t *testing.T) {
+	cfg := web.Config{Retries: 3, Retrieables: []int{http.StatusServiceUnavailable}}
+	var counter int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// 1 retry
+		if counter == 2 {
+			w.WriteHeader(http.StatusOK)
+
+			return
+		}
+
+		counter++
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer ts.Close()
+	client := web.NewClient(cfg, http.DefaultClient)
+
+	_, err := client.Get(t.Context(), ts.URL, web.NewGetOpts())
+	assert.NoError(t, err)
+	// 1 retry + first request
+	assert.Equal(t, int32(2), counter)
+}
+
+func TestGet_ErrAfterMaxRetries(t *testing.T) {
+	cfg := web.Config{Retries: 3, Retrieables: []int{http.StatusServiceUnavailable}}
+	var counter int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		counter++
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer ts.Close()
+	client := web.NewClient(cfg, http.DefaultClient)
+
+	_, err := client.Get(t.Context(), ts.URL, web.NewGetOpts())
+	assert.Error(t, err)
+	assert.Equal(t, int32(4), counter)
+}
 
 func TestNewGetOpts(t *testing.T) {
 	want := web.GetOptions{
@@ -78,8 +109,6 @@ func TestNewGetOpts(t *testing.T) {
 
 	assert.Equal(t, want, actual)
 }
-
-// FIXME: add tests for retry
 
 func fileContent(t *testing.T, path string) []byte {
 	t.Helper()

@@ -1,6 +1,7 @@
 package mtgjson_test
 
 import (
+	"context"
 	"database/sql"
 	"io"
 	"sort"
@@ -21,16 +22,24 @@ func TestImportIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration tests")
 	}
+
 	runner = postgres.NewRunner()
-	runner.Run(t, func(t *testing.T) {
-		t.Run("CardSet: create and update", cardSetCreateAndUpdate)
-		t.Run("CardSet Block: create and update", blockCreateAndUpdate)
-		t.Run("CardSet Translations: create, update and remove", cardSetTranslations)
-		t.Run("Card: create and update", cardCreateUpdate)
-		t.Run("Card Translations: create, update and remove", cardTranslations)
-		t.Run("Card all types: create, update and remove", cardTypes)
-		t.Run("Card types: duplicates", duplicatedCardTypes)
+	t.Cleanup(func() {
+		ctx := context.WithoutCancel(t.Context())
+		if err := runner.Stop(ctx); err != nil {
+			t.Logf("failed to stop runner %v", err)
+		}
 	})
+	err := runner.Start(t.Context())
+	require.NoError(t, err)
+
+	t.Run("CardSet: create and update", cardSetCreateAndUpdate)
+	t.Run("CardSet Block: create and update", blockCreateAndUpdate)
+	t.Run("CardSet Translations: create, update and remove", cardSetTranslations)
+	t.Run("Card: create and update", cardCreateUpdate)
+	t.Run("Card Translations: create, update and remove", cardTranslations)
+	t.Run("Card all types: create, update and remove", cardTypes)
+	t.Run("Card types: duplicates", duplicatedCardTypes)
 }
 
 func cardSetCreateAndUpdate(t *testing.T) {
@@ -79,13 +88,13 @@ func blockCreateAndUpdate(t *testing.T) {
 
 func cardSetTranslations(t *testing.T) {
 	cases := []struct {
-		name    string
-		fixture io.Reader
-		want    []*cards.SetTranslation
+		name   string
+		source io.Reader
+		want   []*cards.SetTranslation
 	}{
 		{
-			name:    "UpdateSetTranslations",
-			fixture: test.LoadFile(t, "testdata/set/translations_update.json"),
+			name:   "UpdateSetTranslations",
+			source: test.LoadFile(t, "testdata/set/translations_update.json"),
 			want: []*cards.SetTranslation{
 				{
 					Name: "German Translation Updated",
@@ -94,14 +103,14 @@ func cardSetTranslations(t *testing.T) {
 			},
 		},
 		{
-			name:    "RemoveSetTranslationsWhenNull",
-			fixture: test.LoadFile(t, "testdata/set/translations_null.json"),
-			want:    nil,
+			name:   "RemoveSetTranslationsWhenNull",
+			source: test.LoadFile(t, "testdata/set/translations_null.json"),
+			want:   nil,
 		},
 		{
-			name:    "RemoveSetTranslations",
-			fixture: test.LoadFile(t, "testdata/set/translations_remove.json"),
-			want:    nil,
+			name:   "RemoveSetTranslations",
+			source: test.LoadFile(t, "testdata/set/translations_remove.json"),
+			want:   nil,
 		},
 	}
 	for _, tc := range cases {
@@ -112,7 +121,7 @@ func cardSetTranslations(t *testing.T) {
 
 			_, err := importer.Import(test.LoadFile(t, "testdata/set/translations_create.json"))
 			require.NoError(t, err)
-			_, err = importer.Import(tc.fixture)
+			_, err = importer.Import(tc.source)
 			require.NoError(t, err)
 
 			translations, _ := csDao.FindTranslations("10E")
@@ -319,9 +328,9 @@ func cardTranslations(t *testing.T) {
 
 func cardTypes(t *testing.T) {
 	cases := []struct {
-		name    string
-		fixture io.Reader
-		want    *cards.Card
+		name   string
+		source io.Reader
+		want   *cards.Card
 	}{
 		{
 			name: "CreateTypes",
@@ -344,8 +353,8 @@ func cardTypes(t *testing.T) {
 			},
 		},
 		{
-			name:    "UpdateTypes",
-			fixture: test.LoadFile(t, "testdata/type/update.json"),
+			name:   "UpdateTypes",
+			source: test.LoadFile(t, "testdata/type/update.json"),
 			want: &cards.Card{
 				CardSetCode: "2ED",
 				Number:      "4",
@@ -365,8 +374,8 @@ func cardTypes(t *testing.T) {
 			},
 		},
 		{
-			name:    "RemoveTypes",
-			fixture: test.LoadFile(t, "testdata/type/remove.json"),
+			name:   "RemoveTypes",
+			source: test.LoadFile(t, "testdata/type/remove.json"),
 			want: &cards.Card{
 				CardSetCode: "2ED",
 				Number:      "4",
@@ -394,8 +403,8 @@ func cardTypes(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error during import %v", err)
 			}
-			if tc.fixture != nil {
-				_, err = importer.Import(tc.fixture)
+			if tc.source != nil {
+				_, err = importer.Import(tc.source)
 				if err != nil {
 					t.Fatalf("unexpected error during import %v", err)
 				}

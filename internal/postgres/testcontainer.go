@@ -2,77 +2,42 @@ package postgres
 
 import (
 	"context"
-	"io"
+	"errors"
+	"fmt"
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
+
+type logConsumer struct{}
+
+func (lc *logConsumer) Accept(l testcontainers.Log) {
+	log.Debug().Msg(string(l.Content))
+}
 
 func NewRunner() *DatabaseRunner {
 	return &DatabaseRunner{}
 }
 
 type DatabaseRunner struct {
-	conn *DBConnection
-}
-
-func (r *DatabaseRunner) Run(t *testing.T, runTests func(t *testing.T)) {
-	t.Helper()
-
-	ctx := t.Context()
-	err := r.runPostgresContainer(ctx, func(cfg config.Database) error {
-		conn, err := Connect(ctx, cfg)
-		if err != nil {
-			return err
-		}
-		defer func(toClose *DBConnection) {
-			cErr := toClose.Close()
-			if cErr != nil {
-				// report close errors
-				if err == nil {
-					err = cErr
-				} else {
-					err = errors.Wrap(err, cErr.Error())
-				}
-			}
-		}(conn)
-		r.conn = conn
-
-		runTests(t)
-
-		return err
-	})
-
-	if err != nil {
-		t.Fatalf("failed to start container %v", err)
-	}
+	conn      *DBConnection
+	container testcontainers.Container
 }
 
 func (r *DatabaseRunner) Connection() *DBConnection {
 	return r.conn
 }
 
-func (r *DatabaseRunner) Cleanup(t *testing.T) func() {
-	t.Helper()
-
-	return func() {
-		cErr := r.conn.Cleanup()
-		if cErr != nil {
-			t.Fatalf("failed to cleanup database %v", cErr)
-		}
-	}
-}
-
-func (r *DatabaseRunner) runPostgresContainer(ctx context.Context, f func(c config.Database) error) error {
+func (r *DatabaseRunner) Start(ctx context.Context) error {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
-		panic("failed to get current dir")
+		return fmt.Errorf("failed to get current dir")
 	}
 
 	dbDir, err := filepath.EvalSymlinks(filepath.Join(filepath.Dir(file), "testdata", "db"))
@@ -110,6 +75,12 @@ func (r *DatabaseRunner) runPostgresContainer(ctx context.Context, f func(c conf
 		},
 		AlwaysPullImage: true,
 		WaitingFor:      wait.ForLog("[1] LOG:  database system is ready to accept connections"),
+		LogConsumerCfg: &testcontainers.LogConsumerConfig{
+			Opts: []testcontainers.LogProductionOption{
+				testcontainers.WithLogProductionTimeout(10 * time.Second),
+			},
+			Consumers: []testcontainers.LogConsumer{&logConsumer{}},
+		},
 	}
 
 	postgresC, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -117,34 +88,10 @@ func (r *DatabaseRunner) runPostgresContainer(ctx context.Context, f func(c conf
 		Started:          true,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create container %w", err)
 	}
-	defer func(toClose testcontainers.Container) {
-		cErr := toClose.Terminate(ctx)
-		if cErr != nil {
-			// report close errors
-			if err == nil {
-				err = cErr
-			} else {
-				err = errors.Wrap(err, cErr.Error())
-			}
-		}
-	}(postgresC)
 
-	if e := log.Debug(); e.Enabled() {
-		logs, err := postgresC.Logs(ctx)
-		if err != nil {
-			return err
-		}
-		defer logs.Close()
-
-		b, err := io.ReadAll(logs)
-		if err != nil {
-			return err
-		}
-
-		e.Msg(string(b))
-	}
+	r.container = postgresC
 
 	ip, err := postgresC.Host(ctx)
 	if err != nil {
@@ -163,7 +110,44 @@ func (r *DatabaseRunner) runPostgresContainer(ctx context.Context, f func(c conf
 		Port:     mappedPort.Port(),
 		Database: database,
 	}
-	err = f(dbConfig)
+
+	conn, err := Connect(ctx, dbConfig)
+	if err != nil {
+		sErr := r.Stop(ctx)
+
+		return errors.Join(err, sErr)
+	}
+
+	r.conn = conn
+
+	return nil
+}
+
+func (r *DatabaseRunner) Stop(ctx context.Context) error {
+	var err error
+	if r.conn != nil {
+		err = r.conn.Close()
+	}
+
+	if r.container != nil {
+		cErr := r.container.Terminate(ctx)
+		if err == nil {
+			err = cErr
+		} else {
+			err = errors.Join(err, cErr)
+		}
+	}
 
 	return err
+}
+
+func (r *DatabaseRunner) Cleanup(t *testing.T) func() {
+	t.Helper()
+
+	return func() {
+		cErr := r.conn.Cleanup()
+		if cErr != nil {
+			t.Fatalf("failed to cleanup database %v", cErr)
+		}
+	}
 }

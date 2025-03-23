@@ -16,6 +16,7 @@ import (
 )
 
 var ErrImageNotFound = fmt.Errorf("image not found")
+var ErrImageBroken = fmt.Errorf("image broken")
 var ErrCardNotFound = fmt.Errorf("card not found")
 
 type ImageResult struct {
@@ -63,7 +64,7 @@ type ImageDownloader interface {
 
 type ImageReport struct {
 	TotalCards int
-	Downloaded int
+	Imported   int
 	Missing    int
 	Skipped    int
 }
@@ -142,54 +143,70 @@ func (i *images) importCard(ctx context.Context, c Card, lang string, report *Im
 			continue
 		}
 
-		if err := i.importFace(ctx, c, f, lang, report); err != nil {
-			return err
+		filter := Filter{
+			SetCode: c.CardSetCode,
+			Name:    f.Name,
+			Number:  c.Number,
+			Lang:    lang,
 		}
+		cardImg := Image{
+			Lang:   lang,
+			CardID: c.ID,
+			FaceID: f.ID,
+		}
+		if err := i.addImageData(ctx, &cardImg, filter); err != nil {
+			switch {
+			case errors.Is(err, ErrCardNotFound):
+				log.Warn().Any("filter", filter).Int64("cardID", c.ID.Get()).Int64("faceID", f.ID.Get()).Msg("card not found")
+
+				report.Missing++
+
+				continue
+			case errors.Is(err, ErrImageNotFound):
+				log.Warn().Any("filter", filter).Int64("cardID", c.ID.Get()).Int64("faceID", f.ID.Get()).Msg("card image not found")
+
+				report.Missing++
+
+				continue
+			case errors.Is(err, ErrImageBroken):
+				log.Warn().Any("filter", filter).Int64("cardID", c.ID.Get()).Int64("faceID", f.ID.Get()).Msg("card image broken")
+
+				report.Missing++
+
+				continue
+			default:
+				return err
+			}
+		}
+
+		if err = i.cardDao.AddImage(ctx, &cardImg); err != nil {
+			return fmt.Errorf("failed to add image entry with filter %#v, %w", filter, err)
+		}
+
+		log.Debug().Any("filter", filter).Msgf("stored card image at %s", cardImg.ImagePath)
+
+		report.Imported++
 	}
 
 	return nil
 }
 
-func (i *images) importFace(ctx context.Context, c Card, f *Face, lang string, report *ImageReport) error {
-	filter := Filter{
-		SetCode: c.CardSetCode,
-		Name:    f.Name,
-		Number:  c.Number,
-		Lang:    lang,
-	}
+func (i *images) addImageData(ctx context.Context, cardImg *Image, filter Filter) error {
 	result, err := i.GetImageWithFallback(ctx, filter, FallbackLang)
 	if err != nil {
-		if errors.Is(err, ErrCardNotFound) {
-			log.Warn().Any("filter", filter).Int64("cardID", c.ID.Get()).Int64("faceID", f.ID.Get()).Msg("card not found")
-
-			report.Missing++
-
-			return nil
-		} else if errors.Is(err, ErrImageNotFound) {
-			log.Warn().Any("filter", filter).Int64("cardID", c.ID.Get()).Int64("faceID", f.ID.Get()).Msg("card image not found")
-
-			report.Missing++
-
-			return nil
-		}
-
-		return fmt.Errorf("failed to download card image with filter %#v, %w", f, err)
+		return fmt.Errorf("failed to download card image with filter %#v, %w", filter, err)
 	}
 
-	cardImg := &Image{
-		Lang:     lang,
-		CardID:   c.ID,
-		FaceID:   f.ID,
-		MimeType: result.MimeType.Raw(),
-	}
+	cardImg.MimeType = result.MimeType.Raw()
+
 	fileName, err := cardImg.BuildFilename()
 	if err != nil {
 		return fmt.Errorf("failed to build filename %w", err)
 	}
 
-	storedFile, err := i.storer.Store(result.File, lang, c.CardSetCode, fileName)
+	storedFile, err := i.storer.Store(result.File, filter.Lang, filter.SetCode, fileName)
 	if err != nil {
-		return fmt.Errorf("failed to store card with number %s and set %s, %w", c.Number, c.CardSetCode, err)
+		return fmt.Errorf("failed to store card with filter %#v, %w", filter, err)
 	}
 	cardImg.ImagePath = storedFile.Path
 
@@ -201,7 +218,7 @@ func (i *images) importFace(ctx context.Context, c Card, f *Face, lang string, r
 
 	img, err := jpeg.Decode(fImg)
 	if err != nil {
-		return fmt.Errorf("failed to decode image %s, %w", storedFile.AbsolutePath, err)
+		return fmt.Errorf("failed to decode image %s, %w", storedFile.AbsolutePath, errors.Join(err, ErrImageBroken))
 	}
 
 	imgWidth := 16
@@ -210,18 +227,11 @@ func (i *images) importFace(ctx context.Context, c Card, f *Face, lang string, r
 	if err != nil {
 		return fmt.Errorf("failed to create phash from %s, %w", cardImg.ImagePath, err)
 	}
+
 	cardImg.PHash1 = imgPHash.GetHash()[0]
 	cardImg.PHash2 = imgPHash.GetHash()[1]
 	cardImg.PHash3 = imgPHash.GetHash()[2]
 	cardImg.PHash4 = imgPHash.GetHash()[3]
-
-	if err = i.cardDao.AddImage(ctx, cardImg); err != nil {
-		return fmt.Errorf("failed to add image entry for card name %s, number %s and set %s %w",
-			c.Name, c.Number, c.CardSetCode, err)
-	}
-	log.Debug().Msgf("stored card image %s for lang %s at %s", c.Name, lang, cardImg.ImagePath)
-
-	report.Downloaded++
 
 	return nil
 }
