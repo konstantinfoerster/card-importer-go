@@ -18,6 +18,7 @@ scryfall:
   client:
     timeout: 60s
     retries: 3
+    retryDelay: 5s
     retrieables:
       - 502
       - 520

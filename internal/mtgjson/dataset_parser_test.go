@@ -45,13 +45,13 @@ func TestParseInvalidJsonStart(t *testing.T) {
 
 func TestParseSet(t *testing.T) {
 	cases := []struct {
-		name    string
-		fixture io.Reader
-		want    []mtgjsonCardSet
+		name   string
+		source io.Reader
+		want   []mtgjsonCardSet
 	}{
 		{
-			name:    "FindAllSets",
-			fixture: test.LoadFile(t, "testdata/twoSetsNoCards.json"),
+			name:   "FindAllSets",
+			source: test.LoadFile(t, "testdata/twoSetsNoCards.json"),
 			want: []mtgjsonCardSet{
 				{
 					Code:       "10E",
@@ -73,13 +73,13 @@ func TestParseSet(t *testing.T) {
 			},
 		},
 		{
-			name:    "FindNoSetsWhenRootIsEmpty",
-			fixture: strings.NewReader(`{}`),
-			want:    nil,
+			name:   "FindNoSetsWhenRootIsEmpty",
+			source: strings.NewReader(`{}`),
+			want:   nil,
 		},
 		{
 			name: "FindNoSetsWhenNoSetsDefined",
-			fixture: strings.NewReader(`
+			source: strings.NewReader(`
 				{
 					"data": {}
 				}
@@ -88,7 +88,7 @@ func TestParseSet(t *testing.T) {
 		},
 		{
 			name: "FindNoSetsWhenSetHasNoData",
-			fixture: strings.NewReader(`
+			source: strings.NewReader(`
 				{
 					"data": {
 						"10E": {}
@@ -99,7 +99,7 @@ func TestParseSet(t *testing.T) {
 		},
 		{
 			name: "FindSetWithEmptyTranslations",
-			fixture: strings.NewReader(`
+			source: strings.NewReader(`
 				{
 					"data": {
 						"10E": {
@@ -117,7 +117,7 @@ func TestParseSet(t *testing.T) {
 		tc := cases[i]
 		t.Run(tc.name, func(t *testing.T) {
 			var actual []mtgjsonCardSet
-			for r := range parse(t.Context(), tc.fixture) {
+			for r := range parse(t.Context(), tc.source) {
 				if r.Err != nil {
 					t.Errorf("unexpected parse result, got error: %s, wanted no error", r.Err)
 				}
@@ -138,13 +138,13 @@ func TestParseSet(t *testing.T) {
 func TestParseCards(t *testing.T) {
 	cases := []struct {
 		name     string
-		fixture  io.Reader
+		source   io.Reader
 		wantSets []string
 		want     []mtgjsonCard
 	}{
 		{
 			name:     "FindSetWithCards",
-			fixture:  test.LoadFile(t, "testdata/twoSetsSetMultipleCards.json"),
+			source:   test.LoadFile(t, "testdata/twoSetsSetMultipleCards.json"),
 			wantSets: []string{"2ED", "9ED"},
 			want: []mtgjsonCard{
 				{
@@ -221,7 +221,7 @@ func TestParseCards(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var actualCards []mtgjsonCard
 			var actualSets []string
-			for r := range parse(t.Context(), tc.fixture) {
+			for r := range parse(t.Context(), tc.source) {
 				if r.Err != nil {
 					t.Errorf("unexpected parse result, got error: %s, wanted no error", r.Err)
 				}

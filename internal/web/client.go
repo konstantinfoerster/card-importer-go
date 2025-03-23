@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"sync/atomic"
 	"time"
 
 	"github.com/konstantinfoerster/card-importer-go/internal/aio"
@@ -13,10 +14,11 @@ import (
 )
 
 type Config struct {
-	Timeout     time.Duration `yaml:"timeout"`
-	Retries     int           `yaml:"retries"`
-	Retrieables []int         `yaml:"retrieables"`
 	Delay       time.Duration `yaml:"delay"`
+	Timeout     time.Duration `yaml:"timeout"`
+	Retries     int32         `yaml:"retries"`
+	Retrieables []int         `yaml:"retrieables"`
+	RetryDelay  time.Duration `yaml:"retryDelay"`
 }
 
 type Response struct {
@@ -99,6 +101,7 @@ func WithRetry(ctx context.Context, cfg Config, exec func() (*http.Response, err
 	t := time.NewTimer(cfg.Delay)
 	defer t.Stop()
 
+	var counter atomic.Int32
 	for {
 		select {
 		case <-ctx.Done():
@@ -111,8 +114,14 @@ func WithRetry(ctx context.Context, cfg Config, exec func() (*http.Response, err
 				}
 
 				if IsStatusCode(err, cfg.Retrieables...) {
-					log.Info().Msg("request retry after err")
-					t.Reset(cfg.Delay)
+					if counter.Load() == cfg.Retries {
+						return nil, err
+					}
+
+					log.Info().Msgf("request attempt %d after err", counter.Load()+1)
+					counter.Add(1)
+
+					t.Reset(cfg.RetryDelay)
 
 					continue
 				}

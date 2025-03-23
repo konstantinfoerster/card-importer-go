@@ -19,7 +19,7 @@ Run `go run cmd/dataset/main.go` to start the tool with the default configuratio
 Flags:
 
 | Flag            | Usage                              | Default Value            | Description                                                                             |
-|-----------------|------------------------------------|--------------------------|-----------------------------------------------------------------------------------------|
+| --------------- | ---------------------------------- | ------------------------ | --------------------------------------------------------------------------------------- |
 | `-c`,`--config` | `-c configs/application-prod.yaml` | configs/application.yaml | path to the configuration file                                                          |
 | `-u`,`--url`    | `-u https://localhost/dataset.zip` | not set                  | dataset download url (only json and zip is supported)                                   |
 | `-f`,`--file`   | `-f ./dataset.json`                | not set                  | path to local dataset json file, has precedence over the url flag or configuration file |
@@ -31,8 +31,8 @@ Run `go run cmd/images/main.go` to start the tool with the default configuration
 Flags:
 
 | Flag            | Usage                              | Default Value            | Description                    |
-|-----------------|------------------------------------|--------------------------|--------------------------------|
-| `-c`,`--config` | `-c configs/applicationLocal.yaml` | configs/application.yaml | path to the configuration file | 
+| --------------- | ---------------------------------- | ------------------------ | ------------------------------ |
+| `-c`,`--config` | `-c configs/applicationLocal.yaml` | configs/application.yaml | path to the configuration file |
 | `-p`,`--page`   | `-p 21`                            | 1                        | start page number              |
 | `-s`,`--size`   | `-s 100`                           | 20                       | amount of entries per page     |
 
@@ -43,16 +43,15 @@ accessible via nginx at `localhost:8080`.
 
 ## Test
 
-* Run **all** tests with `go test -v ./...`
-* Run **unit tests** `go test -v -short ./...`
-* Run **integration tests** `go test -v -run Integration ./...`
+- Run **all** tests with `go test -v ./...`
+- Run **unit tests** `go test -v -short ./...`
+- Run **integration tests** `go test -v -run Integration ./...`
 
 **Integration tests** require **docker** to be installed.
 
 **Hint**
 
 Run the test with flag `--count=1` to disable caching.
-
 
 ## Build
 
@@ -87,24 +86,20 @@ dir of the project to start the linting process.
 
 ## TODOS
 
-* Make import more reliable
-  * Retry on database connection loss
-  * Retry if external API returns an error
-* Don't use face ids to identify images
-  * Faces could be deleted
-  * Maybe just the name?
-* Use attribute side to identify card face?  
-* store hash of image 
-  * can be used to find card face by hash
-* store fallback image
+- Make import more reliable
+  - Retry on database connection loss
+- Don't use face ids to identify images
+  - Faces could be deleted
+  - Maybe just the name?
+- Use attribute side to identify card face?
 
 First idea how to serve the images:
 
 1. Download all images via this tool
 2. Compress everything into one zip file
 3. Upload to a server to host the files
-    1. Maybe use Google Drive (got 15GB for free and the api can be accessed via
-       golang https://developers.google.com/drive/api/quickstart/go)
+   1. Maybe use Google Drive (got 15GB for free and the api can be accessed via
+      golang https://developers.google.com/drive/api/quickstart/go)
 4. Build container that is able to server the images from file system
-    1. Startup process of the container downloads the hosted compressed file
-    2. Extract all images into served dir
+   1. Startup process of the container downloads the hosted compressed file
+   2. Extract all images into served dir

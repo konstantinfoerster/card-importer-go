@@ -10,7 +10,7 @@ import (
 
 func TestMain(m *testing.M) {
 	logger.SetupConsoleLogger()
-	err := logger.SetLogLevel("warn")
+	err := logger.SetLogLevel("debug")
 	if err != nil {
 		fmt.Printf("Failed to set log level %v", err)
 		os.Exit(1)
