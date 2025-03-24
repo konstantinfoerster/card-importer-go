@@ -145,9 +145,6 @@ issues:
 formatters:
   enable:
     - goimports
-  disable:
-    - gofmt
-    - gci
   exclusions:
     generated: lax
     paths:
