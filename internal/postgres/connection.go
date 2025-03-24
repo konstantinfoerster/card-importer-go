@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/rs/zerolog/log"
 )
@@ -31,7 +31,7 @@ func Connect(ctx context.Context, config config.Database) (*DBConnection, error)
 
 	log.Info().Msgf("max database connection is set to %d", c.MaxConns)
 
-	pool, err := pgxpool.ConnectConfig(ctx, c)
+	pool, err := pgxpool.NewWithConfig(ctx, c)
 	if err != nil {
 		return nil, err
 	}
@@ -55,14 +55,14 @@ func (d *DBConnection) Close() error {
 	return nil
 }
 
-func (d *DBConnection) WithTransaction(f func(conn *DBConnection) error) error {
+func (d *DBConnection) WithTransaction(ctx context.Context, f func(conn *DBConnection) error) error {
 	switch d.Conn.(type) {
 	case pgx.Tx:
 		return fmt.Errorf("already inside a transaction")
 	default:
 		opts := pgx.TxOptions{AccessMode: pgx.ReadWrite, IsoLevel: pgx.ReadCommitted}
 
-		return d.pgxCon.BeginTxFunc(context.TODO(), opts, func(t pgx.Tx) error {
+		return pgx.BeginTxFunc(ctx, d.pgxCon, opts, func(t pgx.Tx) error {
 			dbCon := &DBConnection{
 				Conn:   t,
 				pgxCon: d.pgxCon,

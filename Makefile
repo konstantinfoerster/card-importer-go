@@ -22,7 +22,7 @@ update:
 	go get -u ./...
 	go mod tidy
 lint:
-	docker run --pull always --rm -v ${CURRENT_DIR}\:/app -w /app golangci/golangci-lint\:latest golangci-lint run -v
+	docker run --pull always --rm -v ${CURRENT_DIR}\:/app -w /app golangci/golangci-lint\:v2.0-alpine golangci-lint run -v
 	docker run --pull always --rm -i hadolint/hadolint < build/Dockerfile
 
 

@@ -1,9 +1,9 @@
 package cards
 
 import (
+	"errors"
 	"fmt"
 
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 

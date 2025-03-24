@@ -2,14 +2,13 @@ package mtgjson
 
 import (
 	"archive/zip"
+	"errors"
 	"fmt"
 	"io"
 	"math"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 func unzip(src string, dest string) ([]string, error) {
@@ -27,7 +26,7 @@ func unzip(src string, dest string) ([]string, error) {
 			if err == nil {
 				err = cErr
 			} else {
-				err = errors.Wrap(err, cErr.Error())
+				err = errors.Join(err, cErr)
 			}
 		}
 	}(r)
@@ -96,7 +95,7 @@ func writeFile(zippedFile *zip.File, destFile string, readBytesN int64) (string,
 			if err == nil {
 				err = cErr
 			} else {
-				err = errors.Wrap(err, cErr.Error())
+				err = errors.Join(err, cErr)
 			}
 		}
 	}(f)
@@ -112,7 +111,7 @@ func writeFile(zippedFile *zip.File, destFile string, readBytesN int64) (string,
 			if err == nil {
 				err = cErr
 			} else {
-				err = errors.Wrap(err, cErr.Error())
+				err = errors.Join(err, cErr)
 			}
 		}
 	}(rc)
