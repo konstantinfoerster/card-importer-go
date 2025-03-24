@@ -118,7 +118,7 @@ func WithRetry(ctx context.Context, cfg Config, exec func() (*http.Response, err
 						return nil, err
 					}
 
-					log.Info().Msgf("request attempt %d after err", counter.Load()+1)
+					log.Info().Str("err", err.Error()).Msgf("request attempt %d after err", counter.Load()+1)
 					counter.Add(1)
 
 					t.Reset(cfg.RetryDelay)

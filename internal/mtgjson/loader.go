@@ -2,6 +2,7 @@ package mtgjson
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -13,7 +14,6 @@ import (
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/konstantinfoerster/card-importer-go/internal/web"
-	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
 
@@ -90,7 +90,7 @@ func extract(file string, m web.MimeType) (string, error) {
 			if err == nil {
 				err = rErr
 			} else {
-				err = errors.Wrap(err, rErr.Error())
+				err = errors.Join(err, rErr)
 			}
 		} else {
 			log.Info().Msgf("Delete zip file %s", name)

@@ -1,13 +1,12 @@
 package web
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"slices"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 func NewErr(url string, code int, msg string) error {

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -8,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
-	"github.com/pkg/errors"
 )
 
 type Storer interface {
@@ -22,7 +22,8 @@ type StoredFile struct {
 }
 
 func NewLocalStorage(config config.Storage) (Storer, error) {
-	if err := os.MkdirAll(config.Location, 0750); err != nil {
+	// #nosec G301 run in container with unknown user, so access for all is fine
+	if err := os.MkdirAll(config.Location, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create storage dir %s %w", config.Location, err)
 	}
 
@@ -54,7 +55,8 @@ func (s *localStorage) Store(r io.Reader, path ...string) (StoredFile, error) {
 	}
 
 	if len(path) > 1 {
-		if err := os.MkdirAll(filepath.Dir(filePath), 0750); err != nil {
+		// #nosec G301 run in container with unknown user, so access for all is fine
+		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
 			return StoredFile{}, fmt.Errorf("failed to create sub dirs for %s %w", filePath, err)
 		}
 	}
@@ -67,7 +69,8 @@ func (s *localStorage) Store(r io.Reader, path ...string) (StoredFile, error) {
 	}
 
 	// #nosec G304 fromBasePath does already a path cleanup
-	target, err := os.OpenFile(filePath, flags, 0600)
+	// #nosec G302 run in container with unknown user, so need access for all is fine
+	target, err := os.OpenFile(filePath, flags, 0644)
 	if err != nil {
 		return StoredFile{}, fmt.Errorf("failed to create empty file %s with mode %s %w", filePath, s.config.Mode, err)
 	}
@@ -78,7 +81,7 @@ func (s *localStorage) Store(r io.Reader, path ...string) (StoredFile, error) {
 			if err == nil {
 				err = cErr
 			} else {
-				err = errors.Wrap(err, cErr.Error())
+				err = errors.Join(err, cErr)
 			}
 		}
 	}(target)

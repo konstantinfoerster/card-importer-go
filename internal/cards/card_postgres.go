@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/jackc/pgtype"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 )
 
@@ -30,8 +30,9 @@ func NewCardDao(db *postgres.DBConnection) *PostgresCardDao {
 }
 
 func (d *PostgresCardDao) withTransaction(f func(txDao *PostgresCardDao) error) error {
+	ctx := context.TODO()
 	// create a new dao instance with a transactional connection
-	return d.db.WithTransaction(func(txConn *postgres.DBConnection) error {
+	return d.db.WithTransaction(ctx, func(txConn *postgres.DBConnection) error {
 		return f(NewCardDao(txConn))
 	})
 }
@@ -515,10 +516,10 @@ func (d *PostgresCardDao) GetImages() ([]*Image, error) {
 	var result []*Image
 	for rows.Next() {
 		var img Image
-		var phash1 pgtype.Varbit
-		var phash2 pgtype.Varbit
-		var phash3 pgtype.Varbit
-		var phash4 pgtype.Varbit
+		var phash1 pgtype.Bits
+		var phash2 pgtype.Bits
+		var phash3 pgtype.Bits
+		var phash4 pgtype.Bits
 		rErr := rows.Scan(&img.ID, &img.ImagePath, &img.CardID,
 			&img.FaceID, &img.MimeType, &phash1, &phash2, &phash3, &phash4, &img.Lang)
 		if rErr != nil {
