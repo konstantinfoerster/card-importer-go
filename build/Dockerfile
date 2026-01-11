@@ -1,38 +1,36 @@
-FROM golang:1.24-alpine3.21 AS builder
+FROM golang:1.25-alpine3.23 AS builder
+
+ENV GOOS="linux" \
+    GOARCH="amd64" \
+    CGO_ENABLED="0"
 
 WORKDIR /app
 
 # download go modules
 COPY go.mod go.sum ./
-RUN go mod download && go mod verify
+RUN go mod download && go mod verify 
 
 # copy source files
 COPY cmd /app/cmd
 COPY internal /app/internal
 
-ENV GOOS="linux"
-ENV GOARCH="amd64"
-ENV CGO_ENABLED="0"
+RUN go build -tags timetzdata -ldflags="-s -w" -o card-dataset-cli cmd/dataset/main.go && \
+  chmod 0755 /app/card-dataset-cli && \
+  go build -tags timetzdata -ldflags="-s -w" -o card-images-cli cmd/images/main.go && \
+  chmod 0755 /app/card-images-cli 
 
-RUN go build -ldflags="-s -w" -o card-dataset-cli cmd/dataset/main.go && \
-    chmod 0755 /app/card-dataset-cli && \
-    go build -ldflags="-s -w" -o card-images-cli cmd/images/main.go && \
-    chmod 0755 /app/card-images-cli
-
-FROM alpine:3.21 AS dev
+FROM alpine:3.23 AS dev
 
 ARG RELEASE
 ENV IMG_VERSION="${RELEASE}"
 
-COPY --from=builder /app/card-dataset-cli /usr/bin/
-COPY --from=builder /app/card-images-cli /usr/bin/
+RUN addgroup -g 10001 nonroot \
+  && adduser -D -u 10001 -G nonroot nonroot 
 
-# hadolint ignore=DL3018
-RUN set -eux; \
-    apk add --no-progress --quiet --no-cache --upgrade \
-    tzdata
+COPY --from=builder --chown=nonroot:nonroot /app/card-dataset-cli /usr/bin/
+COPY --from=builder --chown=nonroot:nonroot /app/card-images-cli /usr/bin/
 
-USER nobody
+USER nonroot
 
 CMD ["/usr/bin/card-dataset-cli", "--config", "/config/application.yaml"]
 
@@ -51,7 +49,7 @@ ENV IMG_VERSION="${RELEASE}"
 COPY --from=dev /usr/bin/card-dataset-cli /usr/bin/card-dataset-cli
 COPY --from=dev /usr/bin/card-images-cli /usr/bin/card-images-cli
 
-USER nobody
+USER 10001:10001
 
 CMD ["/usr/bin/card-dataset-cli", "--config", "/config/application.yaml"]
 

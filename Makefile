@@ -19,10 +19,16 @@ test-unit:
 test:
 	go test --count=1 ./...
 update:
-	go get -u ./...
+	go get github.com/corona10/goimagehash 
+	go get github.com/jackc/pgx/v5 
+	go get github.com/rs/zerolog 
+	go get github.com/stretchr/testify
+	go get github.com/testcontainers/testcontainers-go 
+	go get golang.org/x/sync 
+	go get gopkg.in/yaml.v3 
 	go mod tidy
 lint:
-	docker run --pull always --rm -v ${CURRENT_DIR}\:/app -w /app golangci/golangci-lint\:v2.0-alpine golangci-lint run -v
+	docker run --pull always --rm -v ${CURRENT_DIR}\:/app -w /app golangci/golangci-lint\:v2.8-alpine golangci-lint run -v
 	docker run --pull always --rm -i hadolint/hadolint < build/Dockerfile
 
 
