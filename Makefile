@@ -1,6 +1,9 @@
 BINARY_NAME_DATA=card-importer
 BINARY_NAME_DATA=card-images
 CURRENT_DIR=$(shell pwd)
+ifndef VERSION
+override VERSION = local-dev
+endif
 
 build-data:
 	go build -o ${BINARY_NAME_DATA} cmd/data/main.go
@@ -11,9 +14,11 @@ run-image:
 run-data:
 	go run cmd/dataset/main.go -c configs/application-local.yaml
 docker-dev:
-	docker build -t card-importer:local --target dev -f build/Dockerfile .
-docker-prod:
-	docker build -t card-importer:local --target prod -f build/Dockerfile .
+	@echo "Build dev image version $(VERSION)"
+	docker build --build-arg RELEASE="$(VERSION)" -t card-importer-go:$(VERSION) --target dev -f build/Dockerfile .
+docker-build:
+	@echo "Build prod image version $(VERSION)"
+	docker build --build-arg RELEASE="$(VERSION)" -t card-importer-go:$(VERSION) --target prod -f build/Dockerfile .
 test-unit:
 	go test --short --count=1 ./...
 test:
