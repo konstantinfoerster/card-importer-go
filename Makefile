@@ -17,10 +17,14 @@ run-image:
 .PHONY: run-data
 run-data:
 	go run cmd/dataset/main.go -c configs/application-local.yaml
+.PHONY: docker-dev
+docker-dev:
+	@echo "Build dev image version $(VERSION)"
+	docker build --build-arg RELEASE="$(VERSION)" -t card-importer-go:$(VERSION) --target dev -f build/Dockerfile .
 .PHONY: docker-build
 docker-build:
-	@echo "Build image version $(VERSION)"
-	docker build --build-arg RELEASE="$(VERSION)" -t card-importer:$(VERSION) -f build/Dockerfile .
+	@echo "Build prod image version $(VERSION)"
+	docker build --build-arg RELEASE="$(VERSION)" -t card-importer-go:$(VERSION) --target prod -f build/Dockerfile .
 .PHONY: test-unit
 test-unit:
 	go test --short --count=1 ./...
