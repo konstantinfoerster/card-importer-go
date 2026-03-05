@@ -13,8 +13,8 @@ env:
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
-  GO_VERSION: "1.25.x"
-  GO_LINT_VERSION: "v2.8"
+  GO_VERSION: "1.26.x"
+  GO_LINT_VERSION: 'v2.10'
 
 permissions:
   contents: read

@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
+	"github.com/konstantinfoerster/card-importer-go/internal/logger"
 )
 
 func TestMain(m *testing.M) {

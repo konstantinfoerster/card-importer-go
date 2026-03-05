@@ -51,7 +51,7 @@ func TestLoad(t *testing.T) {
 		},
 		{
 			name:    "local file does not exists",
-			source:  "testdata/doesNotExists",
+			source:  "testdata/doesNotExists.json",
 			errPart: "failed to open file",
 		},
 		{

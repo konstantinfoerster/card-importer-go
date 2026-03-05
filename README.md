@@ -18,11 +18,10 @@ Run `go run cmd/dataset/main.go` to start the tool with the default configuratio
 
 Flags:
 
-| Flag            | Usage                              | Default Value            | Description                                                                             |
-| --------------- | ---------------------------------- | ------------------------ | --------------------------------------------------------------------------------------- |
-| `-c`,`--config` | `-c configs/application-prod.yaml` | configs/application.yaml | path to the configuration file                                                          |
-| `-u`,`--url`    | `-u https://localhost/dataset.zip` | not set                  | dataset download url (only json and zip is supported)                                   |
-| `-f`,`--file`   | `-f ./dataset.json`                | not set                  | path to local dataset json file, has precedence over the url flag or configuration file |
+| Flag       | Usage                               | Default Value | Description                                                                 |
+| ---------- | ----------------------------------- | ------------- | --------------------------------------------------------------------------- |
+| `--config` | `--config configs/application.yaml` | not set       | path to the configuration file, flag can be used multiple times             |
+| `--file`   | `--file ./dataset.json`             | not set       | path to local dataset json file, has precedence over the configuration file |
 
 ### Import Images
 
@@ -30,11 +29,11 @@ Run `go run cmd/images/main.go` to start the tool with the default configuration
 
 Flags:
 
-| Flag            | Usage                              | Default Value            | Description                    |
-| --------------- | ---------------------------------- | ------------------------ | ------------------------------ |
-| `-c`,`--config` | `-c configs/applicationLocal.yaml` | configs/application.yaml | path to the configuration file |
-| `-p`,`--page`   | `-p 21`                            | 1                        | start page number              |
-| `-s`,`--size`   | `-s 100`                           | 20                       | amount of entries per page     |
+| Flag       | Usage                               | Default Value | Description                                                     |
+| ---------- | ----------------------------------- | ------------- | --------------------------------------------------------------- |
+| `--config` | `--config configs/application.yaml` | not set       | path to the configuration file, flag can be used multiple times |
+| `--page`   | `--page 21`                         | 1             | start page number                                               |
+| `--size`   | `--size 100`                        | 20            | amount of entries per page                                      |
 
 ### Serve images
 

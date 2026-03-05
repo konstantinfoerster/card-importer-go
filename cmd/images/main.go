@@ -12,7 +12,7 @@ import (
 
 	"github.com/konstantinfoerster/card-importer-go/internal/cards"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
-	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
+	"github.com/konstantinfoerster/card-importer-go/internal/logger"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 	"github.com/konstantinfoerster/card-importer-go/internal/scryfall"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
@@ -21,29 +21,38 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type arrayFlag []string
+
+func (a *arrayFlag) String() string {
+	return fmt.Sprintf("%v", *a)
+}
+
+func (a *arrayFlag) Set(value string) error {
+	*a = append(*a, value)
+
+	return nil
+}
+
 const usage = `Usage: card-images-cli [options...]
-  -c, --config path to the configuration file (default: ./configs/application.yaml)
-  -p, --page start page number (default: 1)
-  -s, --size amount of entries per page (default: 20)
-  -h, --help prints help information
+  --config path to the configuration file
+  --page start page number (default: 1)
+  --size amount of entries per page (default: 20)
+  --help prints help information
 `
 
-func setup() (cards.PageConfig, *config.Config) {
+func setup() (cards.PageConfig, config.Config) {
 	logger.SetupConsoleLogger()
 
-	var configPath string
+	var configPaths arrayFlag
 	var pageConfig cards.PageConfig
 
-	flag.StringVar(&configPath, "c", "./configs/application.yaml", "path to the configuration file")
-	flag.StringVar(&configPath, "config", "./configs/application.yaml", "path to the configuration file")
-	flag.IntVar(&pageConfig.Page, "p", 1, "start page number")
+	flag.Var(&configPaths, "config", "path to the configuration files e.g. --config /config.yaml --config /secret.yaml")
 	flag.IntVar(&pageConfig.Page, "page", 1, "start page number")
-	flag.IntVar(&pageConfig.Size, "s", 20, "amount of entries per page")
 	flag.IntVar(&pageConfig.Size, "size", 20, "amount of entries per page")
 	flag.Usage = func() { fmt.Print(usage) }
 	flag.Parse()
 
-	cfg, err := config.Load(configPath)
+	cfg, err := config.ReadConfigs(configPaths...)
 	if err != nil {
 		panic(err)
 	}

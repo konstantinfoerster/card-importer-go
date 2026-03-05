@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+var ErrZipFile = errors.New("invalid zip file")
+
 func unzip(src string, dest string) ([]string, error) {
 	var readByteLimit int64 = 512 * 1024 * 1024 // 512 MiB
 	var files []string
@@ -31,7 +33,8 @@ func unzip(src string, dest string) ([]string, error) {
 		}
 	}(r)
 
-	if err = os.MkdirAll(dest, 0750); err != nil {
+	// #nosec G703 is already sanitized
+	if err = os.MkdirAll(dest, 0700); err != nil {
 		return nil, err
 	}
 
@@ -42,19 +45,19 @@ func unzip(src string, dest string) ([]string, error) {
 		if unsafeZipUncompressedSize <= 0 || unsafeZipUncompressedSize > math.MaxInt64 {
 			return nil, fmt.Errorf("cannot write file, unrcompressed size is > maxInt64 or <= 0")
 		}
-		// #nosec G115 false positiv. This bug is fixed in latest gosec but not in golangci
 		zipUncompressedSize := int64(unsafeZipUncompressedSize)
 		if zipUncompressedSize > readByteLimit {
 			return nil, fmt.Errorf("cannot write next file, reached limit of %dMiB", readByteLimit/oneKiB/oneKiB)
 		}
 
-		path, err := sanitizeArchivePath(dest, f.Name)
+		path, err := SanitizePath(dest, f.Name)
 		if err != nil {
 			return nil, err
 		}
 
 		if f.FileInfo().IsDir() {
-			if err := os.MkdirAll(path, f.Mode()); err != nil {
+			// #nosec G703 is already sanitized
+			if err := os.MkdirAll(path, 0700); err != nil {
 				return nil, err
 			}
 
@@ -80,11 +83,13 @@ func unzip(src string, dest string) ([]string, error) {
 func writeFile(zippedFile *zip.File, destFile string, readBytesN int64) (string, error) {
 	destFile = filepath.Clean(destFile)
 
-	if err := os.MkdirAll(filepath.Dir(filepath.Dir(destFile)), zippedFile.Mode()); err != nil {
+	// #nosec G703 is already sanitized
+	if err := os.MkdirAll(filepath.Dir(destFile), 0700); err != nil {
 		return "", err
 	}
 
-	f, err := os.OpenFile(destFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, zippedFile.Mode())
+	// #nosec G703 is already sanitized
+	f, err := os.OpenFile(destFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return "", err
 	}
@@ -127,12 +132,26 @@ func writeFile(zippedFile *zip.File, destFile string, readBytesN int64) (string,
 	return destFile, err
 }
 
-func sanitizeArchivePath(dest, filename string) (string, error) {
-	path := filepath.Join(dest, filename)
-	if strings.HasPrefix(path, filepath.Clean(dest)) {
-		return path, nil
+func SanitizePath(dest, filename string) (string, error) {
+	if filename == "" {
+		return "", fmt.Errorf("filename should not be empty, %w", ErrZipFile)
 	}
 
-	// Zip slip
-	return "", fmt.Errorf("illegal file path %s", path)
+	if filepath.IsAbs(filename) {
+		return "", fmt.Errorf("filename should not be absolute %s, %w", filename, ErrZipFile)
+	}
+
+	if !filepath.IsAbs(dest) {
+		return "", fmt.Errorf("dest path must be absolute %s, %w", dest, ErrZipFile)
+	}
+
+	dest = filepath.Clean(dest)
+	path := filepath.Join(dest, filename)
+	// path should start with e.g. /out/ so we do not allow e.g /out-tmp
+	if !strings.HasPrefix(path, dest+string(filepath.Separator)) {
+		// Zip slip
+		return "", fmt.Errorf("illegal file path %s, %w", path, ErrZipFile)
+	}
+
+	return path, nil
 }
