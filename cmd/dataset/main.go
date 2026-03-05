@@ -11,7 +11,7 @@ import (
 
 	"github.com/konstantinfoerster/card-importer-go/internal/cards"
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
-	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
+	"github.com/konstantinfoerster/card-importer-go/internal/logger"
 	"github.com/konstantinfoerster/card-importer-go/internal/mtgjson"
 	"github.com/konstantinfoerster/card-importer-go/internal/postgres"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
@@ -20,32 +20,37 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type arrayFlag []string
+
+func (a *arrayFlag) String() string {
+	return fmt.Sprintf("%v", *a)
+}
+
+func (a *arrayFlag) Set(value string) error {
+	*a = append(*a, value)
+
+	return nil
+}
+
 const usage = `Usage: card-dataset-cli [options...]
-  -c, --config path to the configuration file (default: ./configs/application.yaml)
-  -u, --url dataset download url (only json and zip is supported)
-  -f, --file path to local dataset json file, has precedence over the url flag or configuration file
-  -h, --help prints help information
+  --config path to the configuration file
+  --file path to local dataset json file, has precedence over the url flag or configuration file
+  --help prints help information
 `
 
-func setup() (*url.URL, *config.Config) {
+func setup() (*url.URL, config.Config) {
 	logger.SetupConsoleLogger()
 
-	var configPath string
+	var configPaths arrayFlag
 	var file string
-	var downloadURL string
 
-	flag.StringVar(&configPath, "c", "./configs/application.yaml", "path to the configuration file")
-	flag.StringVar(&configPath, "config", "./configs/application.yaml", "path to the configuration file")
-	flag.StringVar(&file, "f", "",
-		"path to local dataset json file, has precedence over the url flag or configuration file")
+	flag.Var(&configPaths, "config", "path to the configuration files e.g. --config /config.yaml --config /secret.yaml")
 	flag.StringVar(&file, "file", "",
-		"path to local dataset json file, has precedence over the url flag or configuration file")
-	flag.StringVar(&downloadURL, "u", "", "dataset download url (only json and zip is supported)")
-	flag.StringVar(&downloadURL, "url", "", "dataset download url (only json and zip is supported)")
+		"path to local dataset json file, has precedence over the configuration file")
 	flag.Usage = func() { fmt.Print(usage) }
 	flag.Parse()
 
-	cfg, err := config.Load(configPath)
+	cfg, err := config.ReadConfigs(configPaths...)
 	if err != nil {
 		panic(err)
 	}
@@ -55,15 +60,12 @@ func setup() (*url.URL, *config.Config) {
 		panic(err)
 	}
 
-	if downloadURL == "" {
-		downloadURL = cfg.Mtgjson.DatasetURL
-	}
-
 	log.Info().Msgf("OS\t\t %s", runtime.GOOS)
 	log.Info().Msgf("ARCH\t\t %s", runtime.GOARCH)
 	log.Info().Msgf("CPUs\t\t %d", runtime.NumCPU())
 
 	if file == "" {
+		downloadURL := cfg.Mtgjson.DatasetURL
 		log.Info().Msgf("Using dataset from url %s", downloadURL)
 		u, pErr := url.Parse(downloadURL)
 		if pErr != nil {

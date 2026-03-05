@@ -2,10 +2,33 @@ package config_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func TestReadConfigs_EmptyFile(t *testing.T) {
+	_, err := config.ReadConfigs("testdata/empty.yaml")
+
+	require.NoError(t, err)
+}
+
+func TestReadConfigs_MultipleFilesOverwrite(t *testing.T) {
+	cfg, err := config.ReadConfigs(
+		"testdata/application.yaml",
+		"testdata/application-dev.yaml",
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, "localhost", cfg.Database.Host)
+	assert.Equal(t, "5432", cfg.Database.Port)
+	assert.Equal(t, "tester", cfg.Database.Username)
+	assert.Equal(t, "s3cr3t", cfg.Database.Password)
+	assert.Equal(t, "https://localhost:8443/cards.zip", cfg.Mtgjson.DatasetURL)
+	assert.Equal(t, time.Second*120, cfg.Mtgjson.Client.Timeout)
+}
 
 func TestDatabase_ConnectionURL(t *testing.T) {
 	cfg := config.Database{
@@ -17,6 +40,36 @@ func TestDatabase_ConnectionURL(t *testing.T) {
 	}
 
 	assert.Equal(t, "postgres://Tester:secret@localhost:5432/test", cfg.ConnectionURL())
+}
+
+func TestReadConfigs_NotAFile(t *testing.T) {
+	cases := []struct {
+		name string
+		path []string
+	}{
+		{
+			name: "directory",
+			path: []string{"testdata"},
+		},
+		{
+			name: "file not exist",
+			path: []string{"testdata/notfound.yaml"},
+		},
+		{
+			name: "second file not exist",
+			path: []string{
+				"testdata/application.yaml",
+				"testdata/notfound.yaml",
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := config.ReadConfigs(tc.path...)
+
+			require.ErrorIs(t, err, config.ErrReadFile)
+		})
+	}
 }
 
 func TestEnsureBaseURL(t *testing.T) {

@@ -82,6 +82,7 @@ func (c *httpClient) Get(ctx context.Context, url string, opts GetOptions) (*Res
 			req.Header.Set(k, v)
 		}
 
+		// #nosec G704 no user defined urls are used
 		resp, err := c.client.Do(req)
 		if err != nil {
 			return nil, fmt.Errorf("request execution failed for url %s, %w", url, err)

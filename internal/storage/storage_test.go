@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
-	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
+	"github.com/konstantinfoerster/card-importer-go/internal/logger"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

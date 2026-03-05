@@ -38,10 +38,17 @@ type localStorage struct {
 
 func (s *localStorage) fromBasePath(path ...string) (string, error) {
 	baseDir := s.config.Location
-	targetDir := filepath.Join(baseDir, filepath.Join(path...))
-	targetDir = filepath.Clean(targetDir)
 
-	if !strings.HasPrefix(targetDir, baseDir) {
+	targetDir := baseDir
+	for _, p := range path {
+		if filepath.IsAbs(p) {
+			return "", fmt.Errorf("path should not be absolute %s", p)
+		}
+
+		targetDir = filepath.Join(targetDir, p)
+	}
+
+	if !strings.HasPrefix(targetDir, baseDir+string(filepath.Separator)) {
 		return "", fmt.Errorf("path is not within base path, %s", baseDir)
 	}
 

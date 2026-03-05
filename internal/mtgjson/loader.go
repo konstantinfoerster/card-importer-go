@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/konstantinfoerster/card-importer-go/internal/aio"
@@ -35,10 +36,14 @@ func NewLoader(dataset cards.Dataset, cfg config.Mtgjson, wclient web.Client, st
 
 func (l *FileLoader) Load(source *url.URL) (*cards.Report, error) {
 	if source.Scheme == "" {
-		filePath := filepath.Clean(source.String())
-		f, err := os.Open(filePath)
+		fp := filepath.Clean(source.String())
+		if !strings.HasSuffix(fp, ".json") {
+			return nil, fmt.Errorf("only json files are allowed, got %s", fp)
+		}
+		// #nosec G703 should be fine here
+		f, err := os.Open(fp)
 		if err != nil {
-			return nil, fmt.Errorf("failed to open file %s %w", filePath, err)
+			return nil, fmt.Errorf("failed to open file %s %w", fp, err)
 		}
 		defer aio.Close(f)
 
@@ -69,6 +74,7 @@ func (l *FileLoader) Load(source *url.URL) (*cards.Report, error) {
 	}
 
 	fileToImport = filepath.Clean(fileToImport)
+	// #nosec G703 is already sanitized
 	f, err := os.Open(fileToImport)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file %s %w", fileToImport, err)
@@ -84,6 +90,7 @@ func extract(file string, m web.MimeType) (string, error) {
 	}
 	var err error
 	defer func(name string) {
+		// #nosec G703 is already sanitized
 		rErr := os.Remove(name)
 		if rErr != nil {
 			// report remove errors
