@@ -70,7 +70,7 @@ func (d *CharacteristicDao) Find(names ...string) ([]*CharacteristicType, error)
 			inPart.WriteString(", ")
 		}
 		params = append(params, name)
-		inPart.WriteString(fmt.Sprintf("$%d", len(params)))
+		fmt.Fprintf(&inPart, "$%d", len(params))
 	}
 
 	wherePart := "name in (" + inPart.String() + ")"
@@ -158,11 +158,11 @@ func (d *CharacteristicDao) DeleteAssignments(faceID int64, typeIDs ...int64) er
 			inPart.WriteString(", ")
 		}
 		params = append(params, id)
-		inPart.WriteString(fmt.Sprintf("$%d", len(params)))
+		fmt.Fprintf(&inPart, "$%d", len(params))
 	}
 
 	inPart.WriteString(", ")
-	inPart.WriteString(fmt.Sprintf("$%d", len(typeIDs)+1)) // additional one because of faceId
+	fmt.Fprintf(&inPart, "$%d", len(typeIDs)+1) // additional one because of faceId
 
 	query := "DELETE FROM " + d.joinTable + " WHERE face_id = $1 AND type_id IN (" + inPart.String() + ")"
 

@@ -1,0 +1,12 @@
+---
+logging:
+  level: trace
+
+database:
+  username:
+  password:
+
+mtgjson:
+  datasetUrl: https://localhost:8443/cards.zip
+  client:
+    timeout: 30s

@@ -22,8 +22,7 @@ type StoredFile struct {
 }
 
 func NewLocalStorage(config config.Storage) (Storer, error) {
-	// #nosec G301 run in container with unknown user, so access for all is fine
-	if err := os.MkdirAll(config.Location, 0755); err != nil {
+	if err := os.MkdirAll(config.Location, 0700); err != nil {
 		return nil, fmt.Errorf("failed to create storage dir %s %w", config.Location, err)
 	}
 
@@ -38,10 +37,21 @@ type localStorage struct {
 
 func (s *localStorage) fromBasePath(path ...string) (string, error) {
 	baseDir := s.config.Location
-	targetDir := filepath.Join(baseDir, filepath.Join(path...))
-	targetDir = filepath.Clean(targetDir)
 
-	if !strings.HasPrefix(targetDir, baseDir) {
+	targetDir := baseDir
+	for _, p := range path {
+		if p == "" {
+			return "", fmt.Errorf("path should not be empty")
+		}
+
+		if filepath.IsAbs(p) {
+			return "", fmt.Errorf("path should not be absolute %s", p)
+		}
+
+		targetDir = filepath.Join(targetDir, p)
+	}
+
+	if !strings.HasPrefix(targetDir, baseDir+string(filepath.Separator)) {
 		return "", fmt.Errorf("path is not within base path, %s", baseDir)
 	}
 
@@ -55,8 +65,7 @@ func (s *localStorage) Store(r io.Reader, path ...string) (StoredFile, error) {
 	}
 
 	if len(path) > 1 {
-		// #nosec G301 run in container with unknown user, so access for all is fine
-		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(filePath), 0700); err != nil {
 			return StoredFile{}, fmt.Errorf("failed to create sub dirs for %s %w", filePath, err)
 		}
 	}
@@ -69,8 +78,7 @@ func (s *localStorage) Store(r io.Reader, path ...string) (StoredFile, error) {
 	}
 
 	// #nosec G304 fromBasePath does already a path cleanup
-	// #nosec G302 run in container with unknown user, so need access for all is fine
-	target, err := os.OpenFile(filePath, flags, 0644)
+	target, err := os.OpenFile(filePath, flags, 0600)
 	if err != nil {
 		return StoredFile{}, fmt.Errorf("failed to create empty file %s with mode %s %w", filePath, s.config.Mode, err)
 	}

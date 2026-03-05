@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"net"
@@ -11,7 +12,12 @@ import (
 	"strings"
 
 	"github.com/konstantinfoerster/card-importer-go/internal/web"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
+)
+
+var (
+	ErrReadFile       = errors.New("cannot read file")
+	ErrInvalidContent = errors.New("unexpected file content")
 )
 
 type Config struct {
@@ -27,7 +33,7 @@ type Database struct {
 	Port           string `yaml:"port"`
 	Database       string `yaml:"database"`
 	Username       string `yaml:"username"`
-	Password       string `yaml:"password"`
+	Password       string `yaml:"password"` // #nosec G117 field is only used internaly
 	MaxConnections int32  `yaml:"maxConnections"`
 }
 
@@ -102,22 +108,22 @@ type Storage struct {
 	Mode     string `yaml:"mode"`
 }
 
-func Load(path string) (*Config, error) {
-	p := filepath.Clean(path)
+func ReadConfigs(path ...string) (Config, error) {
+	cfg := Config{}
 
-	data, err := os.ReadFile(p)
-	if err != nil {
-		return nil, fmt.Errorf("can't read config file: %w", err)
+	for _, p := range path {
+		p = filepath.Clean(p)
+
+		configRaw, err := os.ReadFile(p)
+		if err != nil {
+			return Config{}, errors.Join(err, ErrReadFile)
+		}
+
+		err = yaml.Unmarshal(configRaw, &cfg)
+		if err != nil {
+			return Config{}, errors.Join(err, ErrInvalidContent)
+		}
 	}
 
-	config := &Config{}
-
-	err = yaml.Unmarshal(data, &config)
-	if err != nil {
-		return nil, fmt.Errorf("config unmarshal failed with: %w", err)
-	}
-
-	// TODO validate config content
-
-	return config, nil
+	return cfg, nil
 }

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/konstantinfoerster/card-importer-go/internal/config"
-	logger "github.com/konstantinfoerster/card-importer-go/internal/log"
+	"github.com/konstantinfoerster/card-importer-go/internal/logger"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -137,9 +137,9 @@ func TestLoadWithoutAnyPath(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.Load("")
-	assert.Error(t, err, "expected not found error but got no error")
 
-	assert.Contains(t, err.Error(), "not supported")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "should not be empty")
 }
 
 func TestLoadOutSideBasePath(t *testing.T) {
