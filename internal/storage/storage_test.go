@@ -137,9 +137,9 @@ func TestLoadWithoutAnyPath(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = store.Load("")
-	assert.Error(t, err, "expected not found error but got no error")
 
-	assert.Contains(t, err.Error(), "not supported")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "should not be empty")
 }
 
 func TestLoadOutSideBasePath(t *testing.T) {

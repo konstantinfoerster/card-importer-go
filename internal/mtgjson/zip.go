@@ -34,7 +34,7 @@ func unzip(src string, dest string) ([]string, error) {
 	}(r)
 
 	// #nosec G703 is already sanitized
-	if err = os.MkdirAll(dest, 0750); err != nil {
+	if err = os.MkdirAll(dest, 0700); err != nil {
 		return nil, err
 	}
 
@@ -57,7 +57,7 @@ func unzip(src string, dest string) ([]string, error) {
 
 		if f.FileInfo().IsDir() {
 			// #nosec G703 is already sanitized
-			if err := os.MkdirAll(path, 0640); err != nil {
+			if err := os.MkdirAll(path, 0700); err != nil {
 				return nil, err
 			}
 
@@ -84,12 +84,12 @@ func writeFile(zippedFile *zip.File, destFile string, readBytesN int64) (string,
 	destFile = filepath.Clean(destFile)
 
 	// #nosec G703 is already sanitized
-	if err := os.MkdirAll(filepath.Dir(destFile), 0640); err != nil {
+	if err := os.MkdirAll(filepath.Dir(destFile), 0700); err != nil {
 		return "", err
 	}
 
 	// #nosec G703 is already sanitized
-	f, err := os.OpenFile(destFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0440)
+	f, err := os.OpenFile(destFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return "", err
 	}
@@ -133,6 +133,10 @@ func writeFile(zippedFile *zip.File, destFile string, readBytesN int64) (string,
 }
 
 func SanitizePath(dest, filename string) (string, error) {
+	if filename == "" {
+		return "", fmt.Errorf("filename should not be empty, %w", ErrZipFile)
+	}
+
 	if filepath.IsAbs(filename) {
 		return "", fmt.Errorf("filename should not be absolute %s, %w", filename, ErrZipFile)
 	}

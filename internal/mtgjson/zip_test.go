@@ -51,6 +51,11 @@ func TestSanitizeArchivePath(t *testing.T) {
 			filename:    "/tmp/malicious.sh",
 			expectedErr: mtgjson.ErrZipFile,
 		},
+		{
+			name:        "attack 5",
+			filename:    "",
+			expectedErr: mtgjson.ErrZipFile,
+		},
 	}
 
 	for _, tc := range testcases {
