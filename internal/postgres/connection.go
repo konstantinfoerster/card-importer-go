@@ -38,6 +38,13 @@ func Connect(ctx context.Context, config config.Database) (*DBConnection, error)
 
 	err = pool.Ping(ctx)
 	if err != nil {
+		log.Warn().Msgf("failed to ping database %w", err)
+		// return nil, fmt.Errorf("failed to ping database %w", err)
+	}
+	
+	time.Sleep(5 * time.Second)
+	err = pool.Ping(ctx)
+	if err != nil {
 		return nil, fmt.Errorf("failed to ping database %w", err)
 	}
 
