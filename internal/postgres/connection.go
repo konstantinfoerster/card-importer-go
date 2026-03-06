@@ -21,7 +21,7 @@ type DBConnection struct {
 func Connect(ctx context.Context, config config.Database) (*DBConnection, error) {
 	c, err := pgxpool.ParseConfig(config.ConnectionURL())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse config from URL %w", err)
 	}
 
 	c.MaxConnLifetime = time.Second * time.Duration(5)
@@ -33,12 +33,12 @@ func Connect(ctx context.Context, config config.Database) (*DBConnection, error)
 
 	pool, err := pgxpool.NewWithConfig(ctx, c)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create pool %w", err)
 	}
 
 	err = pool.Ping(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to ping database %w", err)
 	}
 
 	dbConn := &DBConnection{
@@ -46,7 +46,7 @@ func Connect(ctx context.Context, config config.Database) (*DBConnection, error)
 		pgxCon: pool,
 	}
 
-	return dbConn, err
+	return dbConn, nil
 }
 
 func (d *DBConnection) Close() error {

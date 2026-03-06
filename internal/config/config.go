@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/konstantinfoerster/card-importer-go/internal/web"
+	"github.com/rs/zerolog/log"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -124,6 +125,8 @@ func ReadConfigs(path ...string) (Config, error) {
 			return Config{}, errors.Join(err, ErrInvalidContent)
 		}
 	}
+
+	log.Info().Msgf("CONFIG: %#v", cfg)
 
 	return cfg, nil
 }
