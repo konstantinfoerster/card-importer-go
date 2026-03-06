@@ -39,7 +39,7 @@ type Database struct {
 }
 
 func (d Database) ConnectionURL() string {
-	return fmt.Sprintf("postgres://%s:%s@%s/%s?sslmode=disable", d.Username, d.Password, net.JoinHostPort(d.Host, d.Port), d.Database)
+	return fmt.Sprintf("postgres://%s:%s@%s/%s", d.Username, d.Password, net.JoinHostPort(d.Host, d.Port), d.Database)
 }
 
 func (d Database) MaxConnectionsOrDefault() int32 {
