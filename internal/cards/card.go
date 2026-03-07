@@ -98,6 +98,10 @@ func (c *Card) Diff(other *Card) *Changeset {
 	return changes
 }
 
+func (c *Card) String() string {
+	return fmt.Sprintf("Card name: %s, number: %s, set: %s, faces: [%v]", c.Name, c.Number, c.CardSetCode, c.Faces)
+}
+
 // Face The face data of a card.
 type Face struct {
 	ID                PrimaryID
@@ -119,6 +123,10 @@ type Face struct {
 	Supertypes        []string // A list of card supertypes found before em-dash.
 	Subtypes          []string // A list of card subtypes found after em-dash.
 	Translations      []FaceTranslation
+}
+
+func (f Face) String() string {
+	return fmt.Sprintf("face name: %s", f.Name)
 }
 
 // isSame Compares the identities of two faces.
