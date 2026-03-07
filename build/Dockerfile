@@ -24,8 +24,12 @@ FROM alpine:3.23 AS dev
 ARG RELEASE
 ENV IMG_VERSION="${RELEASE}"
 
+# hadolint ignore=DL3018 # we always want the latest certificates
+RUN apk add --no-cache ca-certificates
+
 RUN addgroup -g 10001 nonroot \
   && adduser -D -u 10001 -G nonroot nonroot 
+
 
 COPY --from=builder --chown=nonroot:nonroot /app/card-dataset-cli /usr/bin/
 COPY --from=builder --chown=nonroot:nonroot /app/card-images-cli /usr/bin/
@@ -46,6 +50,7 @@ FROM scratch AS prod
 ARG RELEASE
 ENV IMG_VERSION="${RELEASE}"
 
+COPY --from=dev /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=dev /usr/bin/card-dataset-cli /usr/bin/card-dataset-cli
 COPY --from=dev /usr/bin/card-images-cli /usr/bin/card-images-cli
 
