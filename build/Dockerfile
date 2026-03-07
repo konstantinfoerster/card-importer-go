@@ -25,11 +25,10 @@ ARG RELEASE
 ENV IMG_VERSION="${RELEASE}"
 
 # hadolint ignore=DL3018 # we always want the latest certificates
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates 
 
 RUN addgroup -g 10001 nonroot \
   && adduser -D -u 10001 -G nonroot nonroot 
-
 
 COPY --from=builder --chown=nonroot:nonroot /app/card-dataset-cli /usr/bin/
 COPY --from=builder --chown=nonroot:nonroot /app/card-images-cli /usr/bin/
