@@ -36,16 +36,9 @@ func Connect(ctx context.Context, config config.Database) (*DBConnection, error)
 		return nil, fmt.Errorf("failed to create pool %w", err)
 	}
 
-	err = pool.Ping(ctx)
+	err = pingWithRetry(ctx, pool)
 	if err != nil {
-		log.Warn().Msgf("failed to ping database %w", err)
-		// return nil, fmt.Errorf("failed to ping database %w", err)
-	}
-	
-	time.Sleep(5 * time.Second)
-	err = pool.Ping(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to ping database %w", err)
+		return nil, err
 	}
 
 	dbConn := &DBConnection{
@@ -54,6 +47,23 @@ func Connect(ctx context.Context, config config.Database) (*DBConnection, error)
 	}
 
 	return dbConn, nil
+}
+
+func pingWithRetry(ctx context.Context, pool *pgxpool.Pool) error {
+	retryDelay := time.Second * 5
+	maxRetry := 5
+
+	var err error
+	for attempt := 0; attempt < maxRetry; attempt++ {
+		err = pool.Ping(ctx)
+		if err == nil {
+			return nil
+		}
+
+		time.Sleep(retryDelay)
+	}
+
+	return fmt.Errorf("failed to ping database after %d retries, %w", maxRetry, err)
 }
 
 func (d *DBConnection) Close() error {
