@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -109,8 +110,15 @@ func expectedFaceCount(v mtgjsonCard) int {
 		return 1
 	}
 
+	// has // but the card is only single faced
+	if strings.HasPrefix(strings.ToLower(v.Name), "sp//dr") {
+		return 1
+	}
+
 	// card name contains all face names separated by //
-	return len(strings.Split(v.Name, "//"))
+	// also ensures that cards like a / b / a are identified as two faces
+	uniqNames := slices.Compact(strings.Split(v.Name, "//"))
+	return len(uniqNames)
 }
 
 type faceCollector struct {
