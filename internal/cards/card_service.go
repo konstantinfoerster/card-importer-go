@@ -119,6 +119,8 @@ func mergeCardFaces(dao *PostgresCardDao, ff []*Face, cardID int64, isNewCard bo
 			return fmt.Errorf("failed to get assigned faces %w", err)
 		}
 		for _, existingFace := range existingFaces {
+			// https://api.scryfall.com/cards/484b5580-b179-4dce-8bdf-d714eb4635e5?format=json&pretty=true
+			// this cards cases issues since it has the same name
 			if ok, pos := containsFace(incomingFaces, existingFace); ok {
 				incomingFace := incomingFaces[pos]
 				incomingFace.ID = existingFace.ID
@@ -134,8 +136,9 @@ func mergeCardFaces(dao *PostgresCardDao, ff []*Face, cardID int64, isNewCard bo
 
 				continue
 			}
-			log.Warn().Msgf("Going to delete card face %v of card %v", existingFace.Name, cardID)
+
 			faceID := existingFace.ID.Int64
+			log.Warn().Msgf("Going to delete card face %v (%v) of card %v", existingFace.Name, faceID, cardID)
 			if err := dao.DeleteFace(faceID); err != nil {
 				return err
 			}
