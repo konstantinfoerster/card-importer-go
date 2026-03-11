@@ -117,7 +117,9 @@ func expectedFaceCount(v mtgjsonCard) int {
 
 	// card name contains all face names separated by //
 	// also ensures that cards like a / b / a are identified as two faces
-	uniqNames := slices.Compact(strings.Split(v.Name, "//"))
+	uniqNames := slices.CompactFunc(strings.Split(v.Name, "//"), func(s1, s2 string) bool {
+		return strings.TrimSpace(s1) == strings.TrimSpace(s2)
+	})
 	return len(uniqNames)
 }
 
