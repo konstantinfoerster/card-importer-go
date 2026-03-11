@@ -134,6 +134,7 @@ func mergeCardFaces(dao *PostgresCardDao, ff []*Face, cardID int64, isNewCard bo
 
 				continue
 			}
+			log.Warn().Msgf("Going to delete card face %v of card %v", existingFace.Name, cardID)
 			faceID := existingFace.ID.Int64
 			if err := dao.DeleteFace(faceID); err != nil {
 				return err
