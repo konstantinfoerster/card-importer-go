@@ -20,11 +20,11 @@ run-data:
 .PHONY: docker-dev
 docker-dev:
 	@echo "Build dev image version $(VERSION)"
-	docker build --build-arg RELEASE="$(VERSION)" -t card-importer-go:$(VERSION) --target dev -f build/Dockerfile .
+	docker build --pull --build-arg RELEASE="$(VERSION)" -t card-importer-go:$(VERSION) --target dev -f build/Dockerfile .
 .PHONY: docker-build
 docker-build:
 	@echo "Build prod image version $(VERSION)"
-	docker build --build-arg RELEASE="$(VERSION)" -t card-importer-go:$(VERSION) --target prod -f build/Dockerfile .
+	docker build --pull --build-arg RELEASE="$(VERSION)" -t card-importer-go:$(VERSION) --target prod -f build/Dockerfile .
 .PHONY: test-unit
 test-unit:
 	go test --short --count=1 ./...
