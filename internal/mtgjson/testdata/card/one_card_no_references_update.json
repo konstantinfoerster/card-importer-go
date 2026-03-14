@@ -8,9 +8,7 @@
         {
           "artist": "Artist Updated",
           "borderColor": "black",
-          "colors": [
-            "B", "W"
-          ],
+          "colors": ["B", "W"],
           "convertedManaCost": 20,
           "flavorText": "Flavor Text Updated",
           "identifiers": {
@@ -69,7 +67,8 @@
           "text": "Here is a text",
           "rarity": "rare",
           "setCode": "2ED"
-        }, {
+        },
+        {
           "borderColor": "black",
           "layout": "reversible_card",
           "name": "Same Face Name // Same Face Name",
@@ -83,3 +82,4 @@
     }
   }
 }
+

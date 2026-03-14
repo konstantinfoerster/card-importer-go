@@ -114,18 +114,20 @@ func mergeCardFaces(dao *PostgresCardDao, ff []*Face, cardID int64, isNewCard bo
 	var incomingFaces []*Face
 	incomingFaces = append(incomingFaces, ff...)
 	if !isNewCard {
-		existingFaces, err := dao.FindAssignedFaces(cardID)
+		dbFaces, err := dao.FindAssignedFaces(cardID)
 		if err != nil {
 			return fmt.Errorf("failed to get assigned faces %w", err)
 		}
-		for _, existingFace := range existingFaces {
-			// https://api.scryfall.com/cards/484b5580-b179-4dce-8bdf-d714eb4635e5?format=json&pretty=true
-			// this cards cases issues since it has the same name
-			if ok, pos := containsFace(incomingFaces, existingFace); ok {
-				incomingFace := incomingFaces[pos]
-				incomingFace.ID = existingFace.ID
+		if len(dbFaces) != len(incomingFaces) {
+			log.Warn().Msgf("Existing card %v has different face count than new one. Existing %d, new one %d", cardID, len(dbFaces), len(incomingFaces))
+		}
 
-				diff := existingFace.Diff(incomingFace)
+		for _, dbFace := range dbFaces {
+			if ok, pos := containsFace(incomingFaces, dbFace); ok {
+				incomingFace := incomingFaces[pos]
+				incomingFace.ID = dbFace.ID
+
+				diff := dbFace.Diff(incomingFace)
 				if diff.HasChanges() {
 					log.Info().Msgf("Update face %s of card %v with changes %s", incomingFace.Name, cardID, diff.String())
 					if err := dao.UpdateFace(incomingFace); err != nil {
@@ -137,12 +139,12 @@ func mergeCardFaces(dao *PostgresCardDao, ff []*Face, cardID int64, isNewCard bo
 				continue
 			}
 
-			faceID := existingFace.ID.Int64
-			log.Warn().Msgf("Going to delete card face %v (%v) of card %v", existingFace.Name, faceID, cardID)
+			faceID := dbFace.ID.Int64
+			log.Warn().Msgf("Going to delete card face %v (%v) of card %v", dbFace.Name, faceID, cardID)
 			if err := dao.DeleteFace(faceID); err != nil {
 				return err
 			}
-			log.Warn().Msgf("Deleted card face %v of card %v", existingFace.Name, cardID)
+			log.Warn().Msgf("Deleted card face %v of card %v", dbFace.Name, cardID)
 		}
 	}
 
@@ -316,11 +318,11 @@ func containsFace(arr []*Face, searchTerm *Face) (bool, int) {
 		}
 	}
 
-	for i, f := range arr {
-		if f.couldBeSame(searchTerm) {
-			return true, i
-		}
-	}
+	// for i, f := range arr {
+	// 	if f.couldBeSame(searchTerm) {
+	// 		return true, i
+	// 	}
+	// }
 
 	return false, 0
 }

@@ -8,9 +8,7 @@
         {
           "artist": "Douglas Shuler",
           "borderColor": "white",
-          "colors": [
-            "W"
-          ],
+          "colors": ["W"],
           "convertedManaCost": 1,
           "flavorText": "Benalia has a complex caste system that changes with the...",
           "identifiers": {
@@ -79,7 +77,8 @@
           "text": "Here is a text",
           "rarity": "rare",
           "setCode": "2ED"
-        },{
+        },
+        {
           "borderColor": "black",
           "layout": "reversible_card",
           "name": "Same Face Name // Same Face Name",
@@ -93,3 +92,4 @@
     }
   }
 }
+
