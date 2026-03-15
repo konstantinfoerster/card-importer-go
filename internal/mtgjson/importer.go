@@ -37,7 +37,7 @@ func (imp *mtgJSONDataset) Import(r io.Reader) (*cards.Report, error) {
 	errg, ctx := errgroup.WithContext(context.Background())
 
 	fc := &faceCollector{
-		doubleFaceCards: map[string]*cards.Card{},
+		doubleFaceCards: map[string]cards.Card{},
 	}
 
 	for r := range parse(ctx, r) {
@@ -129,7 +129,7 @@ func expectedFaceCount(v mtgjsonCard) int {
 }
 
 type faceCollector struct {
-	doubleFaceCards map[string]*cards.Card
+	doubleFaceCards map[string]cards.Card
 }
 
 // CollectionSize Returns the amount of uncollected double faces.
@@ -148,7 +148,7 @@ func (f *faceCollector) RequiresMoreFaces(faceCount int, v mtgjsonCard, card *ca
 		key := fmt.Sprintf("%s_%s", card.CardSetCode, v.Number)
 		value, ok := f.doubleFaceCards[key]
 		if !ok {
-			f.doubleFaceCards[key] = card
+			f.doubleFaceCards[key] = *card
 
 			// continue collecting faces
 			return true
@@ -156,7 +156,7 @@ func (f *faceCollector) RequiresMoreFaces(faceCount int, v mtgjsonCard, card *ca
 
 		card.Faces = append(card.Faces, value.Faces...)
 		if faceCount != len(card.Faces) {
-			f.doubleFaceCards[key] = card
+			f.doubleFaceCards[key] = *card
 
 			// continue collecting faces
 			return true

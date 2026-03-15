@@ -98,6 +98,10 @@ func (c *Card) Diff(other *Card) *Changeset {
 	return changes
 }
 
+func (c Card) String() string {
+	return fmt.Sprintf("Card %v, name: %s, number: %s, set: %s, ", c.ID, c.Name, c.Number, c.CardSetCode)
+}
+
 // Face The face data of a card.
 type Face struct {
 	ID                PrimaryID
@@ -221,6 +225,10 @@ func (f Face) Diff(other *Face) *Changeset {
 	}
 
 	return changes
+}
+
+func (f Face) String() string {
+	return fmt.Sprintf("Face %v, name: %s", f.ID, f.Name)
 }
 
 // Translation The translation of the card. Does not include english (the default language).
