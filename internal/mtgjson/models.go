@@ -1,5 +1,7 @@
 package mtgjson
 
+import "strings"
+
 type mtgjsonCardSet struct {
 	Code         string        `json:"code"`
 	Name         string        `json:"name"`
@@ -56,6 +58,11 @@ func (c mtgjsonCard) FaceCount() int {
 	}
 
 	if c.Side == "" {
+		return 1
+	}
+
+	// meld cards have two sides but the back is only the first half of a card, so it does not count as a face
+	if strings.ToUpper(c.Layout) == "MELD" {
 		return 1
 	}
 
