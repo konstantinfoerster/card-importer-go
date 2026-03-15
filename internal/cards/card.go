@@ -99,7 +99,7 @@ func (c *Card) Diff(other *Card) *Changeset {
 }
 
 func (c Card) String() string {
-	return fmt.Sprintf("Card %v, name: %s, number: %s, set: %s, ", c.ID, c.Name, c.Number, c.CardSetCode)
+	return fmt.Sprintf("Card name: %s, number: %s, set: %s", c.Name, c.Number, c.CardSetCode)
 }
 
 // Face The face data of a card.
@@ -228,7 +228,7 @@ func (f Face) Diff(other *Face) *Changeset {
 }
 
 func (f Face) String() string {
-	return fmt.Sprintf("Face %v, name: %s", f.ID, f.Name)
+	return fmt.Sprintf("Face name: %s", f.Name)
 }
 
 // Translation The translation of the card. Does not include english (the default language).

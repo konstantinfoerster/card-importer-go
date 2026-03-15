@@ -59,9 +59,9 @@ func (imp *mtgJSONDataset) Import(r io.Reader) (*cards.Report, error) {
 				return nil, err
 			}
 
-			faceCount := expectedFaceCount(v)
-			if faceCount > 1 {
-				if fc.RequiresMoreFaces(faceCount, v, entry) {
+			if v.FaceCount() > 1 {
+				// we need to collect all faces of a card
+				if fc.AppendRequiredFace(v, entry) {
 					continue
 				}
 			}
@@ -86,7 +86,7 @@ func (imp *mtgJSONDataset) Import(r io.Reader) (*cards.Report, error) {
 	}
 
 	if fc.HasUncollectedEntries() {
-		return nil, fmt.Errorf("found %d unprocessed double face cards %#v", fc.CollectionSize(), fc.doubleFaceCards)
+		return nil, fmt.Errorf("found %d unprocessed double face cards %s", fc.CollectionSize(), fc.doubleFaceCards)
 	}
 
 	cardCount, err := imp.cardService.Count()
@@ -142,27 +142,31 @@ func (f *faceCollector) HasUncollectedEntries() bool {
 	return len(f.doubleFaceCards) != 0
 }
 
-// RequiresMoreFaces Collects the given amount of faces. Returns false if all faces for a card are collected.
-func (f *faceCollector) RequiresMoreFaces(faceCount int, v mtgjsonCard, card *cards.Card) bool {
-	if faceCount > 1 {
-		key := fmt.Sprintf("%s_%s", card.CardSetCode, v.Number)
-		value, ok := f.doubleFaceCards[key]
-		if !ok {
-			f.doubleFaceCards[key] = *card
-
-			// continue collecting faces
-			return true
-		}
-
-		card.Faces = append(card.Faces, value.Faces...)
-		if faceCount != len(card.Faces) {
-			f.doubleFaceCards[key] = *card
-
-			// continue collecting faces
-			return true
-		}
-		delete(f.doubleFaceCards, key)
+// AppendRequiredFace Collects the given amount of faces.
+// Returns false if all faces for a card are collected.
+func (f *faceCollector) AppendRequiredFace(v mtgjsonCard, card *cards.Card) bool {
+	if v.FaceCount() == 1 {
+		return false
 	}
+
+	key := fmt.Sprintf("%s_%s", card.CardSetCode, v.Number)
+	value, ok := f.doubleFaceCards[key]
+	if !ok {
+		f.doubleFaceCards[key] = *card
+
+		// continue collecting faces for same set and card number
+		return true
+	}
+
+	card.Faces = append(card.Faces, value.Faces...)
+	if len(card.Faces) != v.FaceCount() {
+		f.doubleFaceCards[key] = *card
+
+		// continue collecting faces for same set and card number
+		return true
+	}
+	// we found all faces
+	delete(f.doubleFaceCards, key)
 
 	return false
 }

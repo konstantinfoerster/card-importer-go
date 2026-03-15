@@ -29,6 +29,7 @@
           "type": "Creature — Human Soldier"
         },
         {
+          "uuid": "30",
           "borderColor": "white",
           "convertedManaCost": 10,
           "layout": "split",
@@ -37,9 +38,11 @@
           "faceName": "Second Edition",
           "faceConvertedManaCost": 4,
           "rarity": "common",
-          "setCode": "2ED"
+          "setCode": "2ED",
+          "otherfaceIds": ["40"]
         },
         {
+          "uuid": "40",
           "borderColor": "silver",
           "convertedManaCost": 10,
           "layout": "split",
@@ -48,27 +51,33 @@
           "faceName": " The Second",
           "faceConvertedManaCost": 5,
           "rarity": "rare",
-          "setCode": "2ED"
+          "setCode": "2ED",
+          "otherfaceIds": ["30"]
         },
         {
+          "uuid": "50",
           "borderColor": "white",
           "layout": "split",
           "name": "Second Edition Deleted // The Second Deleted",
           "number": "2",
           "faceName": "Second Edition Deleted",
           "rarity": "common",
-          "setCode": "2ED"
+          "setCode": "2ED",
+          "otherfaceIds": ["60"]
         },
         {
+          "uuid": "60",
           "borderColor": "silver",
           "layout": "split",
           "name": "Second Edition Deleted // The Second Deleted",
           "number": "2",
           "faceName": " The Second Deleted",
           "rarity": "rare",
-          "setCode": "2ED"
+          "setCode": "2ED",
+          "otherfaceIds": ["50"]
         },
         {
+          "uuid": "70",
           "borderColor": "black",
           "layout": "reversible_card",
           "name": "Same Face Name // Same Face Name",
@@ -76,9 +85,11 @@
           "faceName": "Same Face Name",
           "text": "Here is a text",
           "rarity": "rare",
-          "setCode": "2ED"
+          "setCode": "2ED",
+          "otherfaceIds": ["80"]
         },
         {
+          "uuid": "80",
           "borderColor": "black",
           "layout": "reversible_card",
           "name": "Same Face Name // Same Face Name",
@@ -86,10 +97,10 @@
           "faceName": "Same Face Name",
           "text": "Here is a text",
           "rarity": "rare",
-          "setCode": "2ED"
+          "setCode": "2ED",
+          "otherfaceIds": ["70"]
         }
       ]
     }
   }
 }
-

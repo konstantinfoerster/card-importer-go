@@ -241,8 +241,7 @@ func TestImportCardWithMultipleFaces(t *testing.T) {
 						}, {
 							Name:              "Four",
 							ConvertedManaCost: 4.0,
-						},
-						{
+						}, {
 							Name:              "One",
 							ConvertedManaCost: 1.0,
 						}, {
