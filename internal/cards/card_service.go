@@ -123,11 +123,6 @@ func mergeCardFaces(dao *PostgresCardDao, ff []*Face, cardID int64, isNewCard bo
 
 	var incomingFaces []*Face
 	incomingFaces = append(incomingFaces, ff...)
-	// TODO: try to fix error:
-	// found 3 unprocessed double face cards 
-	// {"TDM_378":cards.Card{CardSetCode:"TDM", Name:"Marang River Regent // Coil and Catch // Marang River Regent // Coil and Catch", Number:"378", Border:"BORDERLESS", Rarity:\"RARE\", Layout:\"REVERSIBLE_CARD\", 
-	//  "TDM_379":cards.Card{CardSetCode:"TDM", Name:"Scavenger Regent // Exude Toxin // Scavenger Regent // Exude Toxin", Number:"379", Border:"BORDERLESS", Rarity:"RARE", Layout:\"REVERSIBLE_CARD\",
-	//  "TDM_381":cards.Card{CardSetCode:"TDM", Name:"Bloomvine Regent // Claim Territory // Bloomvine Regent // Claim Territory", Number:"381", Border:"BORDERLESS", Rarity:\"RARE\", Layout:\"REVERSIBLE_CARD\",
 	dbFaces, err := dao.FindAssignedFaces(cardID)
 	if err != nil {
 		return fmt.Errorf("failed to get assigned faces %w", err)

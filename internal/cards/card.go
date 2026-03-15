@@ -99,7 +99,7 @@ func (c *Card) Diff(other *Card) *Changeset {
 }
 
 func (c Card) String() string {
-	return fmt.Sprintf("Card name: %s, number: %s, set: %s", c.Name, c.Number, c.CardSetCode)
+	return fmt.Sprintf("Card name: %s, number: %s, set: %s, faces: %d", c.Name, c.Number, c.CardSetCode, len(c.Faces))
 }
 
 // Face The face data of a card.
