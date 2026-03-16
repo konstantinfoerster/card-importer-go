@@ -53,6 +53,11 @@ type mtgjsonCard struct {
 }
 
 func (c mtgjsonCard) FaceCount() int {
+	// meld cards have two sides but the back is only the first half of a card, so it does not count as a face
+	if strings.ToUpper(c.Layout) == "MELD" {
+		return 1
+	}
+
 	if len(c.OtherFaceIds) > 0 {
 		return len(c.OtherFaceIds) + 1 // add 1 for own face
 	}
@@ -61,10 +66,6 @@ func (c mtgjsonCard) FaceCount() int {
 		return 1
 	}
 
-	// meld cards have two sides but the back is only the first half of a card, so it does not count as a face
-	if strings.ToUpper(c.Layout) == "MELD" {
-		return 1
-	}
 
 	return 2
 }
