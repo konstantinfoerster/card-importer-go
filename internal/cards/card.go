@@ -131,10 +131,6 @@ func (f Face) isSame(other *Face) bool {
 	return f.Name == other.Name && f.Text == other.Text && f.FlavorText == other.FlavorText
 }
 
-func (f Face) couldBeSame(other *Face) bool {
-	return f.Name == other.Name
-}
-
 // Diff Compares the faces and returns all differences.
 func (f Face) Diff(other *Face) *Changeset {
 	changes := NewDiff()

@@ -18,7 +18,7 @@ type translation struct {
 }
 
 type mtgjsonCard struct {
-	Uuid                  string        `json:"uuid"`
+	UUID                  string        `json:"uuid"`
 	Name                  string        `json:"name"`
 	Code                  string        `json:"setCode"`
 	Artist                string        `json:"artist"`
@@ -48,8 +48,8 @@ type mtgjsonCard struct {
 	Finishes              []string      `json:"finishes"`
 	BorderColor           string        `json:"borderColor"`
 	Alternative           bool          `json:"isAlternative"`
-	// OtherFaceIds references to other card uuids
-	OtherFaceIds []string `json:"otherFaceIds"`
+	// OtherFaceIDs references to other card uuids
+	OtherFaceIDs []string `json:"otherFaceIds"`
 }
 
 func (c mtgjsonCard) FaceCount() int {
@@ -58,7 +58,7 @@ func (c mtgjsonCard) FaceCount() int {
 		return 1
 	}
 
-	return len(c.OtherFaceIds) + 1 // add 1 for own face
+	return len(c.OtherFaceIDs) + 1 // add 1 for own face
 }
 
 type foreignData struct {

@@ -128,7 +128,10 @@ func mergeCardFaces(dao *PostgresCardDao, ff []*Face, cardID int64, isNewCard bo
 		return fmt.Errorf("failed to get assigned faces %w", err)
 	}
 	if len(dbFaces) != len(incomingFaces) {
-		log.Warn().Msgf("Existing card %v has different face count than new one. Existing %d, new one %d", cardID, len(dbFaces), len(incomingFaces))
+		log.Warn().Msgf(
+			"Existing card %v has different face count than new one. Existing %d, new one %d",
+			cardID, len(dbFaces), len(incomingFaces),
+		)
 	}
 
 	for _, dbFace := range dbFaces {
