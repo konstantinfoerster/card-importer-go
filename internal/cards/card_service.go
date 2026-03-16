@@ -326,12 +326,6 @@ func containsFace(arr []*Face, searchTerm *Face) (bool, int) {
 		}
 	}
 
-	// for i, f := range arr {
-	// 	if f.couldBeSame(searchTerm) {
-	// 		return true, i
-	// 	}
-	// }
-
 	return false, 0
 }
 

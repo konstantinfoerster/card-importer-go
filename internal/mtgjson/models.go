@@ -58,16 +58,7 @@ func (c mtgjsonCard) FaceCount() int {
 		return 1
 	}
 
-	if len(c.OtherFaceIds) > 0 {
-		return len(c.OtherFaceIds) + 1 // add 1 for own face
-	}
-
-	if c.Side == "" {
-		return 1
-	}
-
-
-	return 2
+	return len(c.OtherFaceIds) + 1 // add 1 for own face
 }
 
 type foreignData struct {

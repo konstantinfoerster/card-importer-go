@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -102,30 +101,6 @@ func (imp *mtgJSONDataset) Import(r io.Reader) (*cards.Report, error) {
 		CardCount: cardCount,
 		SetCount:  setCount,
 	}, nil
-}
-
-func expectedFaceCount(v mtgjsonCard) int {
-	// meld cards have two sides but the back is only the first half of a card, so it does not count as a face
-	if strings.ToUpper(v.Layout) == "MELD" {
-		return 1
-	}
-
-	// has // but the card is only single faced
-	if strings.HasPrefix(strings.ToLower(v.Name), "sp//dr") {
-		return 1
-	}
-
-	// card name contains all face names separated by //
-	names := strings.Split(v.Name, "//")
-	if len(names) > 2 {
-		// also ensures that cards like a / b / a are identified as two faces
-		uniqNames := slices.CompactFunc(strings.Split(v.Name, "//"), func(s1, s2 string) bool {
-			return strings.TrimSpace(s1) == strings.TrimSpace(s2)
-		})
-		return len(uniqNames)
-	}
-
-	return len(names)
 }
 
 type faceCollector struct {
