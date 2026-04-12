@@ -91,14 +91,14 @@ func main() {
 
 	conn, err := postgres.Connect(context.Background(), cfg.Database)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to connect to the database")
+		log.Panic().Err(err).Msg("failed to connect to the database")
 
 		return
 	}
 	defer func(toCloseFn func() error) {
 		cErr := toCloseFn()
 		if cErr != nil {
-			log.Error().Err(cErr).Msgf("Failed to close database connection")
+			log.Panic().Err(cErr).Msg("Failed to close database connection")
 		}
 	}(conn.Close)
 
@@ -108,7 +108,7 @@ func main() {
 
 	store, err := storage.NewLocalStorage(cfg.Storage)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to create local storage")
+		log.Panic().Err(err).Msg("failed to create local storage")
 
 		return
 	}
@@ -120,7 +120,7 @@ func main() {
 	loader := mtgjson.NewLoader(imp, cfg.Mtgjson, client, store)
 	report, iErr := loader.Load(datasetSource)
 	if iErr != nil {
-		log.Error().Err(iErr).Msg("dataset import failed")
+		log.Panic().Err(iErr).Msg("dataset import failed")
 
 		return
 	}

@@ -76,21 +76,21 @@ func main() {
 
 	store, err := storage.NewLocalStorage(cfg.Storage)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to create local storage")
+		log.Panic().Err(err).Msg("failed to create local storage")
 
 		return
 	}
 
 	conn, err := postgres.Connect(context.Background(), cfg.Database)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to connect to the database")
+		log.Panic().Err(err).Msg("failed to connect to the database")
 
 		return
 	}
 	defer func(toCloseFn func() error) {
 		cErr := toCloseFn()
 		if cErr != nil {
-			log.Error().Err(cErr).Msgf("Failed to close database connection")
+			log.Error().Err(cErr).Msg("Failed to close database connection")
 
 			return
 		}
@@ -115,7 +115,7 @@ func main() {
 	go func() {
 		<-nCtx.Done()
 
-		log.Info().Msgf("image import exit ...")
+		log.Info().Msg("image import exit ...")
 
 		done <- true
 	}()
@@ -127,7 +127,7 @@ func main() {
 
 		report, err := importer.Import(pageConfig)
 		if err != nil {
-			log.Error().Err(err).Msg("image import failed")
+			log.Panic().Err(err).Msg("image import failed")
 
 			return
 		}

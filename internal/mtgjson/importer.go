@@ -40,10 +40,10 @@ func (imp *mtgJSONDataset) Import(r io.Reader) (*cards.Report, error) {
 	}
 
 	for r := range parse(ctx, r) {
-		r := r
 		if r.Err != nil {
 			return nil, r.Err
 		}
+
 		switch v := r.Result.(type) {
 		case mtgjsonCardSet:
 			entry := mapToCardSet(v, imp.languages)
