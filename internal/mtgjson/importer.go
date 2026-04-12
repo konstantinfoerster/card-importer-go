@@ -40,10 +40,10 @@ func (imp *mtgJSONDataset) Import(r io.Reader) (*cards.Report, error) {
 	}
 
 	for r := range parse(ctx, r) {
-		r := r
 		if r.Err != nil {
 			return nil, r.Err
 		}
+
 		switch v := r.Result.(type) {
 		case mtgjsonCardSet:
 			entry := mapToCardSet(v, imp.languages)
@@ -81,7 +81,7 @@ func (imp *mtgJSONDataset) Import(r io.Reader) (*cards.Report, error) {
 	}
 
 	if err := errg.Wait(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error in go routine %w", err)
 	}
 
 	if fc.HasUncollectedEntries() {
