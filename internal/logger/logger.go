@@ -3,7 +3,6 @@ package logger
 import (
 	"os"
 	"strings"
-	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -12,10 +11,11 @@ import (
 
 func SetupConsoleLogger() {
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
+	log.Logger = zerolog.New(os.Stderr).
 		With().
-		Stack().
+		Timestamp().
 		Caller().
+		Stack().
 		Logger()
 }
 
