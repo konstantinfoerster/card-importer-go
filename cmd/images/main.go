@@ -90,7 +90,7 @@ func main() {
 	defer func(toCloseFn func() error) {
 		cErr := toCloseFn()
 		if cErr != nil {
-			log.Error().Err(cErr).Msgf("Failed to close database connection")
+			log.Error().Err(cErr).Msg("Failed to close database connection")
 
 			return
 		}
@@ -115,7 +115,7 @@ func main() {
 	go func() {
 		<-nCtx.Done()
 
-		log.Info().Msgf("image import exit ...")
+		log.Info().Msg("image import exit ...")
 
 		done <- true
 	}()

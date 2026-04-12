@@ -85,10 +85,10 @@ func mergeCard(txDao *PostgresCardDao, c *Card) (*Card, bool, error) {
 	}
 
 	if existingCard == nil {
-		if err := txDao.CreateCard(c); err != nil {
-			log.Error().Err(err).Msgf("Failed to create card %#v", c)
+		if cErr := txDao.CreateCard(c); cErr != nil {
+			log.Error().Err(cErr).Msgf("Failed to create card %#v | %w", c, cErr)
 
-			return nil, false, err
+			return nil, false, cErr
 		}
 		if e := log.Trace(); e.Enabled() {
 			e.Msgf("Created card %s from set %s", c.Number, c.CardSetCode)
@@ -102,12 +102,12 @@ func mergeCard(txDao *PostgresCardDao, c *Card) (*Card, bool, error) {
 	diff := existingCard.Diff(c)
 	if diff.HasChanges() {
 		log.Info().Msgf("Update card %s from set %s with changes %s", c.Name, c.CardSetCode, diff.String())
-		if err := txDao.UpdateCard(c); err != nil {
-			return nil, false, err
+		if uErr := txDao.UpdateCard(c); uErr != nil {
+			return nil, false, uErr
 		}
 	}
 
-	return c, false, err
+	return c, false, nil
 }
 
 func mergeCardFaces(dao *PostgresCardDao, ff []*Face, cardID int64, isNewCard bool) error {

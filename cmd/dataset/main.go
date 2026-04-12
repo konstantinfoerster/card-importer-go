@@ -98,7 +98,7 @@ func main() {
 	defer func(toCloseFn func() error) {
 		cErr := toCloseFn()
 		if cErr != nil {
-			log.Panic().Err(cErr).Msgf("Failed to close database connection")
+			log.Panic().Err(cErr).Msg("Failed to close database connection")
 		}
 	}(conn.Close)
 
