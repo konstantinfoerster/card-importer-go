@@ -111,35 +111,52 @@ func mergeCard(txDao *PostgresCardDao, c *Card) (*Card, bool, error) {
 }
 
 func mergeCardFaces(dao *PostgresCardDao, ff []*Face, cardID int64, isNewCard bool) error {
-	var incomingFaces []*Face
-	incomingFaces = append(incomingFaces, ff...)
-	if !isNewCard {
-		existingFaces, err := dao.FindAssignedFaces(cardID)
-		if err != nil {
-			return fmt.Errorf("failed to get assigned faces %w", err)
-		}
-		for _, existingFace := range existingFaces {
-			if ok, pos := containsFace(incomingFaces, existingFace); ok {
-				incomingFace := incomingFaces[pos]
-				incomingFace.ID = existingFace.ID
-
-				diff := existingFace.Diff(incomingFace)
-				if diff.HasChanges() {
-					log.Info().Msgf("Update face %s of card %v with changes %s", incomingFace.Name, cardID, diff.String())
-					if err := dao.UpdateFace(incomingFace); err != nil {
-						return err
-					}
-				}
-				incomingFaces = removeFace(incomingFaces, pos)
-
-				continue
-			}
-			faceID := existingFace.ID.Int64
-			if err := dao.DeleteFace(faceID); err != nil {
+	if isNewCard {
+		for _, newFace := range ff {
+			if err := dao.AddFace(cardID, newFace); err != nil {
 				return err
 			}
-			log.Warn().Msgf("Deleted card face %v of card %v", existingFace.Name, cardID)
 		}
+
+		return nil
+	}
+
+	var incomingFaces []*Face
+	incomingFaces = append(incomingFaces, ff...)
+	dbFaces, err := dao.FindAssignedFaces(cardID)
+	if err != nil {
+		return fmt.Errorf("failed to get assigned faces %w", err)
+	}
+	if len(dbFaces) != len(incomingFaces) {
+		log.Warn().Msgf(
+			"Existing card %v has different face count than new one. Existing %d, new one %d",
+			cardID, len(dbFaces), len(incomingFaces),
+		)
+	}
+
+	for _, dbFace := range dbFaces {
+		if ok, pos := containsFace(incomingFaces, dbFace); ok {
+			incomingFace := incomingFaces[pos]
+			incomingFace.ID = dbFace.ID
+
+			diff := dbFace.Diff(incomingFace)
+			if diff.HasChanges() {
+				log.Info().Msgf("Update face %s of card %v with changes %s", incomingFace.Name, cardID, diff.String())
+				if err := dao.UpdateFace(incomingFace); err != nil {
+					return err
+				}
+			}
+			incomingFaces = removeFace(incomingFaces, pos)
+
+			continue
+		}
+
+		faceID := dbFace.ID.Int64
+		log.Warn().Msgf("Going to delete card face %v (%v) of card %v", dbFace.Name, faceID, cardID)
+		if err := dao.DeleteFace(faceID); err != nil {
+			return err
+		}
+		log.Warn().Msgf("Deleted card face %v of card %v", dbFace.Name, cardID)
 	}
 
 	for _, newFace := range incomingFaces {
@@ -308,12 +325,6 @@ func removeFace(arr []*Face, pos int) []*Face {
 func containsFace(arr []*Face, searchTerm *Face) (bool, int) {
 	for i, f := range arr {
 		if f.isSame(searchTerm) {
-			return true, i
-		}
-	}
-
-	for i, f := range arr {
-		if f.couldBeSame(searchTerm) {
 			return true, i
 		}
 	}

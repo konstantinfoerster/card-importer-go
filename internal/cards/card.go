@@ -98,6 +98,10 @@ func (c *Card) Diff(other *Card) *Changeset {
 	return changes
 }
 
+func (c Card) String() string {
+	return fmt.Sprintf("Card name: %s, number: %s, set: %s, faces: %d", c.Name, c.Number, c.CardSetCode, len(c.Faces))
+}
+
 // Face The face data of a card.
 type Face struct {
 	ID                PrimaryID
@@ -125,10 +129,6 @@ type Face struct {
 // Card 'Stitch in Time' from set SLD has the same name on both faces but a different flavor text.
 func (f Face) isSame(other *Face) bool {
 	return f.Name == other.Name && f.Text == other.Text && f.FlavorText == other.FlavorText
-}
-
-func (f Face) couldBeSame(other *Face) bool {
-	return f.Name == other.Name
 }
 
 // Diff Compares the faces and returns all differences.
@@ -221,6 +221,10 @@ func (f Face) Diff(other *Face) *Changeset {
 	}
 
 	return changes
+}
+
+func (f Face) String() string {
+	return fmt.Sprintf("Face name: %s", f.Name)
 }
 
 // Translation The translation of the card. Does not include english (the default language).

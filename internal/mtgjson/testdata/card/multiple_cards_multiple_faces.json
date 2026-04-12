@@ -6,6 +6,7 @@
       "type": "core",
       "cards": [
         {
+          "uuid": "1",
           "setCode": "2ED",
           "name": "One // Two // Three // Four // Five // Six // Sven",
           "faceName": "One",
@@ -14,9 +15,11 @@
           "number": "3",
           "borderColor": "white",
           "layout": "normal",
-          "rarity": "rare"
+          "rarity": "rare",
+          "otherfaceIds": ["2", "3", "4", "5", "6", "7"]
         },
         {
+          "uuid": "2",
           "setCode": "2ED",
           "name": "One // Two // Three // Four // Five // Six // Sven",
           "faceName": "Two",
@@ -25,9 +28,11 @@
           "number": "3",
           "borderColor": "white",
           "layout": "normal",
-          "rarity": "rare"
+          "rarity": "rare",
+          "otherfaceIds": ["1", "3", "4", "5", "6", "7"]
         },
         {
+          "uuid": "3",
           "setCode": "2ED",
           "name": "One // Two // Three // Four // Five // Six // Sven",
           "faceName": "Four",
@@ -36,9 +41,11 @@
           "number": "3",
           "borderColor": "white",
           "layout": "normal",
-          "rarity": "rare"
+          "rarity": "rare",
+          "otherfaceIds": ["1", "2", "4", "5", "6", "7"]
         },
         {
+          "uuid": "4",
           "setCode": "2ED",
           "name": "One // Two // Three // Four // Five // Six // Sven",
           "faceName": "Three",
@@ -47,9 +54,11 @@
           "number": "3",
           "borderColor": "white",
           "layout": "normal",
-          "rarity": "rare"
+          "rarity": "rare",
+          "otherfaceIds": ["1", "2", "3", "5", "6", "7"]
         },
         {
+          "uuid": "5",
           "setCode": "2ED",
           "name": "One // Two // Three // Four // Five // Six // Sven",
           "faceName": "Five",
@@ -58,9 +67,11 @@
           "number": "3",
           "borderColor": "white",
           "layout": "normal",
-          "rarity": "rare"
+          "rarity": "rare",
+          "otherfaceIds": ["1", "2", "3", "4", "6", "7"]
         },
         {
+          "uuid": "6",
           "setCode": "2ED",
           "name": "One // Two // Three // Four // Five // Six // Sven",
           "faceName": "Six",
@@ -69,9 +80,11 @@
           "number": "3",
           "borderColor": "white",
           "layout": "normal",
-          "rarity": "rare"
+          "rarity": "rare",
+          "otherfaceIds": ["1", "2", "3", "4", "5", "7"]
         },
         {
+          "uuid": "7",
           "setCode": "2ED",
           "name": "One // Two // Three // Four // Five // Six // Sven",
           "faceName": "Seven",
@@ -80,7 +93,8 @@
           "number": "3",
           "borderColor": "white",
           "layout": "normal",
-          "rarity": "rare"
+          "rarity": "rare",
+          "otherfaceIds": ["1", "2", "3", "4", "5", "6"]
         },
         {
           "setCode": "2ED",
@@ -89,7 +103,8 @@
           "borderColor": "white",
           "layout": "normal",
           "rarity": "rare"
-        }, {
+        },
+        {
           "setCode": "2ED",
           "name": "First // Second",
           "faceName": "First",
@@ -102,3 +117,4 @@
     }
   }
 }
+

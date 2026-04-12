@@ -5,16 +5,19 @@
       "name": "Second Edition",
       "type": "core",
       "cards": [
-       {
+        {
+          "uuid": "90",
           "setCode": "2ED",
           "name": "1 // 2 //",
-          "faceName" : "2",
+          "faceName": "2",
           "number": "5",
           "borderColor": "white",
           "layout": "normal",
-          "rarity": "rare"
+          "rarity": "rare",
+          "otherfaceIds": ["91"]
         }
       ]
     }
   }
 }
+

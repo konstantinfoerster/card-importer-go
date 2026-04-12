@@ -14,7 +14,7 @@ import (
 var ErrZipFile = errors.New("invalid zip file")
 
 func unzip(src string, dest string) ([]string, error) {
-	var readByteLimit int64 = 512 * 1024 * 1024 // 512 MiB
+	var readByteLimit int64 = 1024 * 1024 * 1024 // 1024 MiB
 	var files []string
 
 	r, err := zip.OpenReader(src)

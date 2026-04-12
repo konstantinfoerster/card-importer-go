@@ -20,11 +20,11 @@ run-data:
 .PHONY: docker-dev
 docker-dev:
 	@echo "Build dev image version $(VERSION)"
-	docker build --build-arg RELEASE="$(VERSION)" -t card-importer-go:$(VERSION) --target dev -f build/Dockerfile .
+	docker build --pull --build-arg RELEASE="$(VERSION)" -t card-importer-go:$(VERSION) --target dev -f build/Dockerfile .
 .PHONY: docker-build
 docker-build:
 	@echo "Build prod image version $(VERSION)"
-	docker build --build-arg RELEASE="$(VERSION)" -t card-importer-go:$(VERSION) --target prod -f build/Dockerfile .
+	docker build --pull --build-arg RELEASE="$(VERSION)" -t card-importer-go:$(VERSION) --target prod -f build/Dockerfile .
 .PHONY: test-unit
 test-unit:
 	go test --short --count=1 ./...
@@ -43,6 +43,6 @@ update:
 	go mod tidy
 .PHONY: lint
 lint:
-	docker run --pull always --rm -v ${CURRENT_DIR}\:/app -w /app golangci/golangci-lint\:v2.10-alpine golangci-lint run -v
+	docker run --pull always --rm -v ${CURRENT_DIR}\:/app -w /app golangci/golangci-lint\:v2.11-alpine golangci-lint run -v
 	docker run --pull always --rm -i hadolint/hadolint < build/Dockerfile
 

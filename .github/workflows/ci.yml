@@ -14,7 +14,7 @@ env:
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
   GO_VERSION: "1.26.x"
-  GO_LINT_VERSION: 'v2.10'
+  GO_LINT_VERSION: 'v2.11'
 
 permissions:
   contents: read

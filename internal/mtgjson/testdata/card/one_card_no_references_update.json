@@ -8,9 +8,7 @@
         {
           "artist": "Artist Updated",
           "borderColor": "black",
-          "colors": [
-            "B", "W"
-          ],
+          "colors": ["B", "W"],
           "convertedManaCost": 20,
           "flavorText": "Flavor Text Updated",
           "identifiers": {
@@ -31,6 +29,7 @@
           "type": "Type Updated"
         },
         {
+          "uuid": "100",
           "borderColor": "black",
           "convertedManaCost": 16,
           "layout": "split",
@@ -39,9 +38,11 @@
           "faceName": "Second Edition Updated",
           "faceConvertedManaCost": 6,
           "rarity": "rare",
-          "setCode": "2ED"
+          "setCode": "2ED",
+          "otherfaceIds": ["110"]
         },
         {
+          "uuid": "110",
           "borderColor": "black",
           "convertedManaCost": 15,
           "layout": "split",
@@ -50,7 +51,8 @@
           "faceName": "The Second Updated",
           "faceConvertedManaCost": 8,
           "rarity": "rare",
-          "setCode": "2ED"
+          "setCode": "2ED",
+          "otherfaceIds": ["100"]
         },
         {
           "borderColor": "white",
@@ -61,6 +63,7 @@
           "setCode": "2ED"
         },
         {
+          "uuid": "200",
           "borderColor": "black",
           "layout": "reversible_card",
           "name": "Same Face Name // Same Face Name",
@@ -68,8 +71,11 @@
           "faceName": "Same Face Name",
           "text": "Here is a text",
           "rarity": "rare",
-          "setCode": "2ED"
-        }, {
+          "setCode": "2ED",
+          "otherfaceIds": ["210"]
+        },
+        {
+          "uuid": "200",
           "borderColor": "black",
           "layout": "reversible_card",
           "name": "Same Face Name // Same Face Name",
@@ -77,7 +83,8 @@
           "faceName": "Same Face Name",
           "text": "Here is a text",
           "rarity": "rare",
-          "setCode": "2ED"
+          "setCode": "2ED",
+          "otherfaceIds": ["200"]
         }
       ]
     }

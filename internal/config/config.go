@@ -48,7 +48,6 @@ func (d Database) MaxConnectionsOrDefault() int32 {
 		if numCPU <= 0 || numCPU > math.MaxInt32 {
 			panic("unsupported cpu count > maxInt32 or cpu count <= 0")
 		}
-		// #nosec G115 false positiv. This bug is fixed in latest gosec but not in golangci
 		nCPU := int32(numCPU)
 		if nCPU > defaultSize {
 			return nCPU
