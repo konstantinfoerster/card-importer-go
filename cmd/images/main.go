@@ -76,14 +76,14 @@ func main() {
 
 	store, err := storage.NewLocalStorage(cfg.Storage)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to create local storage")
+		log.Panic().Err(err).Msg("failed to create local storage")
 
 		return
 	}
 
 	conn, err := postgres.Connect(context.Background(), cfg.Database)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to connect to the database")
+		log.Panic().Err(err).Msg("failed to connect to the database")
 
 		return
 	}
@@ -127,7 +127,7 @@ func main() {
 
 		report, err := importer.Import(pageConfig)
 		if err != nil {
-			log.Error().Err(err).Msg("image import failed")
+			log.Panic().Err(err).Msg("image import failed")
 
 			return
 		}

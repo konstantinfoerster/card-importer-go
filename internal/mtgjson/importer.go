@@ -81,7 +81,7 @@ func (imp *mtgJSONDataset) Import(r io.Reader) (*cards.Report, error) {
 	}
 
 	if err := errg.Wait(); err != nil {
-		return nil, fmt.Errorf("error in go routine %w", err)
+		return nil, err
 	}
 
 	if fc.HasUncollectedEntries() {
