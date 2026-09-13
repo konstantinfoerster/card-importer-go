@@ -359,10 +359,10 @@ type Image struct {
 	FaceID    PrimaryID
 	ImagePath string
 	MimeType  string
-	PHash1    uint64
-	PHash2    uint64
-	PHash3    uint64
-	PHash4    uint64
+	PhashR    ImageHash
+	PhashG    ImageHash
+	PhashB    ImageHash
+	Dhash     uint64
 }
 
 func (img *Image) getFilePrefix() (string, error) {

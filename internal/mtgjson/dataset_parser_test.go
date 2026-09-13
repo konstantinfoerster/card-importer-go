@@ -23,7 +23,7 @@ func TestParseEmptyContentFails(t *testing.T) {
 
 func TestParseInvalidJsonFails(t *testing.T) {
 	r := strings.NewReader(`{"data": }`)
-	expected := "invalid character"
+	expected := "missing value after object key"
 
 	ch := parse(t.Context(), r)
 	actual := <-ch

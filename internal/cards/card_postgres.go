@@ -470,14 +470,27 @@ func (d *PostgresCardDao) CountImages() (int, error) {
 	return count, nil
 }
 
+// toBits256 converts given hash into the pgx type bound to Postgres BIT(256) columns.
+func toBits256(h ImageHash) pgtype.Bits {
+	return pgtype.Bits{Bytes: h.Bytes(), Len: 256, Valid: true} //nolint:mnd
+}
+
+// toBits64 converts given value into the pgx type bound to Postgres BIT(64) columns.
+func toBits64(v uint64) pgtype.Bits {
+	b := make([]byte, 8) //nolint:mnd
+	binary.BigEndian.PutUint64(b, v)
+
+	return pgtype.Bits{Bytes: b, Len: 64, Valid: true}
+}
+
 // AddImage Creates a new card image.
 func (d *PostgresCardDao) AddImage(ctx context.Context, img *Image) error {
 	query := `
 		INSERT INTO
 			card_image (
-				image_path, lang_lang, card_id, face_id, mime_type, 
-                phash1, phash2, phash3, phash4
-			) 
+				image_path, lang_lang, card_id, face_id, mime_type,
+                phash_r, phash_g, phash_b, dhash
+			)
 		VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, $9
 		)
@@ -486,10 +499,7 @@ func (d *PostgresCardDao) AddImage(ctx context.Context, img *Image) error {
 	var id int64
 	err := d.db.Conn.QueryRow(ctx, query,
 		img.ImagePath, img.Lang, img.CardID, img.FaceID, img.MimeType,
-		fmt.Sprintf("%064b", img.PHash1),
-		fmt.Sprintf("%064b", img.PHash2),
-		fmt.Sprintf("%064b", img.PHash3),
-		fmt.Sprintf("%064b", img.PHash4),
+		toBits256(img.PhashR), toBits256(img.PhashG), toBits256(img.PhashB), toBits64(img.Dhash),
 	).Scan(&id)
 	if err != nil {
 		return fmt.Errorf("failed to execute card insert %w", err)
@@ -502,8 +512,8 @@ func (d *PostgresCardDao) AddImage(ctx context.Context, img *Image) error {
 func (d *PostgresCardDao) GetImages() ([]*Image, error) {
 	query := `
 		SELECT
-			id, image_path, card_id, face_id, mime_type, phash1, phash2,
-            phash3, phash4, lang_lang
+			id, image_path, card_id, face_id, mime_type, phash_r, phash_g,
+            phash_b, dhash, lang_lang
 		FROM
 			card_image
         `
@@ -516,20 +526,20 @@ func (d *PostgresCardDao) GetImages() ([]*Image, error) {
 	var result []*Image
 	for rows.Next() {
 		var img Image
-		var phash1 pgtype.Bits
-		var phash2 pgtype.Bits
-		var phash3 pgtype.Bits
-		var phash4 pgtype.Bits
+		var phashR pgtype.Bits
+		var phashG pgtype.Bits
+		var phashB pgtype.Bits
+		var dhash pgtype.Bits
 		rErr := rows.Scan(&img.ID, &img.ImagePath, &img.CardID,
-			&img.FaceID, &img.MimeType, &phash1, &phash2, &phash3, &phash4, &img.Lang)
+			&img.FaceID, &img.MimeType, &phashR, &phashG, &phashB, &dhash, &img.Lang)
 		if rErr != nil {
 			return nil, fmt.Errorf("failed to execute select on card_image %w", rErr)
 		}
 
-		img.PHash1 = binary.BigEndian.Uint64(phash1.Bytes)
-		img.PHash2 = binary.BigEndian.Uint64(phash2.Bytes)
-		img.PHash3 = binary.BigEndian.Uint64(phash3.Bytes)
-		img.PHash4 = binary.BigEndian.Uint64(phash4.Bytes)
+		img.PhashR = ImageHash(phashR.Bytes)
+		img.PhashG = ImageHash(phashG.Bytes)
+		img.PhashB = ImageHash(phashB.Bytes)
+		img.Dhash = binary.BigEndian.Uint64(dhash.Bytes)
 
 		result = append(result, &img)
 	}
@@ -541,39 +551,20 @@ func (d *PostgresCardDao) GetImages() ([]*Image, error) {
 	return result, nil
 }
 
-func (d *PostgresCardDao) UpdateHashes(
-	id int64, phash1 uint64, phash2 uint64, phash3 uint64, phash4 uint64) error {
-	nPhash1 := fmt.Sprintf("%064b", phash1)
-	maxLength := 64
-	if len(nPhash1) != maxLength {
-		return fmt.Errorf("phash1 %s must have a length of 64, but got %d", nPhash1, len(nPhash1))
-	}
-	nPhash2 := fmt.Sprintf("%064b", phash2)
-	if len(nPhash2) != maxLength {
-		return fmt.Errorf("phash2 %s must have a length of 64, but got %d", nPhash2, len(nPhash2))
-	}
-	nPhash3 := fmt.Sprintf("%064b", phash3)
-	if len(nPhash3) != maxLength {
-		return fmt.Errorf("phash3 %s must have a length of 64, but got %d", nPhash3, len(nPhash3))
-	}
-	nPhash4 := fmt.Sprintf("%064b", phash4)
-	if len(nPhash4) != maxLength {
-		return fmt.Errorf("phash4 %s must have a length of 64, but got %d", nPhash4, len(nPhash4))
-	}
-
+func (d *PostgresCardDao) UpdateHashes(id int64, red ImageHash, green ImageHash, blue ImageHash, dhash uint64) error {
 	query := `
 		UPDATE
-			card_image 
+			card_image
 		SET
-			phash1=$2,
-			phash2=$3,
-			phash3=$4,
-			phash4=$5
+			phash_r=$2,
+			phash_g=$3,
+			phash_b=$4,
+			dhash=$5
         WHERE
 			id = $1`
 
 	ct, err := d.db.Conn.Exec(context.TODO(), query, id,
-		nPhash1, nPhash2, nPhash3, nPhash4)
+		toBits256(red), toBits256(green), toBits256(blue), toBits64(dhash))
 	if err != nil {
 		return fmt.Errorf("failed to execute card image update %w", err)
 	}
