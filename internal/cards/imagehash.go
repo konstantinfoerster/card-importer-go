@@ -59,16 +59,24 @@ func splitChannels(img image.Image) (*image.Gray, *image.Gray, *image.Gray) {
 
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			// RGBA always returns 16-bit, alpha-premultiplied values
-			// shift by 8 below to get back to 8-bit.
 			rr, gg, bb, _ := img.At(x, y).RGBA()
-			r.SetGray(x, y, color.Gray{Y: uint8(rr >> 8)}) //nolint:gosec
-			g.SetGray(x, y, color.Gray{Y: uint8(gg >> 8)}) //nolint:gosec
-			b.SetGray(x, y, color.Gray{Y: uint8(bb >> 8)}) //nolint:gosec
+			r.SetGray(x, y, color.Gray{Y: to8Bit(rr)})
+			g.SetGray(x, y, color.Gray{Y: to8Bit(gg)})
+			b.SetGray(x, y, color.Gray{Y: to8Bit(bb)})
 		}
 	}
 
 	return r, g, b
+}
+
+// to8Bit converts a 16-bit value into an 8-bit value. Values above 255 are capped at 255.
+func to8Bit(v uint32) uint8 {
+	v = v / 256
+	if v > 255 {
+		v = 255
+	}
+
+	return uint8(v)
 }
 
 // computePHash computes a 256-bit perceptual hash of a given image.
