@@ -63,7 +63,7 @@ func (d *CharacteristicDao) Find(names ...string) ([]*CharacteristicType, error)
 		return []*CharacteristicType{}, nil
 	}
 
-	var params []interface{}
+	var params []any
 	var inPart strings.Builder
 	for i, name := range names {
 		if i > 0 {
@@ -148,7 +148,7 @@ func (d *CharacteristicDao) DeleteAssignments(faceID int64, typeIDs ...int64) er
 	if len(typeIDs) == 0 {
 		return nil
 	}
-	var params []interface{}
+	var params []any
 	// param $1 is the card id
 	params = append(params, faceID)
 

@@ -17,7 +17,7 @@ const (
 
 // NewMimeType creates a MimeType from the given content-type.
 func NewMimeType(contentType string) MimeType {
-	ct := strings.Split(contentType, ";")[0]
+	ct, _, _ := strings.Cut(contentType, ";")
 
 	return MimeType{value: strings.TrimSpace(strings.ToLower(ct))}
 }
