@@ -54,7 +54,7 @@ func pingWithRetry(ctx context.Context, pool *pgxpool.Pool) error {
 	maxRetry := 5
 
 	var err error
-	for attempt := 0; attempt < maxRetry; attempt++ {
+	for range maxRetry {
 		err = pool.Ping(ctx)
 		if err == nil {
 			return nil
@@ -122,7 +122,7 @@ func (d *DBConnection) Cleanup() error {
 
 // DBConn Implemented by pgx.Conn and pgx.Tx.
 type DBConn interface {
-	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
-	Query(ctx context.Context, sql string, optionsAndArgs ...interface{}) (pgx.Rows, error)
-	QueryRow(ctx context.Context, sql string, optionsAndArgs ...interface{}) pgx.Row
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, optionsAndArgs ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, optionsAndArgs ...any) pgx.Row
 }

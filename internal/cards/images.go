@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/corona10/goimagehash"
 	"github.com/konstantinfoerster/card-importer-go/internal/storage"
 	"github.com/konstantinfoerster/card-importer-go/internal/web"
 	"github.com/rs/zerolog/log"
@@ -223,15 +222,21 @@ func (i *images) addImageData(ctx context.Context, cardImg *Image, filter Filter
 
 	imgWidth := 16
 	imgHeight := imgWidth
-	imgPHash, err := goimagehash.ExtPerceptionHash(img, imgWidth, imgHeight)
+	// build ono phash per channel (r, g, b)
+	red, green, blue, err := ComputeChannelPHashes(img, imgWidth, imgHeight)
 	if err != nil {
 		return fmt.Errorf("failed to create phash from %s, %w", cardImg.ImagePath, err)
 	}
 
-	cardImg.PHash1 = imgPHash.GetHash()[0]
-	cardImg.PHash2 = imgPHash.GetHash()[1]
-	cardImg.PHash3 = imgPHash.GetHash()[2]
-	cardImg.PHash4 = imgPHash.GetHash()[3]
+	cardImg.PhashR = red
+	cardImg.PhashG = green
+	cardImg.PhashB = blue
+
+	dhash, err := ComputeDHash(img)
+	if err != nil {
+		return fmt.Errorf("failed to create dhash from %s, %w", cardImg.ImagePath, err)
+	}
+	cardImg.Dhash = dhash
 
 	return nil
 }

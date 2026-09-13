@@ -110,7 +110,6 @@ func mergeSetTranslations(dao *PostgresSetDao, tt []SetTranslation, setCode stri
 	}
 
 	for _, t := range toCreate {
-		t := t
 		if err := dao.CreateTranslation(setCode, &t); err != nil {
 			return err
 		}

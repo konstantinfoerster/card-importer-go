@@ -291,7 +291,6 @@ func mergeFaceTranslations(dao *PostgresCardDao, tt []FaceTranslation, faceID in
 	}
 
 	for _, t := range toCreate {
-		t := t
 		if err := dao.AddTranslation(faceID, &t); err != nil {
 			return err
 		}

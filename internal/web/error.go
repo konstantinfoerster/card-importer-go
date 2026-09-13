@@ -49,8 +49,7 @@ func IsStatusCode(err error, statusCode ...int) bool {
 		return false
 	}
 
-	var apiErr *ExternalAPIError
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*ExternalAPIError](err); ok {
 		return slices.Contains(statusCode, apiErr.StatusCode)
 	}
 
