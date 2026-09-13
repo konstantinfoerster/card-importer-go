@@ -71,7 +71,7 @@ func splitChannels(img image.Image) (*image.Gray, *image.Gray, *image.Gray) {
 
 // to8Bit converts a 16-bit value into an 8-bit value. Values above 255 are capped at 255.
 func to8Bit(v uint32) uint8 {
-	v = v / 256
+	v /= 256
 	if v > 255 {
 		v = 255
 	}
