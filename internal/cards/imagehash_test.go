@@ -20,10 +20,11 @@ func TestComputeChannelHashes(t *testing.T) {
 	red, green, blue, err := ComputeChannelPHashes(img, 16, 16)
 	require.NoError(t, err)
 
-	assert.NotEqual(t, ImageHash{}, red)
-	assert.NotEqual(t, ImageHash{}, green)
-	assert.NotEqual(t, ImageHash{}, blue)
+	assert.NotEqual(t, PHash{}, red)
+	assert.NotEqual(t, PHash{}, green)
+	assert.NotEqual(t, PHash{}, blue)
 	assert.NotEqual(t, red, green, "red and green channel hashes should differ")
+	assert.NotEqual(t, red, blue, "red and blue channel hashes should differ")
 }
 
 func TestComputeDHash(t *testing.T) {
@@ -37,5 +38,5 @@ func TestComputeDHash(t *testing.T) {
 	dhash, err := ComputeDHash(img)
 	require.NoError(t, err)
 
-	assert.NotZero(t, dhash)
+	assert.NotEqual(t, DHash{}, dhash)
 }

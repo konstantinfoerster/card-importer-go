@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine3.23 AS builder
+FROM golang:1.27-alpine3.24 AS builder
 
 ENV GOOS="linux" \
     GOARCH="amd64" \
@@ -19,7 +19,7 @@ RUN go build -tags timetzdata -ldflags="-s -w" -o card-dataset-cli cmd/dataset/m
   go build -tags timetzdata -ldflags="-s -w" -o card-images-cli cmd/images/main.go && \
   chmod 0755 /app/card-images-cli 
 
-FROM alpine:3.23 AS dev
+FROM alpine:3.24 AS dev
 
 ARG RELEASE
 ENV IMG_VERSION="${RELEASE}"

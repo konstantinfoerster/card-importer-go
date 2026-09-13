@@ -338,9 +338,9 @@ func TestImageIntegration(t *testing.T) {
 
 		require.NotZero(t, imgs)
 		for _, img := range imgs {
-			assert.NotEqual(t, cards.ImageHash{}, img.PhashR)
-			assert.NotEqual(t, cards.ImageHash{}, img.PhashG)
-			assert.NotEqual(t, cards.ImageHash{}, img.PhashB)
+			assert.NotEqual(t, cards.PHash{}, img.PhashR)
+			assert.NotEqual(t, cards.PHash{}, img.PhashG)
+			assert.NotEqual(t, cards.PHash{}, img.PhashB)
 			assert.NotZero(t, img.Dhash)
 		}
 	})

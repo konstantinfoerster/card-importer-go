@@ -9,32 +9,40 @@ import (
 	"github.com/corona10/goimagehash"
 )
 
-// ImageHash is a 256-bit perceptual hash.
-type ImageHash [32]byte
+// PHash is a 256-bit perceptual hash.
+type PHash [32]byte
 
 // Bytes returns value as a byte slice.
-func (h ImageHash) Bytes() []byte {
+func (h PHash) Bytes() []byte {
+	return h[:]
+}
+
+// DHash is a 64-bit difference hash.
+type DHash [8]byte
+
+// Bytes returns value as a byte slice.
+func (h DHash) Bytes() []byte {
 	return h[:]
 }
 
 // ComputeChannelPHashes computes one perceptual hash per
 // color channel of given image. Returns red, green and blue hash.
-func ComputeChannelPHashes(img image.Image, width, height int) (ImageHash, ImageHash, ImageHash, error) {
+func ComputeChannelPHashes(img image.Image, width, height int) (PHash, PHash, PHash, error) {
 	r, g, b := splitChannels(img)
 
 	red, err := computePHash(r, width, height)
 	if err != nil {
-		return ImageHash{}, ImageHash{}, ImageHash{}, err
+		return PHash{}, PHash{}, PHash{}, err
 	}
 
 	green, err := computePHash(g, width, height)
 	if err != nil {
-		return ImageHash{}, ImageHash{}, ImageHash{}, err
+		return PHash{}, PHash{}, PHash{}, err
 	}
 
 	blue, err := computePHash(b, width, height)
 	if err != nil {
-		return ImageHash{}, ImageHash{}, ImageHash{}, err
+		return PHash{}, PHash{}, PHash{}, err
 	}
 
 	return red, green, blue, nil
@@ -64,13 +72,13 @@ func splitChannels(img image.Image) (r, g, b *image.Gray) {
 }
 
 // computePHash computes a 256-bit perceptual hash of a given image.
-func computePHash(img image.Image, width, height int) (ImageHash, error) {
+func computePHash(img image.Image, width, height int) (PHash, error) {
 	h, err := goimagehash.ExtPerceptionHash(img, width, height)
 	if err != nil {
-		return ImageHash{}, fmt.Errorf("failed to create phash, %w", err)
+		return PHash{}, fmt.Errorf("failed to create phash, %w", err)
 	}
 
-	var hash ImageHash
+	var hash PHash
 	for chunkIndex, chunk := range h.GetHash() {
 		byteOffset := chunkIndex * 8 // each uint64 chunk is 8 bytes
 		binary.BigEndian.PutUint64(hash[byteOffset:], chunk)
@@ -80,11 +88,14 @@ func computePHash(img image.Image, width, height int) (ImageHash, error) {
 }
 
 // ComputeDHash computes a 64-bit difference hash of given image.
-func ComputeDHash(img image.Image) (uint64, error) {
+func ComputeDHash(img image.Image) (DHash, error) {
 	h, err := goimagehash.DifferenceHash(img)
 	if err != nil {
-		return 0, fmt.Errorf("failed to create dhash, %w", err)
+		return DHash{}, fmt.Errorf("failed to create dhash, %w", err)
 	}
 
-	return h.GetHash(), nil
+	var hash DHash
+	binary.BigEndian.PutUint64(hash[:], h.GetHash())
+
+	return hash, nil
 }

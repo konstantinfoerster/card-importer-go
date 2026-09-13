@@ -2,7 +2,6 @@ package cards
 
 import (
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 
@@ -470,17 +469,14 @@ func (d *PostgresCardDao) CountImages() (int, error) {
 	return count, nil
 }
 
-// toBits256 converts given hash into the pgx type bound to Postgres BIT(256) columns.
-func toBits256(h ImageHash) pgtype.Bits {
+// toBits256 converts given hash into the pgx Bits type with a length of 256.
+func toBits256(h PHash) pgtype.Bits {
 	return pgtype.Bits{Bytes: h.Bytes(), Len: 256, Valid: true} //nolint:mnd
 }
 
-// toBits64 converts given value into the pgx type bound to Postgres BIT(64) columns.
-func toBits64(v uint64) pgtype.Bits {
-	b := make([]byte, 8) //nolint:mnd
-	binary.BigEndian.PutUint64(b, v)
-
-	return pgtype.Bits{Bytes: b, Len: 64, Valid: true}
+// toBits64 converts given hash into the pgx Bits type with a length of 64.
+func toBits64(h DHash) pgtype.Bits {
+	return pgtype.Bits{Bytes: h.Bytes(), Len: 64, Valid: true} //nolint:mnd
 }
 
 // AddImage Creates a new card image.
@@ -536,10 +532,10 @@ func (d *PostgresCardDao) GetImages() ([]*Image, error) {
 			return nil, fmt.Errorf("failed to execute select on card_image %w", rErr)
 		}
 
-		img.PhashR = ImageHash(phashR.Bytes)
-		img.PhashG = ImageHash(phashG.Bytes)
-		img.PhashB = ImageHash(phashB.Bytes)
-		img.Dhash = binary.BigEndian.Uint64(dhash.Bytes)
+		img.PhashR = PHash(phashR.Bytes)
+		img.PhashG = PHash(phashG.Bytes)
+		img.PhashB = PHash(phashB.Bytes)
+		img.Dhash = DHash(dhash.Bytes)
 
 		result = append(result, &img)
 	}
@@ -551,7 +547,7 @@ func (d *PostgresCardDao) GetImages() ([]*Image, error) {
 	return result, nil
 }
 
-func (d *PostgresCardDao) UpdateHashes(id int64, red ImageHash, green ImageHash, blue ImageHash, dhash uint64) error {
+func (d *PostgresCardDao) UpdateHashes(id int64, red PHash, green PHash, blue PHash, dhash DHash) error {
 	query := `
 		UPDATE
 			card_image
