@@ -33,7 +33,7 @@ RUN addgroup -g 10001 nonroot \
 COPY --from=builder --chown=nonroot:nonroot /app/card-dataset-cli /usr/bin/
 COPY --from=builder --chown=nonroot:nonroot /app/card-images-cli /usr/bin/
 
-USER nonroot
+USER 10001:10001
 
 CMD ["/usr/bin/card-dataset-cli", "--config", "/config/application.yaml"]
 

@@ -51,11 +51,11 @@ func ComputeChannelPHashes(img image.Image, width, height int) (PHash, PHash, PH
 // splitChannels extracts the R, G and B channels of given img into three
 // separate *image.Gray images, one per channel. image.Gray stores one value
 // per pixel and satisfies the image.Image type.
-func splitChannels(img image.Image) (r, g, b *image.Gray) {
+func splitChannels(img image.Image) (*image.Gray, *image.Gray, *image.Gray) {
 	bounds := img.Bounds()
-	r = image.NewGray(bounds)
-	g = image.NewGray(bounds)
-	b = image.NewGray(bounds)
+	r := image.NewGray(bounds)
+	g := image.NewGray(bounds)
+	b := image.NewGray(bounds)
 
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
